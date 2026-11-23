@@ -56,7 +56,7 @@ export default function MerchantRegisterPage() {
   // Step 3: Queue Settings
   const [avgWaitMin, setAvgWaitMin] = useState(12);
   const [dailyTokenCap, setDailyTokenCap] = useState(100);
-  const [tokenPrefix, setTokenPrefix] = useState('AK');
+  const [tokenPrefix, setTokenPrefix] = useState('SQ');
   const [enableWhatsapp, setEnableWhatsapp] = useState(true);
 
   // Step 4: Final Created Shop Data
@@ -500,11 +500,11 @@ export default function MerchantRegisterPage() {
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-bold shadow-2xs">
           <Store className="w-3.5 h-3.5" />
-          <span>AbhiiKhula For Merchants • Partner Registration</span>
+          <span>SkipQ For Merchants • Partner Registration</span>
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
-          Register Your Shop on AbhiiKhula
+          Register Your Shop on SkipQ
         </h1>
 
         <p className="text-xs sm:text-sm text-[#283B3D]/70 max-w-xl mx-auto font-medium">
@@ -1122,7 +1122,7 @@ export default function MerchantRegisterPage() {
             {/* Simulated Clean QR Code Graphic */}
             <div className="w-44 h-44 bg-white rounded-2xl p-3 mx-auto shadow-xs border border-[#DCE9E3] flex flex-col items-center justify-center">
               <QrCode className="w-32 h-32 text-[#283B3D]" />
-              <span className="text-[9px] font-bold text-slate-400 mt-1">abhiikhula.in/book/{registeredShop.slug}</span>
+              <span className="text-[9px] font-bold text-slate-400 mt-1">skipq.in/book/{registeredShop.slug}</span>
             </div>
 
             <div className="text-[11px] font-bold text-[#176B65] flex items-center justify-center gap-1">

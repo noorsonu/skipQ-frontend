@@ -391,7 +391,7 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 2: HOW ABHIIKHULA WORKS                           */}
+      {/* SECTION 2: HOW SKIPQ WORKS                                */}
       {/* ========================================================= */}
       <section id="how-it-works" className="bg-[#DCE9E3]/45 py-10 sm:py-14 border-y border-[#DCE9E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
@@ -401,7 +401,7 @@ export default function HomePage() {
               Simple 3-Step Flow
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
-              How AbhiiKhula Works
+              How SkipQ Works
             </h2>
             <p className="text-sm sm:text-base text-[#283B3D]/70 font-medium">
               Say goodbye to unorganized physical lines. Experience the effortless way to get attended.
@@ -825,7 +825,7 @@ export default function HomePage() {
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Core Value</span>
           <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
-            Why Choose AbhiiKhula?
+            Why Choose SkipQ?
           </h2>
           <p className="text-sm text-[#283B3D]/70 font-medium">
             Designed for busy city residents and quality-focused neighborhood businesses.
@@ -887,7 +887,7 @@ export default function HomePage() {
               href="#shops"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-base shadow-lg shadow-[#176B65]/20 transition-all cursor-pointer"
             >
-              <span>Get Started with AbhiiKhula</span>
+              <span>Get Started with SkipQ</span>
               <ArrowRight className="w-5 h-5 text-[#F2A15A]" />
             </motion.a>
           </div>

@@ -10,11 +10,11 @@ export function shareTokenPass(token) {
   const estWait = token.estimatedWaitMin ?? 0;
   const groupText = token.groupSize > 1 ? `Group (${token.groupSize} Persons)` : 'Single Person Pass';
   
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://abhiikhula.in';
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://skipq.in';
   const trackingUrl = `${currentOrigin}/tokens`;
 
   const message = 
-`🎟️ *AbhiiKhula Live Queue Pass*
+`🎟️ *SkipQ Live Queue Pass*
 🏪 *Store*: ${shopName}
 🔢 *Token Number*: ${tokenNo}
 👥 *Booking*: ${groupText}
@@ -26,7 +26,7 @@ ${trackingUrl}`;
   // Try Native Web Share API first if on mobile
   if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
     navigator.share({
-      title: `AbhiiKhula Pass - ${tokenNo}`,
+      title: `SkipQ Pass - ${tokenNo}`,
       text: message,
       url: trackingUrl,
     }).catch(() => {

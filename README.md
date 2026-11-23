@@ -1,4 +1,7 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SkipQ Web Frontend
+
+Next.js frontend for **SkipQ** — Hyperlocal Live Availability & Virtual Queue Platform.
+Skip the Wait. Own Your Time.
 
 ## Getting Started
 

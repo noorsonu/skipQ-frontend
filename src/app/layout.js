@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import OfficialBrandLogo from "@/components/OfficialBrandLogo";
 
 export const metadata = {
-  title: "AbhiiKhula | Skip the Wait. Own Your Time.",
+  title: "SkipQ | Skip the Wait. Own Your Time.",
   description: "Book your token online, track your turn live, and visit when it's your time. The modern hyperlocal queue management platform.",
 };
 
@@ -19,9 +19,9 @@ export default function RootLayout({ children }) {
         <Suspense fallback={<div className="h-20 bg-[#F3F1E9] border-b border-[#DCE9E3]" />}>
           <Navbar />
         </Suspense>
-        
+
         <main className="flex-1 w-full mx-auto pb-10 md:pb-16">
-          <Suspense fallback={<div className="py-24 text-center text-sm font-semibold text-[#176B65]">Loading AbhiiKhula...</div>}>
+          <Suspense fallback={<div className="py-24 text-center text-sm font-semibold text-[#176B65]">Loading SkipQ...</div>}>
             {children}
           </Suspense>
         </main>
@@ -42,7 +42,7 @@ export default function RootLayout({ children }) {
             </div>
 
             <p className="text-slate-400 font-medium">
-              © 2026 AbhiiKhula Platform. Lucknow Pilot Live.
+              © 2026 SkipQ Platform. Lucknow Pilot Live.
             </p>
           </div>
         </footer>

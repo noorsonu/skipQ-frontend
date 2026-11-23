@@ -1271,7 +1271,7 @@ export default function MerchantDashboardPage() {
   // BRD FR-605 / FR-302: Generate high-resolution QR Code when shop or theme changes
   useEffect(() => {
     if (!activeShop || typeof window === 'undefined') return;
-    const origin = window.location.origin || 'https://abhiikhula.in';
+    const origin = window.location.origin || 'https://skipq.in';
     const bookingUrl = `${origin}/book/${(activeShop.slug || 'shop').toLowerCase()}`;
     const darkColor = standeeTheme === 'MIDNIGHT' ? '#283B3D' : standeeTheme === 'EMERALD' ? '#176B65' : '#111827';
 
@@ -1290,7 +1290,7 @@ export default function MerchantDashboardPage() {
   // Copy Booking Link to Clipboard
   const handleCopyBookingLink = () => {
     if (typeof window === 'undefined' || !activeShop) return;
-    const origin = window.location.origin || 'https://abhiikhula.in';
+    const origin = window.location.origin || 'https://skipq.in';
     const bookingUrl = `${origin}/book/${(activeShop.slug || 'shop').toLowerCase()}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(bookingUrl);
@@ -1941,15 +1941,17 @@ export default function MerchantDashboardPage() {
     const peopleAhead = customer.waitAhead ?? 0;
     const waitMin = customer.estWaitMin ?? 10;
 
+    const tokenOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://skipq.in';
+
     switch (preset) {
       case 'CALLING_SOON':
-        return `Hello ${name}! 🙏\n\nYour *Token #${token}* at *${shopName}* is coming up soon (Only ${peopleAhead} ahead of you, ~${waitMin} min).\n\nPlease proceed towards the counter.\n\nView Live Pass: https://abhiikhula.in/tokens\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! 🙏\n\nYour *Token #${token}* at *${shopName}* is coming up soon (Only ${peopleAhead} ahead of you, ~${waitMin} min).\n\nPlease proceed towards the counter.\n\nView Live Pass: ${tokenOrigin}/tokens\n- Powered by SkipQ`;
       case 'SERVING_NOW':
-        return `Hello ${name}! 🔔\n\nYour *Token #${token}* at *${shopName}* is being served now! Please step up to the counter.\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! 🔔\n\nYour *Token #${token}* at *${shopName}* is being served now! Please step up to the counter.\n- Powered by SkipQ`;
       case 'ABSENT_RECALL':
-        return `Hello ${name}! ⚠️\n\nYour *Token #${token}* was called at *${shopName}*, but you were not present. Your token is on a 10-minute grace hold. Please contact the counter immediately!\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! ⚠️\n\nYour *Token #${token}* was called at *${shopName}*, but you were not present. Your token is on a 10-minute grace hold. Please contact the counter immediately!\n- Powered by SkipQ`;
       case 'DELAY_NOTICE':
-        return `Hello ${name}! ⏳\n\nServices at *${shopName}* are experiencing a slight delay. Your *Token #${token}* is estimated in ~${waitMin + 10} minutes. Thank you for your patience.\n- Powered by AbhiiKhula`;
+        return `Hello ${name}! ⏳\n\nServices at *${shopName}* are experiencing a slight delay. Your *Token #${token}* is estimated in ~${waitMin + 10} minutes. Thank you for your patience.\n- Powered by SkipQ`;
       default:
         return whatsappCustomText || `Hello ${name}! Counter update from *${shopName}* regarding Token #${token}.`;
     }
@@ -7962,7 +7964,7 @@ export default function MerchantDashboardPage() {
                       )}
 
                       <div className="text-[9px] text-slate-400 font-semibold pt-1">
-                        Powered by <strong>AbhiiKhula</strong> • Bharat Ka Hyperlocal Queue Network
+                        Powered by <strong>SkipQ</strong> • Hyperlocal Queue Network
                       </div>
                     </div>
 
