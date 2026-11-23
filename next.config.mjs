@@ -6,7 +6,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://abhiikhula-backend.onrender.com/api/:path*',
+        destination: 'https://skipq-backend.onrender.com/api/:path*',
       },
     ];
   },

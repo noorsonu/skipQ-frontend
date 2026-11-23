@@ -3,7 +3,7 @@
 import React from 'react';
 import SkipQLogo from './SkipQLogo';
 
-export default function AbhiiKhulaLogo({ size = 48, className = "" }) {
+export default function SkipQLogoComponent({ size = 48, className = "" }) {
   return (
     <SkipQLogo
       height={size}
