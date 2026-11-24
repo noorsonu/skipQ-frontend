@@ -689,10 +689,12 @@ export default function MerchantRegisterPage() {
       try {
         const existing = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
         const updated = [newShop, ...existing.filter(s => s.slug !== newShop.slug && s.id !== newShop.id)];
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_merchant_shops', JSON.stringify(updated));
         localStorage.setItem('ak_active_merchant_shop', JSON.stringify(newShop));
         localStorage.setItem('ak_role', 'MERCHANT');
         localStorage.setItem('ak_phone', cleanPhone);
+        if (ownerName.trim()) localStorage.setItem('ak_customer_name', ownerName.trim());
         const savedProfiles = JSON.parse(localStorage.getItem('ak_customer_profiles') || '{}');
         savedProfiles[cleanPhone] = { name: ownerName.trim() || 'Shop Owner', age: '' };
         localStorage.setItem('ak_customer_profiles', JSON.stringify(savedProfiles));

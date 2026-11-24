@@ -162,8 +162,8 @@ export default function Navbar() {
         new URLSearchParams(window.location.search).get('tab') === 'login';
       const isCustomerLoginRoute = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-      // 1. Merchant Session: Only when role is MERCHANT, user is logged in, has active shop, AND is not explicitly on the login tab
-      if (role === 'MERCHANT' && isLoggedInFlag && merchantShop && !isMerchantLoginTab) {
+      // 1. Merchant Session: Priority if merchantShop exists with a name (or role is MERCHANT) AND not explicitly on the login tab
+      if ((merchantShop?.name || role === 'MERCHANT') && !isMerchantLoginTab) {
         setUserRole('MERCHANT');
         setIsShopkeeperLoggedIn(true);
         setIsCustomerLoggedIn(false);
@@ -1028,25 +1028,25 @@ export default function Navbar() {
           {/* Customer button is HIDDEN. Only Shopkeeper Pill & Logout */}
           {/* ======================================================== */}
           {userRole === 'MERCHANT' && (
-            <div className="relative flex items-center gap-2.5">
+            <div className="relative flex items-center gap-2">
               <Link
                 href="/merchant/profile"
-                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/20 text-[#283B3D]"
+                className="inline-flex items-center gap-2.5 px-3 sm:px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/30 text-[#283B3D]"
                 title="View Full Shopkeeper & Store Details"
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white">
                   <Store className="w-4 h-4" />
                 </div>
 
-                <div className="text-left pr-1 max-w-[90px] sm:max-w-[140px]">
+                <div className="text-left pr-1 max-w-[110px] sm:max-w-[160px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-bold text-[#176B65] hidden sm:block leading-none">
-                      Worker
+                    <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
+                      Shopkeeper
                     </span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse hidden sm:block" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />
                   </div>
-                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight">
-                    {workerFirstName}
+                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight mt-0.5">
+                    {registeredMerchantShop?.name || 'My Shop'}
                   </span>
                 </div>
               </Link>

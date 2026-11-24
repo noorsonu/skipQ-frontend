@@ -1109,6 +1109,8 @@ export default function MerchantDashboardPage() {
         try {
           const parsed = JSON.parse(savedShopStr);
           setActiveShop(parsed);
+          localStorage.setItem('ak_logged_in', 'true');
+          localStorage.setItem('ak_role', 'MERCHANT');
           setShopStatus(parsed.status || 'OPEN');
           setIsAuthorized(true);
 
