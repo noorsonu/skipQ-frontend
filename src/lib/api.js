@@ -79,3 +79,16 @@ export const zoneApi = {
   getCategories: () => apiClient.get('/api/categories'),
   getZones: () => apiClient.get('/api/zones'),
 };
+
+// User Profile Management APIs
+export const userApi = {
+  getProfile: () => apiClient.get('/api/users/me'),
+  updateProfile: (payload) => apiClient.patch('/api/users/me', payload),
+  deleteAccount: (reason) => apiClient.post('/api/users/me/delete-account', { reason }),
+};
+
+// Admin System Governance & Purge APIs
+export const adminApi = {
+  purgeAllData: (secret = 'SKIPQ_PURGE_2026') => 
+    apiClient.post('/api/admin/system/purge-all-data', {}, { headers: { 'X-Admin-Secret': secret } }),
+};

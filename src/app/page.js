@@ -55,7 +55,7 @@ export default function HomePage() {
   const loadRegisteredLocalShops = () => {
     if (typeof window === 'undefined') return [];
     try {
-      const resetKey = 'ak_reset_v25_full_db_purge';
+      const resetKey = 'ak_reset_v27_clean_slate_db_purge';
       if (!localStorage.getItem(resetKey)) {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_merchant_shops');
@@ -64,9 +64,16 @@ export default function HomePage() {
         localStorage.removeItem('ak_token');
         localStorage.removeItem('ak_phone');
         localStorage.removeItem('ak_role');
+        localStorage.removeItem('ak_email');
+        localStorage.removeItem('ak_logged_in');
         localStorage.removeItem('ak_customer_name');
         localStorage.removeItem('ak_customer_age');
         localStorage.removeItem('ak_customer_profiles');
+        localStorage.removeItem('ak_favorites');
+        // Clear any old caches
+        if (typeof caches !== 'undefined') {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        }
         localStorage.setItem(resetKey, 'true');
         return [];
       }

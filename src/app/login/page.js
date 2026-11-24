@@ -9,7 +9,7 @@ import {
   LogIn, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { authApi } from '@/lib/api';
+import { authApi, userApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
 
 function LoginContent() {
@@ -21,6 +21,10 @@ function LoginContent() {
   // Mode: 'login' | 'register'
   const [activeTab, setActiveTab] = useState(initialTab);
 
+  // Login Method: 'phone' | 'email'
+  const [loginMethod, setLoginMethod] = useState('phone');
+  const [loginEmail, setLoginEmail] = useState('');
+
   // Common Fields
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -30,6 +34,12 @@ function LoginContent() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [age, setAge] = useState('');
+
+  // Google Link Mobile Modal State
+  const [googleModalOpen, setGoogleModalOpen] = useState(false);
+  const [googleModalPhone, setGoogleModalPhone] = useState('');
+  const [googleModalLoading, setGoogleModalLoading] = useState(false);
+  const [tempGoogleUser, setTempGoogleUser] = useState(null);
 
   // Forgot Password State
   const [isForgotView, setIsForgotView] = useState(false);
@@ -80,6 +90,17 @@ function LoginContent() {
         if (googleUser.email) localStorage.setItem('ak_email', googleUser.email);
         if (userAge) localStorage.setItem('ak_customer_age', userAge);
         if (userPhone) localStorage.setItem('ak_phone', userPhone);
+      }
+
+      // If user has no phone linked yet, open modal to link mobile number (or skip)
+      if (!userPhone) {
+        setTempGoogleUser({ token, name, email: googleUser.email });
+        setGoogleModalOpen(true);
+        setLoading(false);
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('storage'));
       }
 
@@ -93,66 +114,113 @@ function LoginContent() {
     }
   };
 
-  // Submit Handler for Both Login and Register
+  // Google Link Mobile Number Save Handler
+  const handleSaveGooglePhone = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    const clean = googleModalPhone.replace(/\D/g, '').slice(-10);
+    if (clean.length !== 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    setGoogleModalLoading(true);
+    try {
+      await userApi.updateProfile({ phone: clean });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_phone', clean);
+        window.dispatchEvent(new Event('storage'));
+      }
+      setSuccessMsg("Mobile number linked successfully!");
+      setGoogleModalOpen(false);
+      setTimeout(() => router.push(returnUrl), 800);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Could not link mobile number.';
+      setErrorMsg(msg);
+    } finally {
+      setGoogleModalLoading(false);
+    }
+  };
+
+  // Skip Linking Mobile Number for Google User
+  const handleSkipGooglePhone = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('storage'));
+    }
+    setGoogleModalOpen(false);
+    router.push(returnUrl);
+  };
+
+  // Submit Handler for Both Login (Phone or Email) and Register
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
-
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length !== 10) {
-      setErrorMsg("Please enter a valid 10-digit mobile number.");
-      return;
-    }
 
     if (!password || password.trim().length < 4) {
       setErrorMsg("Password must be at least 4 characters long.");
       return;
     }
 
-    if (activeTab === 'register') {
+    const payload = {
+      password: password.trim(),
+      role: 'CUSTOMER'
+    };
+
+    if (activeTab === 'login') {
+      if (loginMethod === 'phone') {
+        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+        if (cleanPhone.length !== 10) {
+          setErrorMsg("Please enter a valid 10-digit mobile number.");
+          return;
+        }
+        payload.phone = cleanPhone;
+      } else {
+        if (!loginEmail.trim() || !loginEmail.includes('@')) {
+          setErrorMsg("Please enter a valid registered email address.");
+          return;
+        }
+        payload.email = loginEmail.trim().toLowerCase();
+      }
+    } else {
+      // Register Mode
       if (!fullName.trim()) {
         setErrorMsg("Please enter your full name.");
         return;
       }
       if (!email.trim() || !email.includes('@')) {
-        setErrorMsg("Please enter a valid email address for password recovery.");
+        setErrorMsg("Please enter a valid email address.");
         return;
       }
-      if (!age || parseInt(age, 10) < 5 || parseInt(age, 10) > 115) {
-        setErrorMsg("Please enter a valid age (5 to 115).");
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+      if (cleanPhone && cleanPhone.length !== 10) {
+        setErrorMsg("If providing a mobile number, it must be 10 digits.");
         return;
+      }
+      payload.name = fullName.trim();
+      payload.email = email.trim().toLowerCase();
+      if (cleanPhone) payload.phone = cleanPhone;
+      if (age && parseInt(age, 10) >= 5 && parseInt(age, 10) <= 115) {
+        payload.age = parseInt(age, 10);
       }
     }
 
     setLoading(true);
     try {
-      const payload = {
-        phone: cleanPhone,
-        password: password.trim(),
-        role: 'CUSTOMER'
-      };
-
-      if (activeTab === 'register') {
-        payload.name = fullName.trim();
-        payload.email = email.trim();
-        payload.age = parseInt(age, 10);
-      }
-
       const res = await authApi.directLogin(payload);
       const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
-      const finalName = res?.data?.data?.name || fullName.trim() || `Customer (${cleanPhone.slice(-4)})`;
+      const returnedPhone = res?.data?.data?.phone || payload.phone || '';
+      const returnedEmail = res?.data?.data?.email || payload.email || '';
+      const finalName = res?.data?.data?.name || fullName.trim() || (returnedPhone ? `Customer (${returnedPhone.slice(-4)})` : returnedEmail.split('@')[0]);
       const finalAge = res?.data?.data?.age ? String(res.data.data.age) : age;
-      const finalEmail = res?.data?.data?.email || email.trim();
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_token', token);
-        localStorage.setItem('ak_phone', cleanPhone);
+        if (returnedPhone) localStorage.setItem('ak_phone', returnedPhone);
+        if (returnedEmail) localStorage.setItem('ak_email', returnedEmail);
         localStorage.setItem('ak_role', 'CUSTOMER');
         localStorage.setItem('ak_customer_name', finalName);
         if (finalAge) localStorage.setItem('ak_customer_age', finalAge);
-        if (finalEmail) localStorage.setItem('ak_email', finalEmail);
         window.dispatchEvent(new Event('storage'));
       }
 
@@ -423,27 +491,68 @@ function LoginContent() {
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               
-              {/* Phone Input */}
-              <div>
-                <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                  10-Digit Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="9876543210"
-                    className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                  />
-                </div>
-              </div>
+              {/* LOGIN MODE: METHOD SELECTOR (PHONE OR EMAIL) */}
+              {activeTab === 'login' ? (
+                <div>
+                  <label className="text-xs font-bold text-[#283B3D] block mb-1.5">
+                    Sign In Using <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold gap-1 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => { setLoginMethod('phone'); setErrorMsg(''); }}
+                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        loginMethod === 'phone'
+                          ? 'bg-white text-[#176B65] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Mobile Number</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setLoginMethod('email'); setErrorMsg(''); }}
+                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        loginMethod === 'email'
+                          ? 'bg-white text-[#176B65] shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Email Address</span>
+                    </button>
+                  </div>
 
-              {/* REGISTER ONLY FIELDS */}
-              {activeTab === 'register' && (
+                  {loginMethod === 'phone' ? (
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
+                      <input
+                        type="tel"
+                        required
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="9876543210"
+                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="email"
+                        required
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="yourname@gmail.com"
+                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* REGISTER MODE FIELDS */
                 <>
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
@@ -464,7 +573,7 @@ function LoginContent() {
 
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Email Address (for password recovery) <span className="text-rose-500">*</span>
+                      Email Address <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -480,8 +589,33 @@ function LoginContent() {
                   </div>
 
                   <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-[#283B3D]">
+                        10-Digit Mobile Number
+                      </label>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Optional / Recommended
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="9876543210 (recommended for SMS alerts)"
+                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Enter mobile number to enable both Mobile & Email sign-in, or leave blank.
+                    </p>
+                  </div>
+
+                  <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Your Age (in years) <span className="text-rose-500">*</span>
+                      Your Age (in years) <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
                     <div className="relative">
                       <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -489,7 +623,6 @@ function LoginContent() {
                         type="number"
                         min={5}
                         max={115}
-                        required
                         value={age}
                         onChange={(e) => setAge(e.target.value)}
                         placeholder="e.g. 25"
@@ -600,6 +733,79 @@ function LoginContent() {
         </div>
 
       </div>
+
+      {/* GOOGLE LINK MOBILE NUMBER MODAL */}
+      <AnimatePresence>
+        {googleModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200 space-y-4"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#176B65] flex items-center justify-center mx-auto">
+                <Phone className="w-6 h-6" />
+              </div>
+
+              <div className="text-center space-y-1">
+                <h3 className="text-lg font-black text-[#283B3D]">
+                  Link Mobile Number
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Add your 10-digit number to receive live turn SMS alerts and sign in with either Mobile or Email in the future.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveGooglePhone} className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                    10-Digit Mobile Number
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
+                    <input
+                      type="tel"
+                      required
+                      maxLength={10}
+                      value={googleModalPhone}
+                      onChange={(e) => setGoogleModalPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="9876543210"
+                      className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={googleModalLoading}
+                  className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {googleModalLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Linking Number...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Save & Continue</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSkipGooglePhone}
+                  className="w-full py-1 text-center text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Skip for Now
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
