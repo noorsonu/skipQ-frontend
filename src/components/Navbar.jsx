@@ -286,7 +286,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const resetKey = 'ak_reset_v28_fresh_testing_purge';
+      const resetKey = 'ak_reset_v30_strict_db_login_purge';
       if (!localStorage.getItem(resetKey)) {
         localStorage.removeItem('ak_logged_in');
         localStorage.removeItem('ak_active_merchant_shop');
@@ -489,18 +489,19 @@ export default function Navbar() {
     setLoginLoading(true);
     try {
       const res = await authApi.directLogin({
+        action: 'login',
         phone: cleanPhone,
-        name: resolvedName,
-        age: resolvedAge ? parseInt(resolvedAge, 10) : undefined,
-        email: loginEmail.trim() || undefined,
         password: loginPassword.trim(),
         role: 'CUSTOMER'
       });
 
-      const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
-      const finalName = res?.data?.data?.name || resolvedName || `Customer (${cleanPhone.slice(-4)})`;
-      const finalAge = res?.data?.data?.age ? String(res.data.data.age) : resolvedAge;
-      const finalEmail = res?.data?.data?.email || loginEmail.trim();
+      const token = res?.data?.data?.token;
+      if (!token) {
+        throw new Error(res?.data?.message || 'Login failed. Account not verified.');
+      }
+      const finalName = res?.data?.data?.name || `Customer (${cleanPhone.slice(-4)})`;
+      const finalAge = res?.data?.data?.age ? String(res.data.data.age) : '';
+      const finalEmail = res?.data?.data?.email || '';
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('ak_logged_in', 'true');

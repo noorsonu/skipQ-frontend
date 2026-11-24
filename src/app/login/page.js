@@ -212,10 +212,13 @@ function LoginContent() {
     setLoading(true);
     try {
       const res = await authApi.directLogin(payload);
-      const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
+      const token = res?.data?.data?.token;
+      if (!token) {
+        throw new Error(res?.data?.message || 'Authentication failed: No token returned from server.');
+      }
       const returnedPhone = res?.data?.data?.phone || payload.phone || '';
       const returnedEmail = res?.data?.data?.email || payload.email || '';
-      const finalName = res?.data?.data?.name || fullName.trim() || (returnedPhone ? `Customer (${returnedPhone.slice(-4)})` : returnedEmail.split('@')[0]);
+      const finalName = res?.data?.data?.name || (activeTab === 'register' ? fullName.trim() : (returnedPhone ? `Customer (${returnedPhone.slice(-4)})` : returnedEmail.split('@')[0]));
       const finalAge = res?.data?.data?.age ? String(res.data.data.age) : age;
 
       if (typeof window !== 'undefined') {

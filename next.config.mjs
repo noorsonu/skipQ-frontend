@@ -6,7 +6,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://skipq-backend.onrender.com/api/:path*',
+        destination: 'https://skipq-backend-vyd7.onrender.com/api/:path*',
       },
     ];
   },

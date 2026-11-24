@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://skipq-backend-vyd7.onrender.com';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

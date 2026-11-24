@@ -55,7 +55,7 @@ export default function HomePage() {
   const loadRegisteredLocalShops = () => {
     if (typeof window === 'undefined') return [];
     try {
-      const resetKey = 'ak_reset_v27_clean_slate_db_purge';
+      const resetKey = 'ak_reset_v30_strict_db_login_purge';
       if (!localStorage.getItem(resetKey)) {
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_merchant_shops');
