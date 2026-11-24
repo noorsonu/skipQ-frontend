@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Download, Share2, Smartphone, X, Check, CheckCircle2 } from 'lucide-react';
+import { Download, Share2, Smartphone, X, CheckCircle2, User, Store, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Global shared state for install prompt
@@ -59,7 +59,7 @@ export function usePwaInstall() {
     };
   }, []);
 
-  const triggerInstall = async (forMerchant = null) => {
+  const triggerInstall = async (forMerchant = false) => {
     const promptEvent = deferredPrompt || globalDeferredPrompt;
 
     if (promptEvent) {
@@ -77,10 +77,11 @@ export function usePwaInstall() {
     }
 
     // Direct native system trigger (Safari iOS / Android)
-    const isMerch = forMerchant !== null ? forMerchant : isMerchant;
-    const shareUrl = isMerch ? 'https://skipq-smoky.vercel.app/merchant/dashboard' : 'https://skipq-smoky.vercel.app/';
-    const shareTitle = isMerch ? 'SkipQ Partner App' : 'SkipQ App';
-    const shareText = isMerch 
+    const shareUrl = forMerchant 
+      ? 'https://skipq-smoky.vercel.app/merchant/dashboard' 
+      : 'https://skipq-smoky.vercel.app/';
+    const shareTitle = forMerchant ? 'SkipQ Partner App' : 'SkipQ App';
+    const shareText = forMerchant 
       ? '📲 Install SkipQ Partner App — Store Queue & Counter Dashboard:\n' 
       : '📲 Install SkipQ App — Book live tokens & avoid waiting:\n';
 
@@ -100,13 +101,12 @@ export function usePwaInstall() {
     return false;
   };
 
-  const triggerShare = async (forMerchant = null) => {
-    const isMerch = forMerchant !== null ? forMerchant : isMerchant;
-    const shareUrl = isMerch 
+  const triggerShare = async (forMerchant = false) => {
+    const shareUrl = forMerchant 
       ? 'https://skipq-smoky.vercel.app/merchant/dashboard' 
       : 'https://skipq-smoky.vercel.app/';
-    const shareTitle = isMerch ? 'SkipQ Partner App' : 'SkipQ App';
-    const shareText = isMerch 
+    const shareTitle = forMerchant ? 'SkipQ Partner App' : 'SkipQ App';
+    const shareText = forMerchant 
       ? '📲 Install SkipQ Partner App — Store Queue & Counter Calling Dashboard:\n' 
       : '📲 Install SkipQ App — Book digital tokens and skip waiting:\n';
 
@@ -144,224 +144,236 @@ export function usePwaInstall() {
   };
 }
 
-// 1. MODAL WITH [INSTALL] AND [SHARE] OPTIONS
-export function AppActionModal({ isOpen, onClose, forMerchant = false }) {
+// 1. UNIVERSAL DUAL APP FOOTER (BOTTOM OF EVERY PAGE FOR ALL USERS)
+export function UniversalDualAppFooter() {
   const { triggerInstall, triggerShare } = usePwaInstall();
-  const [copied, setCopied] = useState(false);
+  const [customerCopied, setCustomerCopied] = useState(false);
+  const [merchantCopied, setMerchantCopied] = useState(false);
 
-  if (!isOpen) return null;
-
-  const handleInstallClick = async () => {
-    await triggerInstall(forMerchant);
-    onClose();
-  };
-
-  const handleShareClick = async () => {
-    const res = await triggerShare(forMerchant);
-    if (res === 'copied') {
-      setCopied(true);
-      setTimeout(() => {
-        setCopied(false);
-        onClose();
-      }, 1500);
-    } else {
-      onClose();
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0"
-        />
-
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="relative w-full max-w-[320px] bg-white rounded-3xl p-5 shadow-2xl border border-[#DCE9E3] space-y-4 z-10"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#DCE9E3]/70 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-xs shrink-0 ${
-                forMerchant ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-[#176B65]'
-              }`}>
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-[#283B3D] leading-tight">
-                  {forMerchant ? 'SkipQ Partner App' : 'SkipQ App'}
-                </h3>
-                <p className="text-[10px] text-slate-500 font-medium">Select an action</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* 2 Main Action Choices */}
-          <div className="space-y-2.5">
-            <button
-              type="button"
-              onClick={handleInstallClick}
-              className={`w-full p-3 rounded-2xl text-white font-bold text-xs flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-98 ${
-                forMerchant ? 'bg-amber-700 hover:bg-amber-800' : 'bg-[#176B65] hover:bg-[#125550]'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Download className="w-4 h-4 shrink-0" />
-                <span className="text-left font-black">Download & Install App</span>
-              </div>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md font-bold">1-Tap</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShareClick}
-              className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-[#DCE9E3]/50 text-[#283B3D] border border-[#DCE9E3] font-bold text-xs flex items-center justify-between transition-all cursor-pointer active:scale-98"
-            >
-              <div className="flex items-center gap-2.5">
-                <Share2 className="w-4 h-4 text-[#176B65] shrink-0" />
-                <span className="text-left font-black">
-                  {copied ? 'Link Copied to Clipboard!' : 'Share Direct App Link'}
-                </span>
-              </div>
-              <span className="text-[10px] bg-emerald-100 text-[#176B65] px-2 py-0.5 rounded-md font-bold">Share</span>
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
-}
-
-// 2. EMBEDDED INSIDE CUSTOMER PROFILE / DROPDOWN
-export function CustomerAppMenuSection() {
-  const { triggerInstall, triggerShare } = usePwaInstall();
-  const [copied, setCopied] = useState(false);
-
-  const handleShare = async () => {
+  const handleCustomerShare = async () => {
     const res = await triggerShare(false);
     if (res === 'copied') {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCustomerCopied(true);
+      setTimeout(() => setCustomerCopied(false), 2500);
     }
   };
 
-  return (
-    <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase text-[#176B65] tracking-wider flex items-center gap-1">
-          <Smartphone className="w-3.5 h-3.5" /> SkipQ Mobile App
-        </span>
-        <span className="text-[9px] font-bold bg-[#176B65] text-white px-1.5 py-0.5 rounded-md">
-          Official
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => triggerInstall(false)}
-          className="py-2 px-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-        >
-          <Download className="w-3.5 h-3.5 shrink-0" />
-          <span>Install</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleShare}
-          className="py-2 px-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#DCE9E3] text-[#283B3D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-        >
-          <Share2 className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
-          <span>{copied ? 'Copied!' : 'Share'}</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// 3. EMBEDDED INSIDE SHOPKEEPER / MERCHANT PROFILE / DROPDOWN
-export function MerchantAppMenuSection() {
-  const { triggerInstall, triggerShare } = usePwaInstall();
-  const [copied, setCopied] = useState(false);
-
-  const handleShare = async () => {
+  const handleMerchantShare = async () => {
     const res = await triggerShare(true);
     if (res === 'copied') {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setMerchantCopied(true);
+      setTimeout(() => setMerchantCopied(false), 2500);
     }
   };
 
   return (
-    <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider flex items-center gap-1">
-          <Smartphone className="w-3.5 h-3.5 text-amber-700" /> SkipQ Partner App
-        </span>
-        <span className="text-[9px] font-bold bg-amber-700 text-white px-1.5 py-0.5 rounded-md">
-          Worker
+    <div className="w-full bg-[#1e2f31] border border-slate-700/70 rounded-3xl p-5 sm:p-7 text-[#DCE9E3] space-y-5 shadow-xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+              <Smartphone className="w-4 h-4" />
+            </span>
+            <h4 className="text-sm sm:text-base font-black text-white">
+              Install & Share SkipQ Mobile Apps (Customer & Worker)
+            </h4>
+          </div>
+          <p className="text-xs text-slate-400 font-medium">
+            Install directly on your phone home screen or share the direct app link with friends & store owners.
+          </p>
+        </div>
+
+        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-700/50 px-3 py-1 rounded-full w-fit shrink-0">
+          Zero Play Store Download Needed
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => triggerInstall(true)}
-          className="py-2 px-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-        >
-          <Download className="w-3.5 h-3.5 shrink-0" />
-          <span>Install</span>
-        </button>
+      {/* 2 Dedicated App Cards: Customer App & Worker App */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* CARD 1: CUSTOMER APP */}
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-400/40 transition-all space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center font-bold shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h5 className="text-sm font-black text-white flex items-center gap-1.5">
+                  <span>SkipQ Customer App</span>
+                  <span className="text-[9px] uppercase font-bold bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded-md">
+                    Customer
+                  </span>
+                </h5>
+                <p className="text-[11px] text-slate-400">Book live queue passes & track waiting time from home</p>
+              </div>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={handleShare}
-          className="py-2 px-2.5 rounded-xl bg-white hover:bg-amber-50 border border-amber-200 text-[#283B3D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-        >
-          <Share2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-          <span>{copied ? 'Copied!' : 'Share'}</span>
-        </button>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => triggerInstall(false)}
+              className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              <span>Download & Install</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCustomerShare}
+              className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Share2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{customerCopied ? 'Link Copied!' : 'Share Customer App'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 2: WORKER / MERCHANT PARTNER APP */}
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-400/40 transition-all space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center font-bold shrink-0">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <h5 className="text-sm font-black text-white flex items-center gap-1.5">
+                  <span>SkipQ Partner App</span>
+                  <span className="text-[9px] uppercase font-bold bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-md">
+                    Worker / Store
+                  </span>
+                </h5>
+                <p className="text-[11px] text-slate-400">Live counter operations, chair calling & store billing</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => triggerInstall(true)}
+              className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              <span>Download & Install</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleMerchantShare}
+              className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+            >
+              <Share2 className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{merchantCopied ? 'Link Copied!' : 'Share Worker App'}</span>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
 
-// 4. BOTTOM FOOTER BUTTON (OPENS THE 2-CHOICE MODAL)
-export function PwaInstallBottomButton() {
-  const { isStandalone, isMerchant } = usePwaInstall();
-  const [modalOpen, setModalOpen] = useState(false);
+// 2. DUAL APP SECTION (EMBEDDED IN CUSTOMER & WORKER DROPDOWNS & LOGIN PAGE)
+export function DualAppMenuSection({ title = "Install & Share Mobile Apps" }) {
+  const { triggerInstall, triggerShare } = usePwaInstall();
+  const [customerCopied, setCustomerCopied] = useState(false);
+  const [merchantCopied, setMerchantCopied] = useState(false);
 
-  if (isStandalone) return null;
+  const handleCustomerShare = async () => {
+    const res = await triggerShare(false);
+    if (res === 'copied') {
+      setCustomerCopied(true);
+      setTimeout(() => setCustomerCopied(false), 2000);
+    }
+  };
+
+  const handleMerchantShare = async () => {
+    const res = await triggerShare(true);
+    if (res === 'copied') {
+      setMerchantCopied(true);
+      setTimeout(() => setMerchantCopied(false), 2000);
+    }
+  };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setModalOpen(true)}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] hover:text-white border border-white/20 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-      >
-        <Download className="w-4 h-4 text-emerald-400" />
-        <span>{isMerchant ? 'SkipQ Partner App' : 'SkipQ Mobile App'}</span>
-      </button>
+    <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] space-y-3">
+      <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-2">
+        <span className="text-[10px] font-black uppercase text-[#176B65] tracking-wider flex items-center gap-1">
+          <Smartphone className="w-3.5 h-3.5" /> {title}
+        </span>
+        <span className="text-[9px] font-bold bg-[#176B65] text-white px-1.5 py-0.2 rounded-md">
+          Dual PWA
+        </span>
+      </div>
 
-      <AppActionModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        forMerchant={isMerchant}
-      />
-    </>
+      {/* Customer App Row */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-[#283B3D] flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Customer App
+          </span>
+          <span className="text-[10px] text-slate-500">For booking tokens</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => triggerInstall(false)}
+            className="py-1.5 px-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Download className="w-3 h-3 shrink-0" />
+            <span>Install</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCustomerShare}
+            className="py-1.5 px-2 rounded-xl bg-white hover:bg-slate-50 border border-[#DCE9E3] text-[#283B3D] text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Share2 className="w-3 h-3 text-[#176B65] shrink-0" />
+            <span>{customerCopied ? 'Copied!' : 'Share'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Worker App Row */}
+      <div className="space-y-1.5 pt-2 border-t border-[#DCE9E3]">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-[#283B3D] flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-500" /> Worker / Partner App
+          </span>
+          <span className="text-[10px] text-slate-500">For counter desks</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => triggerInstall(true)}
+            className="py-1.5 px-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Download className="w-3 h-3 shrink-0" />
+            <span>Install</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleMerchantShare}
+            className="py-1.5 px-2 rounded-xl bg-white hover:bg-amber-50 border border-amber-200 text-[#283B3D] text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Share2 className="w-3 h-3 text-amber-700 shrink-0" />
+            <span>{merchantCopied ? 'Copied!' : 'Share'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
+
+// Aliases for clean backward compatibility
+export const CustomerAppMenuSection = DualAppMenuSection;
+export const MerchantAppMenuSection = DualAppMenuSection;
+export const PwaInstallBottomButton = UniversalDualAppFooter;

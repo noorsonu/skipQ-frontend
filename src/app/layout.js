@@ -43,25 +43,30 @@ export default function RootLayout({ children }) {
           </Suspense>
         </main>
 
-        {/* Footer with exact Official Logo Graphic (replacing old hindi badge) */}
-        <footer className="bg-[#283B3D] text-[#DCE9E3] border-t border-slate-700/50 py-14 text-xs">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-white rounded-2xl shadow-md border border-slate-700/60 inline-flex items-center">
-                <OfficialBrandLogo height={42} animate={false} />
+        {/* Footer with Universal Dual App Download & Share */}
+        <footer className="bg-[#283B3D] text-[#DCE9E3] border-t border-slate-700/50 py-12 text-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            {/* Full-width Universal Dual App Section (Customer & Worker) */}
+            <PwaInstallBottomButton />
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-t border-slate-700/60 pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-2 bg-white rounded-2xl shadow-md border border-slate-700/60 inline-flex items-center">
+                  <OfficialBrandLogo height={42} animate={false} />
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-300 font-semibold text-xs">
-              <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-              <a href="/shops" className="hover:text-white transition-colors">Explore Places</a>
-              <a href="/tokens" className="hover:text-white transition-colors">My Live Tokens</a>
-              <PwaInstallBottomButton />
-            </div>
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-300 font-semibold text-xs">
+                <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
+                <a href="/shops" className="hover:text-white transition-colors">Explore Places</a>
+                <a href="/tokens" className="hover:text-white transition-colors">My Live Tokens</a>
+                <a href="/merchant/register?tab=login" className="hover:text-white transition-colors">Partner Dashboard</a>
+              </div>
 
-            <p className="text-slate-400 font-medium">
-              © 2026 SkipQ Platform. Lucknow Pilot Live.
-            </p>
+              <p className="text-slate-400 font-medium">
+                © 2026 SkipQ Platform. Lucknow Pilot Live.
+              </p>
+            </div>
           </div>
         </footer>
       </body>
