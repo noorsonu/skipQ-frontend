@@ -116,7 +116,7 @@ export default function Navbar() {
     { href: '/tokens', label: 'My Live Tokens', icon: Ticket },
   ];
 
-  // Sync profile & role details from localStorage
+  // Sync profile & role details from localStorage (Permanent Session Persistence)
   const syncProfile = () => {
     if (typeof window !== 'undefined') {
       const role = localStorage.getItem('ak_role') || '';
@@ -124,6 +124,8 @@ export default function Navbar() {
       const name = localStorage.getItem('ak_customer_name') || '';
       const age = localStorage.getItem('ak_customer_age') || '';
       const token = localStorage.getItem('ak_token') || '';
+      const email = localStorage.getItem('ak_email') || '';
+      const isLoggedInFlag = localStorage.getItem('ak_logged_in') === 'true';
 
       // Check merchant shop
       let merchantShop = null;
@@ -138,7 +140,7 @@ export default function Navbar() {
 
       const isMerchantRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
 
-      // Determine role: if on merchant route with a registered shop, prioritize merchant view
+      // 1. Merchant Session: Priority on merchant routes or when registered merchant shop exists
       if ((role === 'MERCHANT' || isMerchantRoute) && merchantShop) {
         setUserRole('MERCHANT');
         setIsShopkeeperLoggedIn(true);
@@ -146,7 +148,9 @@ export default function Navbar() {
         setCustomerName('Guest');
         setCustomerPhone('');
         setCustomerAge('');
-      } else if (role === 'CUSTOMER' && (token || phone)) {
+      } 
+      // 2. Customer Persistent Session: Once logged in or registered on this device, STAY logged in
+      else if (isLoggedInFlag || role === 'CUSTOMER' || token || (phone && name) || email) {
         setUserRole('CUSTOMER');
         setIsCustomerLoggedIn(true);
         setIsShopkeeperLoggedIn(false);
@@ -154,12 +158,16 @@ export default function Navbar() {
         setCustomerAge(age);
         if (name && name !== 'Customer') {
           setCustomerName(name);
+        } else if (email) {
+          setCustomerName(email.split('@')[0]);
         } else if (phone) {
           setCustomerName(`Customer (${phone.slice(-4)})`);
         } else {
-          setCustomerName('Guest');
+          setCustomerName('Customer');
         }
-      } else {
+      } 
+      // 3. Guest (only before first login or after explicit logout)
+      else {
         setUserRole('GUEST');
         setIsCustomerLoggedIn(false);
         setIsShopkeeperLoggedIn(false);
@@ -408,12 +416,14 @@ export default function Navbar() {
       const phone = res?.data?.data?.phone || '';
 
       if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_token', token);
         localStorage.setItem('ak_customer_name', name);
         localStorage.setItem('ak_role', 'CUSTOMER');
         if (googleUser.email) localStorage.setItem('ak_email', googleUser.email);
         if (age) localStorage.setItem('ak_customer_age', age);
         if (phone) localStorage.setItem('ak_phone', phone);
+        window.dispatchEvent(new Event('storage'));
       }
 
       setCustomerName(name);
@@ -423,6 +433,7 @@ export default function Navbar() {
       setUserRole('CUSTOMER');
       setLoginModalOpen(false);
       setLoginSuccessMsg(`Welcome, ${name}!`);
+      syncProfile();
     } catch (err) {
       console.error("Google sign in error:", err);
       setLoginError(err.message || 'Google Sign-In failed. Please try again.');
@@ -483,12 +494,14 @@ export default function Navbar() {
       const finalEmail = res?.data?.data?.email || loginEmail.trim();
 
       if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_token', token);
         localStorage.setItem('ak_phone', cleanPhone);
         localStorage.setItem('ak_role', 'CUSTOMER');
         localStorage.setItem('ak_customer_name', finalName);
         if (finalAge) localStorage.setItem('ak_customer_age', finalAge);
         if (finalEmail) localStorage.setItem('ak_email', finalEmail);
+        window.dispatchEvent(new Event('storage'));
       }
 
       setCustomerName(finalName);
@@ -498,6 +511,7 @@ export default function Navbar() {
       setUserRole('CUSTOMER');
       setLoginModalOpen(false);
       setLoginSuccessMsg(`Welcome, ${finalName}!`);
+      syncProfile();
     } catch (err) {
       console.error("Direct login error:", err);
       const msg = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
@@ -537,11 +551,13 @@ export default function Navbar() {
       const token = res?.data?.data?.token || 'mock-jwt-' + Date.now();
       const name = res?.data?.data?.name || 'Customer';
       if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_token', token);
         localStorage.setItem('ak_phone', cleanPhone);
         localStorage.setItem('ak_role', 'CUSTOMER');
         localStorage.setItem('ak_customer_name', name);
         localStorage.setItem('ak_email', forgotRecoveryEmail.trim());
+        window.dispatchEvent(new Event('storage'));
       }
       setCustomerName(name);
       setCustomerPhone(cleanPhone);
@@ -550,6 +566,7 @@ export default function Navbar() {
       setIsForgotPasswordView(false);
       setLoginModalOpen(false);
       setLoginSuccessMsg(`Password reset successful! Welcome, ${name}!`);
+      syncProfile();
     } catch (err) {
       console.error("Password reset error:", err);
       const msg = err.response?.data?.message || err.message || 'Reset failed. Please verify your details.';
@@ -590,11 +607,13 @@ export default function Navbar() {
       const token = res?.data?.data?.token || 'mock-jwt-' + Date.now();
       const name = res?.data?.data?.name || googleUser.displayName || 'Customer';
       if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_token', token);
         localStorage.setItem('ak_phone', cleanPhone);
         localStorage.setItem('ak_role', 'CUSTOMER');
         localStorage.setItem('ak_customer_name', name);
         localStorage.setItem('ak_email', googleUser.email);
+        window.dispatchEvent(new Event('storage'));
       }
       setCustomerName(name);
       setCustomerPhone(cleanPhone);
@@ -603,6 +622,7 @@ export default function Navbar() {
       setIsForgotPasswordView(false);
       setLoginModalOpen(false);
       setLoginSuccessMsg(`Password reset via Google! Welcome, ${name}!`);
+      syncProfile();
     } catch (err) {
       console.error("Google password reset error:", err);
       const msg = err.response?.data?.message || err.message || 'Google reset failed. Please ensure your Google email matches your account.';
@@ -789,8 +809,10 @@ export default function Navbar() {
   const handleLogout = () => {
     if (window.confirm("Do you want to log out from this customer account?")) {
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('ak_logged_in');
         localStorage.removeItem('ak_token');
         localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_email');
         localStorage.removeItem('ak_customer_name');
         localStorage.removeItem('ak_customer_age');
         localStorage.removeItem('ak_role');
@@ -815,9 +837,11 @@ export default function Navbar() {
   const handleMerchantLogout = () => {
     if (window.confirm("Do you want to log out from this shopkeeper account?")) {
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('ak_logged_in');
         localStorage.removeItem('ak_active_merchant_shop');
         localStorage.removeItem('ak_role');
         localStorage.removeItem('ak_phone');
+        localStorage.removeItem('ak_email');
         localStorage.removeItem('ak_token');
         localStorage.removeItem('ak_customer_name');
         localStorage.removeItem('ak_customer_age');

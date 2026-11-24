@@ -85,31 +85,13 @@ export default function MerchantRegisterPage() {
           const phone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
           const params = new URLSearchParams(window.location.search);
 
-          if (activeStr) {
-            const parsed = JSON.parse(activeStr);
-            let shopStillExistsInDb = false;
-
-            // Verify with cloud database that shop wasn't deleted
-            if (parsed.id) {
-              try {
-                const res = await shopApi.getShopById(parsed.id);
-                if (res?.data?.data) {
-                  shopStillExistsInDb = true;
-                  setExistingShop(res.data.data);
-                }
-              } catch (err) {
-                // Shop deleted from DB -> purge stale local storage
-                localStorage.removeItem('ak_active_merchant_shop');
-                localStorage.removeItem('ak_role');
-                setExistingShop(null);
-              }
-            }
-
-            // Only redirect to dashboard if shop is valid in cloud DB
-            if (shopStillExistsInDb && role === 'MERCHANT' && params.get('new') !== 'true') {
-              router.replace('/merchant/dashboard');
-              return;
-            }
+          if (activeStr && role === 'MERCHANT' && params.get('new') !== 'true') {
+            try {
+              const parsed = JSON.parse(activeStr);
+              setExistingShop(parsed);
+            } catch (e) {}
+            router.replace('/merchant/dashboard');
+            return;
           } else if (phone) {
             // Also check database by phone
             try {
@@ -183,7 +165,9 @@ export default function MerchantRegisterPage() {
       }
 
       if (matchedShop) {
+        localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_active_merchant_shop', JSON.stringify(matchedShop));
+        localStorage.setItem('ak_role', 'MERCHANT');
         router.replace('/merchant/dashboard');
       } else {
         setIsPhoneVerified(true);
@@ -257,6 +241,7 @@ export default function MerchantRegisterPage() {
         role: 'SHOP_OWNER'
       });
       const token = authRes?.data?.data?.token || 'mock-merchant-jwt-' + Date.now();
+      localStorage.setItem('ak_logged_in', 'true');
       localStorage.setItem('ak_token', token);
       localStorage.setItem('ak_role', 'MERCHANT');
       localStorage.setItem('ak_phone', clean);
@@ -336,6 +321,7 @@ export default function MerchantRegisterPage() {
     }
 
     // Direct login to dashboard
+    localStorage.setItem('ak_logged_in', 'true');
     localStorage.setItem('ak_active_merchant_shop', JSON.stringify(shopExists));
     localStorage.setItem('ak_role', 'MERCHANT');
     localStorage.setItem('ak_phone', clean);
