@@ -182,134 +182,87 @@ function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-4 z-10 max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-[330px] bg-white rounded-3xl p-5 shadow-2xl border border-[#DCE9E3] space-y-3.5 z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
-            <div className="flex items-center gap-2">
-              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-2xs ${
+          <div className="flex items-center justify-between border-b border-[#DCE9E3]/70 pb-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-xs shrink-0 ${
                 isMerchant ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-[#176B65]'
               }`}>
-                <Smartphone className="w-5 h-5" />
+                <Download className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-black text-sm text-[#283B3D]">
-                  {isMerchant ? 'Install SkipQ Partner App' : 'Install SkipQ App'}
+                <h3 className="font-extrabold text-sm text-[#283B3D] leading-tight">
+                  {isMerchant ? 'Install SkipQ Partner' : 'Install SkipQ'}
                 </h3>
-                <span className="text-[10px] text-slate-500 font-semibold">
-                  {isMerchant ? 'Worker & Counter Calling App' : '1-Tap Fast Mobile Access'}
-                </span>
+                <p className="text-[10px] text-slate-500 font-medium">Quick 1-tap mobile access</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* OS Switcher Tabs */}
-          <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">
+          {/* OS Switcher */}
+          <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-[11px] font-bold">
             <button
               type="button"
               onClick={() => setActiveTab('android')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
-                activeTab === 'android' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              className={`py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                activeTab === 'android' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              📱 Android / Chrome
+              Android
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('ios')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
-                activeTab === 'ios' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              className={`py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                activeTab === 'ios' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              🍎 iPhone / iPad (iOS)
+              iPhone / iPad
             </button>
           </div>
 
-          {/* Important Info Note */}
-          <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 leading-snug">
-            💡 <strong>Dhyan dein:</strong> Ye koi heavy <code>.apk</code> file download nahi karta! Ye direct aapke phone ke Home screen par <strong>App icon</strong> banakar install hota hai.
-          </div>
-
-          {/* Instructions */}
+          {/* Clean 2-step Instructions in English */}
           {activeTab === 'ios' ? (
-            <div className="space-y-2.5 py-1">
-              <p className="text-xs text-[#283B3D] font-bold">
-                iPhone / iPad (Safari Browser) Me Install Karne Ke Steps:
-              </p>
-              
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65]">
-                  <Share2 className="w-4 h-4" />
-                </div>
-                <div className="text-xs text-[#283B3D]">
-                  <strong>Step 1:</strong> Safari me neeche <strong>Share button (⬆)</strong> dabayein.
-                </div>
+            <div className="space-y-2 py-1">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#F3F1E9] border border-[#DCE9E3] text-xs text-[#283B3D]">
+                <Share2 className="w-4 h-4 text-[#176B65] shrink-0" />
+                <span><strong>1.</strong> Tap <strong>Share ( ⬆ )</strong> in Safari</span>
               </div>
-
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65]">
-                  <PlusSquare className="w-4 h-4" />
-                </div>
-                <div className="text-xs text-[#283B3D]">
-                  <strong>Step 2:</strong> Menu me thoda scroll karke <strong>"Add to Home Screen" (+)</strong> select karein.
-                </div>
-              </div>
-
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-emerald-600">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div className="text-xs text-[#283B3D]">
-                  <strong>Step 3:</strong> Top-right me <strong>"Add"</strong> dabayein. App iPhone ke screen par aa jayega!
-                </div>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#F3F1E9] border border-[#DCE9E3] text-xs text-[#283B3D]">
+                <PlusSquare className="w-4 h-4 text-[#176B65] shrink-0" />
+                <span><strong>2.</strong> Choose <strong>"Add to Home Screen"</strong></span>
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5 py-1">
-              <p className="text-xs text-[#283B3D] font-bold">
-                Android (Chrome) Me Install Karne Ke 2 Tarike:
-              </p>
-
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-start gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65] mt-0.5">
-                  <Download className="w-4 h-4" />
-                </div>
-                <div className="text-xs text-[#283B3D]">
-                  <strong>Tarika 1 (Direct Pop-up):</strong> Agar Chrome me neeche <strong>"Add to Home screen"</strong> ya <strong>"Install"</strong> ka pop-up dikhe to uspe click karein.
-                </div>
+            <div className="space-y-2 py-1">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#F3F1E9] border border-[#DCE9E3] text-xs text-[#283B3D]">
+                <Download className="w-4 h-4 text-[#176B65] shrink-0" />
+                <span><strong>1.</strong> Tap <strong>Install</strong> on browser prompt</span>
               </div>
-
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-start gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65] mt-0.5">
-                  <PlusSquare className="w-4 h-4" />
-                </div>
-                <div className="text-xs text-[#283B3D]">
-                  <strong>Tarika 2 (Menu se):</strong> Chrome ke top-right me <strong>3 dots (⋮)</strong> dabayein ➔ fir <strong>"Install app"</strong> ya <strong>"Add to Home screen"</strong> select karein.
-                </div>
-              </div>
-
-              <div className="text-[11px] text-slate-500 leading-relaxed">
-                {isMerchant 
-                  ? '✅ SkipQ Partner App bina browser ke seedhe alag app ki tarah open hoga!' 
-                  : '✅ SkipQ App phone screen par regular app ki tarah bina address bar ke open hoga!'}
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#F3F1E9] border border-[#DCE9E3] text-xs text-[#283B3D]">
+                <PlusSquare className="w-4 h-4 text-[#176B65] shrink-0" />
+                <span><strong>2.</strong> Or Chrome menu <strong>( ⋮ ) → Install app</strong></span>
               </div>
             </div>
           )}
 
+          {/* Action Button */}
           <button
             type="button"
             onClick={onClose}
-            className={`w-full py-3 rounded-2xl text-white font-black text-xs shadow-md transition-all cursor-pointer text-center ${
+            className={`w-full py-2.5 rounded-xl text-white font-black text-xs shadow-sm transition-all cursor-pointer text-center ${
               isMerchant ? 'bg-amber-700 hover:bg-amber-800' : 'bg-[#176B65] hover:bg-[#125550]'
             }`}
           >
-            Samajh Gaya (Done)
+            Got It
           </button>
         </motion.div>
       </div>
