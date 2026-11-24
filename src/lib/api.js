@@ -21,10 +21,11 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Auth APIs (Google & Direct Passwordless)
+// Auth APIs (Google, Direct Password, & Password Reset)
 export const authApi = {
   googleLogin: (payload) => apiClient.post('/api/auth/google-login', payload),
   directLogin: (payload) => apiClient.post('/api/auth/direct-login', payload),
+  resetPassword: (payload) => apiClient.post('/api/auth/reset-password', payload),
   sendOtp: (phone) => apiClient.post('/api/auth/send-otp', { phone }),
   verifyOtp: (phone, otp, name, age) => apiClient.post('/api/auth/verify-otp', {
     phone,

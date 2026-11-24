@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation';
 import { 
   Compass, Ticket, Store, Sparkles, User, UserCheck, 
   ChevronDown, LogOut, Edit2, Check, X, History, ShieldCheck, 
-  ArrowRight, Phone, Calendar, KeyRound, Lock, RefreshCw, AlertCircle, Sparkle, Heart, BellRing
+  ArrowRight, Phone, Calendar, KeyRound, Lock, RefreshCw, AlertCircle, Sparkle, Heart, BellRing,
+  Mail, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi, queueApi } from '@/lib/api';
@@ -50,6 +51,15 @@ export default function Navbar() {
   const [loginName, setLoginName] = useState('');
   const [loginAge, setLoginAge] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordView, setIsForgotPasswordView] = useState(false);
+  const [forgotRecoveryPhone, setForgotRecoveryPhone] = useState('');
+  const [forgotRecoveryEmail, setForgotRecoveryEmail] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [loginOtp, setLoginOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState(null);
@@ -421,7 +431,7 @@ export default function Navbar() {
     }
   };
 
-  // Direct Mobile Login (Passwordless Instant Login without SMS OTP)
+  // Direct Mobile Login with Password
   const handleDirectMobileLogin = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setLoginError('');
@@ -436,9 +446,24 @@ export default function Navbar() {
     let resolvedName = detected?.name || loginName.trim();
     let resolvedAge = detected?.age || loginAge.trim();
 
-    if (!detected && !resolvedName) {
-      setLoginError("Full name is required for new customer registration.");
-      return;
+    if (!detected) {
+      if (!resolvedName) {
+        setLoginError("Full name is required for new customer registration.");
+        return;
+      }
+      if (!loginEmail.trim() || !loginEmail.includes('@')) {
+        setLoginError("A valid email address is required for account recovery.");
+        return;
+      }
+      if (!loginPassword || loginPassword.length < 4) {
+        setLoginError("Please set a password with at least 4 characters.");
+        return;
+      }
+    } else {
+      if (!loginPassword) {
+        setLoginError("Please enter your account password.");
+        return;
+      }
     }
 
     setLoginLoading(true);
@@ -447,12 +472,15 @@ export default function Navbar() {
         phone: cleanPhone,
         name: resolvedName,
         age: resolvedAge ? parseInt(resolvedAge, 10) : undefined,
+        email: loginEmail.trim() || undefined,
+        password: loginPassword.trim(),
         role: 'CUSTOMER'
       });
 
       const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
       const finalName = res?.data?.data?.name || resolvedName || `Customer (${cleanPhone.slice(-4)})`;
       const finalAge = res?.data?.data?.age ? String(res.data.data.age) : resolvedAge;
+      const finalEmail = res?.data?.data?.email || loginEmail.trim();
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('ak_token', token);
@@ -460,6 +488,7 @@ export default function Navbar() {
         localStorage.setItem('ak_role', 'CUSTOMER');
         localStorage.setItem('ak_customer_name', finalName);
         if (finalAge) localStorage.setItem('ak_customer_age', finalAge);
+        if (finalEmail) localStorage.setItem('ak_email', finalEmail);
       }
 
       setCustomerName(finalName);
@@ -471,9 +500,115 @@ export default function Navbar() {
       setLoginSuccessMsg(`Welcome, ${finalName}!`);
     } catch (err) {
       console.error("Direct login error:", err);
-      setLoginError(err.message || 'Login failed. Please try again.');
+      const msg = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
+      setLoginError(msg);
     } finally {
       setLoginLoading(false);
+    }
+  };
+
+  // Option A: Reset Password via Registered Email
+  const handleResetPasswordEmail = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setLoginError('');
+    const cleanPhone = forgotRecoveryPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      setLoginError("Please enter a valid 10-digit registered mobile number.");
+      return;
+    }
+    if (!forgotRecoveryEmail.trim() || !forgotRecoveryEmail.includes('@')) {
+      setLoginError("Please enter your registered email address.");
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 4) {
+      setLoginError("New password must be at least 4 characters long.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await authApi.resetPassword({
+        phone: cleanPhone,
+        email: forgotRecoveryEmail.trim(),
+        newPassword: forgotNewPassword.trim(),
+        role: 'CUSTOMER'
+      });
+
+      const token = res?.data?.data?.token || 'mock-jwt-' + Date.now();
+      const name = res?.data?.data?.name || 'Customer';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_token', token);
+        localStorage.setItem('ak_phone', cleanPhone);
+        localStorage.setItem('ak_role', 'CUSTOMER');
+        localStorage.setItem('ak_customer_name', name);
+        localStorage.setItem('ak_email', forgotRecoveryEmail.trim());
+      }
+      setCustomerName(name);
+      setCustomerPhone(cleanPhone);
+      setIsCustomerLoggedIn(true);
+      setUserRole('CUSTOMER');
+      setIsForgotPasswordView(false);
+      setLoginModalOpen(false);
+      setLoginSuccessMsg(`Password reset successful! Welcome, ${name}!`);
+    } catch (err) {
+      console.error("Password reset error:", err);
+      const msg = err.response?.data?.message || err.message || 'Reset failed. Please verify your details.';
+      setLoginError(msg);
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  // Option B: 1-Click Password Reset via Google Verification
+  const handleResetPasswordGoogle = async () => {
+    setLoginError('');
+    const cleanPhone = forgotRecoveryPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      setLoginError("Please enter your 10-digit registered mobile number first.");
+      return;
+    }
+    if (!forgotNewPassword || forgotNewPassword.length < 4) {
+      setLoginError("Please enter your desired new password below (at least 4 characters).");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const googleUser = await signInWithGoogle();
+      if (!googleUser || !googleUser.email) {
+        throw new Error("Could not retrieve email from Google.");
+      }
+
+      const res = await authApi.resetPassword({
+        phone: cleanPhone,
+        email: googleUser.email,
+        googleId: googleUser.uid,
+        newPassword: forgotNewPassword.trim(),
+        role: 'CUSTOMER'
+      });
+
+      const token = res?.data?.data?.token || 'mock-jwt-' + Date.now();
+      const name = res?.data?.data?.name || googleUser.displayName || 'Customer';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_token', token);
+        localStorage.setItem('ak_phone', cleanPhone);
+        localStorage.setItem('ak_role', 'CUSTOMER');
+        localStorage.setItem('ak_customer_name', name);
+        localStorage.setItem('ak_email', googleUser.email);
+      }
+      setCustomerName(name);
+      setCustomerPhone(cleanPhone);
+      setIsCustomerLoggedIn(true);
+      setUserRole('CUSTOMER');
+      setIsForgotPasswordView(false);
+      setLoginModalOpen(false);
+      setLoginSuccessMsg(`Password reset via Google! Welcome, ${name}!`);
+    } catch (err) {
+      console.error("Google password reset error:", err);
+      const msg = err.response?.data?.message || err.message || 'Google reset failed. Please ensure your Google email matches your account.';
+      setLoginError(msg);
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -1162,131 +1297,333 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* 1-Click Google Sign-In (100% Free, Zero OTP, Instant) */}
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={loginLoading}
-                  className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                  <span>Continue with Google (1-Click)</span>
-                </button>
+              {isForgotPasswordView ? (
+                /* ========================================================= */
+                /* FORGOT PASSWORD VIEW (Option A: Email & Option B: Google)  */
+                /* ========================================================= */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                    <span className="text-xs font-bold text-slate-500">Reset Account Password</span>
+                    <button
+                      type="button"
+                      onClick={() => { setIsForgotPasswordView(false); setLoginError(''); }}
+                      className="text-xs font-bold text-[#176B65] hover:underline cursor-pointer"
+                    >
+                      ← Back to Sign In
+                    </button>
+                  </div>
 
-                <div className="flex items-center gap-3 my-2">
-                  <div className="h-[1px] bg-slate-200 flex-1"></div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or sign in with mobile</span>
-                  <div className="h-[1px] bg-slate-200 flex-1"></div>
-                </div>
-              </div>
-
-              {/* Instant Mobile Sign In Form */}
-              <form onSubmit={handleDirectMobileLogin} className="space-y-4">
-                <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
+                      Registered 10-Digit Mobile Number <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
-                        +91
-                      </span>
+                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">+91</span>
                       <input
                         type="tel"
-                        required
-                        autoFocus
                         maxLength={10}
-                        value={loginPhone}
-                        onChange={(e) => handlePhoneInputChange(e.target.value)}
+                        value={forgotRecoveryPhone}
+                        onChange={(e) => setForgotRecoveryPhone(e.target.value.replace(/\D/g, ''))}
                         placeholder="9876543210"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
                   </div>
 
-                  {existingUserDetected ? (
-                    <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                      <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span>Registered Customer Account Found</span>
-                      </div>
-                      <p className="font-black text-sm text-[#283B3D]">
-                        {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
-                      </p>
-                      <span className="text-[11px] text-emerald-700 block">
-                        Account verified. Click below to sign in instantly.
-                      </span>
+                  <div>
+                    <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                      Set New Password <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={forgotNewPassword}
+                        onChange={(e) => setForgotNewPassword(e.target.value)}
+                        placeholder="e.g. Ramesh@123"
+                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                  ) : (
-                    <div className="space-y-3 pt-1">
-                      <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
-                        <span className="font-bold block">✨ New Customer Profile</span>
-                        <span className="text-[11px] text-amber-800 block">Please provide your name and age to create your customer profile.</span>
-                      </div>
+                  </div>
 
-                      <div>
-                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                          Your Full Name <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                          <input
-                            type="text"
-                            required
-                            value={loginName}
-                            onChange={(e) => setLoginName(e.target.value)}
-                            placeholder="e.g. Abhishek Sharma"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                          />
-                        </div>
-                      </div>
+                  {/* Option B: 1-Click Verification via Google */}
+                  <div className="space-y-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResetPasswordGoogle}
+                      disabled={forgotLoading}
+                      className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
+                    >
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                      </svg>
+                      <span>Option B: Verify with Google (1-Click)</span>
+                    </button>
+                  </div>
 
-                      <div>
-                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                          Your Age (in years) <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                          <input
-                            type="number"
-                            min={5}
-                            max={115}
-                            required
-                            value={loginAge}
-                            onChange={(e) => setLoginAge(e.target.value)}
-                            placeholder="e.g. 25"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                          />
-                        </div>
+                  <div className="flex items-center gap-3 my-2">
+                    <div className="h-[1px] bg-slate-200 flex-1"></div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or Option A: Verify with Email</span>
+                    <div className="h-[1px] bg-slate-200 flex-1"></div>
+                  </div>
+
+                  {/* Option A: Verify with Registered Email */}
+                  <form onSubmit={handleResetPasswordEmail} className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                        Registered Recovery Email <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type="email"
+                          required
+                          value={forgotRecoveryEmail}
+                          onChange={(e) => setForgotRecoveryEmail(e.target.value)}
+                          placeholder="e.g. yourname@gmail.com"
+                          className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                        />
                       </div>
                     </div>
-                  )}
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
+                    >
+                      {forgotLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Verifying & Resetting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-300" />
+                          <span>Verify Email & Set New Password</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
                 </div>
+              ) : (
+                /* ========================================================= */
+                /* STANDARD SIGN IN & NEW REGISTRATION VIEW                  */
+                /* ========================================================= */
+                <>
+                  {/* 1-Click Google Sign-In (100% Free, Zero OTP, Instant) */}
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={loginLoading}
+                      className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
+                    >
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                      </svg>
+                      <span>Continue with Google (1-Click)</span>
+                    </button>
 
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                >
-                  {loginLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Signing In...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign In & Continue</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+                    <div className="flex items-center gap-3 my-2">
+                      <div className="h-[1px] bg-slate-200 flex-1"></div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or sign in with password</span>
+                      <div className="h-[1px] bg-slate-200 flex-1"></div>
+                    </div>
+                  </div>
+
+                  {/* Instant Mobile Sign In Form */}
+                  <form onSubmit={handleDirectMobileLogin} className="space-y-4">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                          Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
+                            +91
+                          </span>
+                          <input
+                            type="tel"
+                            required
+                            autoFocus
+                            maxLength={10}
+                            value={loginPhone}
+                            onChange={(e) => handlePhoneInputChange(e.target.value)}
+                            placeholder="9876543210"
+                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                          />
+                        </div>
+                      </div>
+
+                      {existingUserDetected ? (
+                        <div className="space-y-3">
+                          <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                              <Check className="w-4 h-4 text-emerald-600" />
+                              <span>Registered Customer Account Found</span>
+                            </div>
+                            <p className="font-black text-sm text-[#283B3D]">
+                              {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-[#283B3D]">
+                                Account Password <span className="text-rose-500">*</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsForgotPasswordView(true);
+                                  setForgotRecoveryPhone(loginPhone);
+                                  setLoginError('');
+                                }}
+                                className="text-[11px] font-bold text-[#176B65] hover:underline cursor-pointer"
+                              >
+                                Forgot Password?
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                required
+                                value={loginPassword}
+                                onChange={(e) => setLoginPassword(e.target.value)}
+                                placeholder="Enter your password"
+                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                              >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 pt-1">
+                          <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
+                            <span className="font-bold block">✨ New Customer Profile</span>
+                            <span className="text-[11px] text-amber-800 block">Please provide your details and create a password.</span>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                              Your Full Name <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                              <input
+                                type="text"
+                                required
+                                value={loginName}
+                                onChange={(e) => setLoginName(e.target.value)}
+                                placeholder="e.g. Abhishek Sharma"
+                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                              Email Address (for password recovery) <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                              <input
+                                type="email"
+                                required
+                                value={loginEmail}
+                                onChange={(e) => setLoginEmail(e.target.value)}
+                                placeholder="e.g. yourname@gmail.com"
+                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                              Create Password <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                required
+                                value={loginPassword}
+                                onChange={(e) => setLoginPassword(e.target.value)}
+                                placeholder="e.g. Ramesh@123"
+                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
+                              >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                              Your Age (in years) <span className="text-rose-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                              <input
+                                type="number"
+                                min={5}
+                                max={115}
+                                required
+                                value={loginAge}
+                                onChange={(e) => setLoginAge(e.target.value)}
+                                placeholder="e.g. 25"
+                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loginLoading}
+                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
+                    >
+                      {loginLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Signing In...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Sign In & Continue</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </>
+              )}
             </motion.div>
           </div>
         )}

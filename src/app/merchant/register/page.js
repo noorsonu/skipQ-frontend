@@ -7,7 +7,8 @@ import {
   Store, ShieldCheck, CheckCircle2, ArrowRight, ArrowLeft, 
   MapPin, Clock, Phone, Smartphone, Ticket, Sparkles, Navigation,
   Scissors, Pill, Stethoscope, UtensilsCrossed, Activity, Wrench,
-  QrCode, Printer, Check, LogIn, ExternalLink, RefreshCw, AlertCircle
+  QrCode, Printer, Check, LogIn, ExternalLink, RefreshCw, AlertCircle,
+  Lock, Mail, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -29,6 +30,14 @@ export default function MerchantRegisterPage() {
 
   // Quick Login State for returning merchants
   const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [isMerchantForgotView, setIsMerchantForgotView] = useState(false);
+  const [merchantForgotPhone, setMerchantForgotPhone] = useState('');
+  const [merchantForgotEmail, setMerchantForgotEmail] = useState('');
+  const [merchantForgotNewPassword, setMerchantForgotNewPassword] = useState('');
+  const [showMerchantNewPassword, setShowMerchantNewPassword] = useState(false);
+  const [merchantForgotLoading, setMerchantForgotLoading] = useState(false);
   const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [loginOtpInput, setLoginOtpInput] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -39,6 +48,9 @@ export default function MerchantRegisterPage() {
   // Step 1: Owner Auth
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [showOwnerPassword, setShowOwnerPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
@@ -183,7 +195,7 @@ export default function MerchantRegisterPage() {
     }
   };
 
-  // Handle Instant Step 1 Verification for New Merchant Registration (No SMS OTP required)
+  // Handle Step 1 Verification for New Merchant Registration with Password & Email
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const clean = ownerPhone.replace(/\D/g, '').slice(-10);
@@ -193,6 +205,14 @@ export default function MerchantRegisterPage() {
     }
     if (!ownerName.trim()) {
       setAuthError('Please enter owner/manager full name.');
+      return;
+    }
+    if (!ownerEmail.trim() || !ownerEmail.includes('@')) {
+      setAuthError('A valid recovery email address is required.');
+      return;
+    }
+    if (!ownerPassword || ownerPassword.length < 4) {
+      setAuthError('Please create a password with at least 4 characters.');
       return;
     }
 
@@ -228,12 +248,29 @@ export default function MerchantRegisterPage() {
       setExistingShopDetectedOnPhone(null);
     }
 
-    // Direct passwordless verification: Advance to Step 2
+    try {
+      const authRes = await authApi.directLogin({
+        phone: clean,
+        name: ownerName.trim(),
+        email: ownerEmail.trim(),
+        password: ownerPassword.trim(),
+        role: 'SHOP_OWNER'
+      });
+      const token = authRes?.data?.data?.token || 'mock-merchant-jwt-' + Date.now();
+      localStorage.setItem('ak_token', token);
+      localStorage.setItem('ak_role', 'MERCHANT');
+      localStorage.setItem('ak_phone', clean);
+      localStorage.setItem('ak_email', ownerEmail.trim());
+      localStorage.setItem('ak_customer_name', ownerName.trim());
+    } catch (err) {
+      console.warn("Direct register merchant notice:", err?.message);
+    }
+
     setIsPhoneVerified(true);
     setStep(2);
   };
 
-  // Handle Quick Login (Direct Dashboard Access, No SMS OTP required)
+  // Handle Quick Login with Password (Direct Dashboard Access)
   const handleQuickLoginSendOtp = async (e) => {
     e.preventDefault();
     const clean = loginPhone.replace(/\D/g, '').slice(-10);
@@ -241,10 +278,30 @@ export default function MerchantRegisterPage() {
       setLoginError('Please enter a valid 10-digit mobile number.');
       return;
     }
+    if (!loginPassword) {
+      setLoginError('Please enter your account password.');
+      return;
+    }
     setLoginError('');
     setLoginLoading(true);
 
-    // Strictly check if a shop is registered with this phone number
+    // 1. Authenticate password with Backend
+    try {
+      const authRes = await authApi.directLogin({
+        phone: clean,
+        password: loginPassword.trim(),
+        role: 'SHOP_OWNER'
+      });
+      const token = authRes?.data?.data?.token;
+      if (token) localStorage.setItem('ak_token', token);
+    } catch (authErr) {
+      setLoginLoading(false);
+      const msg = authErr.response?.data?.message || authErr.message || 'Incorrect password. Please try again or click Forgot Password.';
+      setLoginError(msg);
+      return;
+    }
+
+    // 2. Check if a shop is registered with this phone number
     let shopExists = null;
     let backendChecked = false;
     try {
@@ -257,7 +314,7 @@ export default function MerchantRegisterPage() {
       console.warn("Backend phone lookup error:", err?.message);
     }
 
-    // Only fallback to localStorage if backend check failed (offline)
+    // Fallback to localStorage if offline
     if (!shopExists && !backendChecked) {
       try {
         const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
@@ -274,7 +331,7 @@ export default function MerchantRegisterPage() {
     setLoginLoading(false);
 
     if (!shopExists) {
-      setLoginError('❌ Mobile number not found. No shop is registered with this number. Please register your shop first under the "New Registration" tab.');
+      setLoginError('❌ Mobile number authenticated, but no shop profile was found. Please register your shop profile under the "New Registration" tab.');
       return;
     }
 
@@ -284,6 +341,97 @@ export default function MerchantRegisterPage() {
     localStorage.setItem('ak_phone', clean);
     if (shopExists.ownerName) localStorage.setItem('ak_customer_name', shopExists.ownerName);
     router.replace('/merchant/dashboard');
+  };
+
+  // Option A: Merchant Password Reset via Registered Email
+  const handleMerchantResetPasswordEmail = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    const cleanPhone = merchantForgotPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      setLoginError("Please enter a valid 10-digit registered mobile number.");
+      return;
+    }
+    if (!merchantForgotEmail.trim() || !merchantForgotEmail.includes('@')) {
+      setLoginError("Please enter your registered recovery email.");
+      return;
+    }
+    if (!merchantForgotNewPassword || merchantForgotNewPassword.length < 4) {
+      setLoginError("New password must be at least 4 characters.");
+      return;
+    }
+
+    setMerchantForgotLoading(true);
+    try {
+      const res = await authApi.resetPassword({
+        phone: cleanPhone,
+        email: merchantForgotEmail.trim(),
+        newPassword: merchantForgotNewPassword.trim(),
+        role: 'SHOP_OWNER'
+      });
+      const token = res?.data?.data?.token;
+      if (token) localStorage.setItem('ak_token', token);
+      localStorage.setItem('ak_phone', cleanPhone);
+      localStorage.setItem('ak_role', 'MERCHANT');
+
+      setIsMerchantForgotView(false);
+      setLoginPhone(cleanPhone);
+      setLoginPassword(merchantForgotNewPassword);
+      setLoginError('');
+      alert("Password successfully reset! Please click 'Open Live Dashboard' to sign in.");
+    } catch (err) {
+      console.error("Merchant password reset error:", err);
+      const msg = err.response?.data?.message || err.message || 'Reset failed. Please verify your details.';
+      setLoginError(msg);
+    } finally {
+      setMerchantForgotLoading(false);
+    }
+  };
+
+  // Option B: Merchant Password Reset via Google Verification
+  const handleMerchantResetPasswordGoogle = async () => {
+    setLoginError('');
+    const cleanPhone = merchantForgotPhone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      setLoginError("Please enter your 10-digit registered mobile number first.");
+      return;
+    }
+    if (!merchantForgotNewPassword || merchantForgotNewPassword.length < 4) {
+      setLoginError("Please enter your new password below (at least 4 characters).");
+      return;
+    }
+
+    setMerchantForgotLoading(true);
+    try {
+      const googleUser = await signInWithGoogle();
+      if (!googleUser || !googleUser.email) {
+        throw new Error("Could not retrieve email from Google.");
+      }
+
+      const res = await authApi.resetPassword({
+        phone: cleanPhone,
+        email: googleUser.email,
+        googleId: googleUser.uid,
+        newPassword: merchantForgotNewPassword.trim(),
+        role: 'SHOP_OWNER'
+      });
+      const token = res?.data?.data?.token;
+      if (token) localStorage.setItem('ak_token', token);
+      localStorage.setItem('ak_phone', cleanPhone);
+      localStorage.setItem('ak_role', 'MERCHANT');
+
+      setIsMerchantForgotView(false);
+      setLoginPhone(cleanPhone);
+      setLoginPassword(merchantForgotNewPassword);
+      setLoginError('');
+      alert("Verified with Google! Password updated. Click 'Open Live Dashboard' to enter.");
+    } catch (err) {
+      console.error("Merchant Google reset error:", err);
+      const msg = err.response?.data?.message || err.message || 'Google verification failed.';
+      setLoginError(msg);
+    } finally {
+      setMerchantForgotLoading(false);
+    }
   };
 
   // Handle Quick Login Verify & Direct Dashboard Access
@@ -719,8 +867,121 @@ export default function MerchantRegisterPage() {
             </div>
           </div>
 
-          {/* Quick Login View */}
-          {isLoginTab ? (
+          {isMerchantForgotView ? (
+            /* ========================================================= */
+            /* MERCHANT FORGOT PASSWORD VIEW                             */
+            /* ========================================================= */
+            <div className="space-y-4 max-w-lg">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-500">Reset Merchant Account Password</span>
+                <button
+                  type="button"
+                  onClick={() => { setIsMerchantForgotView(false); setLoginError(''); }}
+                  className="text-xs font-bold text-[#176B65] hover:underline cursor-pointer"
+                >
+                  ← Back to Login
+                </button>
+              </div>
+
+              {loginError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
+                  {loginError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Registered 10-Digit Mobile Number</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-xs font-bold text-slate-400">+91</span>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    placeholder="9876543210"
+                    value={merchantForgotPhone}
+                    onChange={(e) => setMerchantForgotPhone(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Set New Password</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showMerchantNewPassword ? "text" : "password"}
+                    placeholder="e.g. Ramesh@123"
+                    value={merchantForgotNewPassword}
+                    onChange={(e) => setMerchantForgotNewPassword(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowMerchantNewPassword(!showMerchantNewPassword)}
+                    className="absolute right-4 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showMerchantNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Option B: 1-Click Verification via Google */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleMerchantResetPasswordGoogle}
+                  disabled={merchantForgotLoading}
+                  className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Option B: Verify with Google (1-Click)</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 my-2">
+                <div className="h-[1px] bg-[#DCE9E3] flex-1"></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or Option A: Verify with Email</span>
+                <div className="h-[1px] bg-[#DCE9E3] flex-1"></div>
+              </div>
+
+              {/* Option A: Verify with Registered Email */}
+              <form onSubmit={handleMerchantResetPasswordEmail} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Registered Recovery Email</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-3 text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. owner@gmail.com"
+                      value={merchantForgotEmail}
+                      onChange={(e) => setMerchantForgotEmail(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={merchantForgotLoading}
+                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4 text-[#F2A15A]" />
+                  <span>{merchantForgotLoading ? 'Verifying & Resetting...' : 'Verify Email & Set New Password'}</span>
+                </button>
+              </form>
+            </div>
+          ) : isLoginTab ? (
+            /* Quick Login View */
             <div className="space-y-4 max-w-lg">
               {loginError && (
                 <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
@@ -740,6 +1001,42 @@ export default function MerchantRegisterPage() {
                     onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-[#283B3D]">Account Password</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMerchantForgotView(true);
+                      setMerchantForgotPhone(loginPhone);
+                      setLoginError('');
+                    }}
+                    className="text-[11px] font-bold text-[#176B65] hover:underline cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showLoginPassword ? "text" : "password"}
+                    placeholder="Enter your account password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-4 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -800,6 +1097,45 @@ export default function MerchantRegisterPage() {
                     onChange={(e) => setOwnerPhone(e.target.value.replace(/\D/g, ''))}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Recovery Email Address</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="e.g. ramesh.verma@gmail.com"
+                    value={ownerEmail}
+                    onChange={(e) => setOwnerEmail(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Create Password</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type={showOwnerPassword ? "text" : "password"}
+                    placeholder="e.g. Ramesh@123 (min 4 characters)"
+                    value={ownerPassword}
+                    onChange={(e) => setOwnerPassword(e.target.value)}
+                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOwnerPassword(!showOwnerPassword)}
+                    className="absolute right-4 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showOwnerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
