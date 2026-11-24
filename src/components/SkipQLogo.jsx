@@ -70,7 +70,7 @@ export default function SkipQLogo({
             </span>
           </div>
           <span 
-            className="font-bold tracking-widest uppercase mt-[3px]"
+            className="font-bold tracking-widest uppercase mt-[3px] hidden sm:block"
             style={{ 
               fontSize: `${Math.max(9, Math.round(height * 0.22))}px`,
               color: subTextColor,

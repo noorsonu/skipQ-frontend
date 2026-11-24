@@ -115,15 +115,18 @@ export function PwaInstallTopButton() {
       <button
         type="button"
         onClick={triggerInstall}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl text-white text-xs font-black shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95 border shrink-0 ${
+        className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl text-white text-xs font-black shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95 border shrink-0 ${
           isMerchant 
             ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/40 text-amber-50' 
             : 'bg-gradient-to-r from-emerald-600 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400/30'
         }`}
-        title={isMerchant ? "Install SkipQ Partner App for Workers & Counters" : "Install SkipQ App directly to your Mobile Home Screen"}
+        title={isMerchant ? "Install SkipQ Partner" : "Download / Install SkipQ"}
+        aria-label="Download / Install"
       >
-        <Download className={`w-3.5 h-3.5 animate-bounce ${isMerchant ? 'text-amber-200' : 'text-emerald-200'}`} />
-        <span>{isMerchant ? 'Install Partner' : 'Install'}</span>
+        <Download className="w-4 h-4 animate-bounce text-white shrink-0" />
+        <span className="hidden sm:inline font-bold">
+          {isMerchant ? 'Install Partner' : 'Install'}
+        </span>
       </button>
 
       {/* Guide Modal */}
