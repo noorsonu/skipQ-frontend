@@ -40,6 +40,7 @@ export default function Navbar() {
   const [isShopkeeperLoggedIn, setIsShopkeeperLoggedIn] = useState(false);
   const [registeredMerchantShop, setRegisteredMerchantShop] = useState(null);
   const [merchantDropdownOpen, setMerchantDropdownOpen] = useState(false);
+  const [guestMerchantDropdownOpen, setGuestMerchantDropdownOpen] = useState(false);
 
   // Profile Dropdown & Inline Edit State
   const [profileOpen, setProfileOpen] = useState(false);
@@ -332,6 +333,7 @@ export default function Navbar() {
       }
       if (merchantDropdownRef.current && !merchantDropdownRef.current.contains(e.target)) {
         setMerchantDropdownOpen(false);
+        setGuestMerchantDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -952,26 +954,85 @@ export default function Navbar() {
             {/* ======================================================== */}
             {userRole === 'GUEST' && (
               <div className="flex items-center gap-2 sm:gap-2.5">
-              {/* Shopkeeper Button (Guest Mode - Identical Customer Styling) */}
-              <Link
-                href="/merchant/register?tab=login"
-                className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]"
-              >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#DCE9E3] text-[#176B65]">
-                  <Store className="w-4 h-4" />
-                </div>
-                <div className="text-left hidden sm:block pr-1">
-                  <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
-                    Shopkeeper
-                  </span>
-                  <span className="text-xs font-black text-[#283B3D] line-clamp-1 max-w-[120px] leading-tight mt-0.5">
-                    Partner / Shop
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold bg-[#176B65] text-white px-2 py-0.5 rounded-lg hidden sm:inline-block ml-0.5">
-                  Join / Login
-                </span>
-              </Link>
+              {/* Shopkeeper Button (Guest Mode - Interactive Dropdown) */}
+              <div className="relative" ref={merchantDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setGuestMerchantDropdownOpen(!guestMerchantDropdownOpen)}
+                  className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]"
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#DCE9E3] text-[#176B65]">
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div className="text-left hidden sm:block pr-1">
+                    <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
+                      Shopkeeper
+                    </span>
+                    <span className="text-xs font-black text-[#283B3D] line-clamp-1 max-w-[120px] leading-tight mt-0.5">
+                      Partner / Shop
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#283B3D]/60 transition-transform ${guestMerchantDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Guest Shopkeeper Dropdown Menu */}
+                <AnimatePresence>
+                  {guestMerchantDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 sm:right-auto sm:left-0 top-14 w-76 sm:w-84 bg-white rounded-3xl p-5 shadow-2xl border border-[#DCE9E3] space-y-4 z-50 text-[#283B3D]"
+                    >
+                      {/* Header */}
+                      <div className="flex items-start gap-3 border-b border-[#DCE9E3] pb-3">
+                        <div className="w-11 h-11 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0">
+                          <Store className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-black text-sm text-[#283B3D]">
+                            Shopkeeper Console
+                          </h4>
+                          <p className="text-xs text-[#283B3D]/70 font-medium mt-0.5">
+                            Manage store queue, counters & tokens
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Partner App Section (Install & Share) */}
+                      <MerchantAppMenuSection />
+
+                      {/* Action Links */}
+                      <div className="space-y-1.5 pt-1 border-t border-[#DCE9E3]">
+                        <Link
+                          href="/merchant/register?tab=login"
+                          onClick={() => setGuestMerchantDropdownOpen(false)}
+                          className="w-full py-2.5 px-3.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-between transition-colors cursor-pointer shadow-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Store className="w-4 h-4 text-[#F2A15A]" />
+                            <span>Sign In to Merchant Dashboard</span>
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+
+                        <Link
+                          href="/merchant/register?new=true"
+                          onClick={() => setGuestMerchantDropdownOpen(false)}
+                          className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-[#DCE9E3]/40 text-xs font-bold flex items-center justify-between text-[#283B3D] transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-[#176B65]" />
+                            <span>Register New Shop (Free)</span>
+                          </div>
+                          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Customer Sign In Button */}
               <button
