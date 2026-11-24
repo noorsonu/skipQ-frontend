@@ -16,7 +16,6 @@ import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
-import { CustomerAppMenuSection, MerchantAppMenuSection } from './PwaInstallPrompt';
 
 export default function Navbar() {
   const router = useRouter();
@@ -1087,9 +1086,6 @@ export default function Navbar() {
                       </Link>
                     </div>
 
-                    {/* SkipQ Partner App Section */}
-                    <MerchantAppMenuSection />
-
                     {/* Shopkeeper Logout */}
                     <div className="pt-2 border-t border-[#DCE9E3]">
                       <button
@@ -1282,9 +1278,6 @@ export default function Navbar() {
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                     </Link>
                   </div>
-
-                  {/* SkipQ Customer App Section */}
-                  <CustomerAppMenuSection />
 
                   {/* Logout Button */}
                   <div className="pt-2 border-t border-[#DCE9E3]">
