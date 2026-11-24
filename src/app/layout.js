@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import OfficialBrandLogo from "@/components/OfficialBrandLogo";
 import { PwaInstallBottomButton } from "@/components/PwaInstallPrompt";
 
 export const viewport = {
@@ -50,12 +49,6 @@ export default function RootLayout({ children }) {
             <PwaInstallBottomButton />
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-t border-slate-700/60 pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-white rounded-2xl shadow-md border border-slate-700/60 inline-flex items-center">
-                  <OfficialBrandLogo height={42} animate={false} />
-                </div>
-              </div>
-
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-300 font-semibold text-xs">
                 <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
                 <a href="/shops" className="hover:text-white transition-colors">Explore Places</a>

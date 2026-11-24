@@ -6,13 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   User, Lock, Mail, Phone, Calendar, ArrowRight, ArrowLeft,
   CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, ShieldCheck,
-  Smartphone, Download, Share2, LogIn, UserPlus
+  LogIn, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
-import { CustomerAppMenuSection } from '@/components/PwaInstallPrompt';
 
 function LoginContent() {
   const router = useRouter();
@@ -600,11 +599,6 @@ function LoginContent() {
             </form>
           </div>
         )}
-
-        {/* SkipQ Mobile App Direct Install / Share Section */}
-        <div className="pt-4 border-t border-[#DCE9E3]">
-          <CustomerAppMenuSection />
-        </div>
 
         {/* Link to Merchant Register / Login */}
         <div className="text-center pt-1 border-t border-[#DCE9E3]/70">
