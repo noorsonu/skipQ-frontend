@@ -19,13 +19,19 @@ export function usePwaInstall() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Register Service Worker for PWA installability
+    // Register Service Worker immediately for PWA installability
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerSW = () => {
         navigator.serviceWorker.register('/sw.js').catch((err) => {
           console.warn('SW register failed:', err);
         });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
     }
 
     setIsMerchant(window.location.pathname.startsWith('/merchant'));
@@ -75,26 +81,7 @@ export function usePwaInstall() {
   }, []);
 
   const triggerInstall = async (forMerchant = false) => {
-    const isCurrentlyMerchant = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
-
-    // 1. If user wants to install Worker App but is currently on Customer pages (/ or /login or /shops):
-    // The browser needs the Worker App manifest & scope (/merchant/*) to install it!
-    if (forMerchant && !isCurrentlyMerchant) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/merchant/register?install=true';
-      }
-      return 'redirecting';
-    }
-
-    // 2. If user wants to install Customer App but is currently on Merchant pages:
-    if (!forMerchant && isCurrentlyMerchant) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/?install=true';
-      }
-      return 'redirecting';
-    }
-
-    // 3. Trigger native browser prompt if captured
+    // 1. Trigger native browser install prompt if available
     const promptEvent = deferredPrompt || globalDeferredPrompt;
     if (promptEvent) {
       try {
@@ -111,7 +98,7 @@ export function usePwaInstall() {
       }
     }
 
-    // 4. Clean device fallback instructions (NEVER trigger navigator.share on a Download button!)
+    // 2. Clean device fallback instructions (NO redirect to registration form, NO share sheet!)
     const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     if (isIOS) {
       return 'ios_safari';
