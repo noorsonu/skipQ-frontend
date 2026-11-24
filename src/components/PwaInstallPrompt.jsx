@@ -66,6 +66,21 @@ export function usePwaInstall() {
       setDeferredPrompt(null);
     };
 
+    if (typeof window !== 'undefined' && window.__pwaPrompt) {
+      globalDeferredPrompt = window.__pwaPrompt;
+      setDeferredPrompt(window.__pwaPrompt);
+      triggerIfRequested(window.__pwaPrompt);
+    }
+
+    const onPromptReady = () => {
+      if (typeof window !== 'undefined' && window.__pwaPrompt) {
+        globalDeferredPrompt = window.__pwaPrompt;
+        setDeferredPrompt(window.__pwaPrompt);
+        triggerIfRequested(window.__pwaPrompt);
+      }
+    };
+    window.addEventListener('pwa-prompt-ready', onPromptReady);
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('appinstalled', handleAppInstalled);
 
@@ -75,6 +90,7 @@ export function usePwaInstall() {
     }
 
     return () => {
+      window.removeEventListener('pwa-prompt-ready', onPromptReady);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -82,7 +98,11 @@ export function usePwaInstall() {
 
   const triggerInstall = async (forMerchant = false) => {
     // 1. Trigger native browser install prompt if available
-    const promptEvent = deferredPrompt || globalDeferredPrompt;
+    let promptEvent = deferredPrompt || globalDeferredPrompt;
+    if (typeof window !== 'undefined' && window.__pwaPrompt) {
+      promptEvent = window.__pwaPrompt;
+    }
+
     if (promptEvent) {
       try {
         await promptEvent.prompt();
@@ -90,6 +110,7 @@ export function usePwaInstall() {
         if (choice?.outcome === 'accepted') {
           globalDeferredPrompt = null;
           setDeferredPrompt(null);
+          if (typeof window !== 'undefined') window.__pwaPrompt = null;
           return 'installed';
         }
         return 'dismissed';
@@ -160,33 +181,29 @@ export function UniversalDualAppFooter() {
 
   const handleCustomerInstall = async () => {
     const res = await triggerInstall(false);
-    if (res === 'redirecting') {
-      setCustomerInstallMsg('Opening Customer App to Install...');
-    } else if (res === 'ios_safari') {
+    if (res === 'ios_safari') {
       setCustomerInstallMsg('Safari: tap Share (⎋) → "Add to Home Screen"');
       setTimeout(() => setCustomerInstallMsg(''), 5000);
     } else if (res === 'browser_menu') {
       setCustomerInstallMsg('Tap browser menu (⋮) → "Install app"');
-      setTimeout(() => setCustomerInstallMsg(''), 5000);
+      setTimeout(() => setCustomerInstallMsg(''), 6000);
     } else if (res === 'installed') {
-      setCustomerInstallMsg('App Installed Successfully!');
-      setTimeout(() => setCustomerInstallMsg(''), 4000);
+      setCustomerInstallMsg('✅ Customer App installed on home screen!');
+      setTimeout(() => setCustomerInstallMsg(''), 5000);
     }
   };
 
   const handleMerchantInstall = async () => {
     const res = await triggerInstall(true);
-    if (res === 'redirecting') {
-      setMerchantInstallMsg('Opening Worker App to Install...');
-    } else if (res === 'ios_safari') {
+    if (res === 'ios_safari') {
       setMerchantInstallMsg('Safari: tap Share (⎋) → "Add to Home Screen"');
       setTimeout(() => setMerchantInstallMsg(''), 5000);
     } else if (res === 'browser_menu') {
       setMerchantInstallMsg('Tap browser menu (⋮) → "Install app"');
-      setTimeout(() => setMerchantInstallMsg(''), 5000);
+      setTimeout(() => setMerchantInstallMsg(''), 6000);
     } else if (res === 'installed') {
-      setMerchantInstallMsg('Worker App Installed Successfully!');
-      setTimeout(() => setMerchantInstallMsg(''), 4000);
+      setMerchantInstallMsg('✅ Worker App installed on home screen!');
+      setTimeout(() => setMerchantInstallMsg(''), 5000);
     }
   };
 

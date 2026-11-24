@@ -24,5 +24,21 @@ export default function manifest() {
         purpose: 'maskable any',
       },
     ],
+    shortcuts: [
+      {
+        name: 'SkipQ Partner App',
+        short_name: 'Partner Console',
+        description: 'Manage store queue, counters and live token calling',
+        url: '/merchant/register?tab=login',
+        icons: [{ src: '/icon-merchant-192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Customer Live Tokens',
+        short_name: 'My Tokens',
+        description: 'View active queue passes & waiting radar',
+        url: '/tokens',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }],
+      },
+    ],
   };
 }

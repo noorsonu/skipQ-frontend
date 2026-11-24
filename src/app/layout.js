@@ -27,6 +27,24 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__pwaPrompt = null;
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwaPrompt = e;
+                window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+              });
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(function(){});
+              }
+            `
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-[#F3F1E9] text-[#283B3D] flex flex-col antialiased selection:bg-[#176B65] selection:text-white">
         {/* Soft Background Warm Tones */}
         <div className="fixed top-0 right-1/4 w-[600px] h-[600px] bg-[#DCE9E3]/50 rounded-full blur-[140px] pointer-events-none -z-10"></div>
