@@ -687,7 +687,7 @@ export default function HomePage() {
           {categories.slice(0, 6).map((c) => (
             <Link
               key={c.id}
-              href={`/shops?category=${c.id}`}
+              href="/shops"
               className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
             >
               {c.name}
@@ -725,7 +725,7 @@ export default function HomePage() {
               return (
                 <Link
                   key={cat.id}
-                  href={`/shops?category=${cat.id}`}
+                  href="/shops"
                   className="block group"
                 >
                   <motion.div

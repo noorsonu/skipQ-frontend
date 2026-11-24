@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { 
+import {
   User, Lock, Mail, Phone, Calendar, ArrowRight,
   CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, ShieldCheck,
   LogIn, UserPlus
@@ -313,21 +313,21 @@ function LoginContent() {
 
       {/* Main Auth Page Card */}
       <div className="w-full bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-[#DCE9E3] space-y-5">
-        
+
         {/* Card Header */}
         <div className="text-center space-y-1 border-b border-[#DCE9E3] pb-4">
           <h2 className="text-2xl font-black text-[#283B3D]">
-            {isForgotView 
-              ? 'Reset Password' 
-              : activeTab === 'login' 
-                ? 'Customer Sign In' 
+            {isForgotView
+              ? 'Reset Password'
+              : activeTab === 'login'
+                ? 'Customer Sign In'
                 : 'Create Customer Account'}
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            {isForgotView 
-              ? 'Recover your account using your registered email' 
-              : activeTab === 'login' 
-                ? 'Sign in to track tokens and view queue history' 
+            {isForgotView
+              ? 'Recover your account using your registered email'
+              : activeTab === 'login'
+                ? 'Sign in to track tokens and view queue history'
                 : 'Register in seconds to book live tokens'}
           </p>
         </div>
@@ -342,11 +342,10 @@ function LoginContent() {
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
-              className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeTab === 'login' 
-                  ? 'bg-white text-[#176B65] shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'login'
+                ? 'bg-white text-[#176B65] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               <LogIn className="w-4 h-4" />
               <span>Log In</span>
@@ -359,11 +358,10 @@ function LoginContent() {
                 setErrorMsg('');
                 setSuccessMsg('');
               }}
-              className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activeTab === 'register' 
-                  ? 'bg-white text-[#176B65] shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${activeTab === 'register'
+                ? 'bg-white text-[#176B65] shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               <UserPlus className="w-4 h-4" />
               <span>Register</span>
@@ -511,7 +509,7 @@ function LoginContent() {
         ) : (
           /* LOGIN & REGISTER FORMS */
           <div className="space-y-4">
-            
+
             {/* 1-Click Google Sign-In */}
             <button
               type="button"
@@ -536,7 +534,7 @@ function LoginContent() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
-              
+
               {/* LOGIN MODE: METHOD SELECTOR (PHONE OR EMAIL) */}
               {activeTab === 'login' ? (
                 <div>
@@ -547,11 +545,10 @@ function LoginContent() {
                     <button
                       type="button"
                       onClick={() => { setLoginMethod('phone'); setErrorMsg(''); }}
-                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                        loginMethod === 'phone'
-                          ? 'bg-white text-[#176B65] shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
+                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${loginMethod === 'phone'
+                        ? 'bg-white text-[#176B65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                        }`}
                     >
                       <Phone className="w-3.5 h-3.5" />
                       <span>Mobile Number</span>
@@ -559,11 +556,10 @@ function LoginContent() {
                     <button
                       type="button"
                       onClick={() => { setLoginMethod('email'); setErrorMsg(''); }}
-                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                        loginMethod === 'email'
-                          ? 'bg-white text-[#176B65] shadow-xs'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
+                      className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${loginMethod === 'email'
+                        ? 'bg-white text-[#176B65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                        }`}
                     >
                       <Mail className="w-3.5 h-3.5" />
                       <span>Email Address</span>
