@@ -42,6 +42,13 @@ function resolveShopImage(shop) {
   return '/images/clinic.jpg';
 }
 
+const DEMO_OUTLETS = [
+  { name: 'Dr. City Care Clinic', tag: 'Doctor / Clinic', token: 'DR - 014' },
+  { name: 'SpeedFix Auto Repair', tag: 'Repair Center', token: 'RP - 028' },
+  { name: 'Daily Mart & Retail', tag: 'Store / Shopkeeper', token: 'ST - 042' },
+  { name: 'City Style Salon', tag: 'Salon & Spa', token: 'SL - 024' },
+];
+
 export default function HomePage() {
   const router = useRouter();
 
@@ -186,17 +193,34 @@ export default function HomePage() {
     ? (activeUserToken.estimatedWaitMin ?? Math.max(0, displayPeopleAhead * 4))
     : Math.max(0, displayPeopleAhead * 3);
 
+  const [demoOutletIndex, setDemoOutletIndex] = useState(0);
+
+  useEffect(() => {
+    if (isRealToken) return;
+    const interval = setInterval(() => {
+      setDemoOutletIndex(prev => (prev + 1) % DEMO_OUTLETS.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [isRealToken]);
+
+  const currentDemo = DEMO_OUTLETS[demoOutletIndex] || DEMO_OUTLETS[0];
+
   const displayTokenNum = isRealToken
     ? (activeUserToken.displayToken || activeUserToken.tokenNumber || 'AK - 024')
-    : 'AK - 024';
+    : currentDemo.token;
 
   const displayShopName = isRealToken
     ? (activeUserToken.shopName || 'Partner Store')
-    : 'City Style Salon';
+    : currentDemo.name;
+
+  const displayCategoryTag = isRealToken
+    ? (activeUserToken.category || 'Your Token')
+    : currentDemo.tag;
 
   const tokenNumInt = parseInt(String(displayTokenNum).replace(/\D/g, '') || '24', 10);
+  const tokenPrefix = displayTokenNum.split('-')[0]?.trim() || 'AK';
   const servingNumInt = Math.max(1, tokenNumInt - displayPeopleAhead);
-  const displayCounterServing = `AK - ${String(servingNumInt).padStart(3, '0')}`;
+  const displayCounterServing = `${tokenPrefix} - ${String(servingNumInt).padStart(3, '0')}`;
 
   const effectiveProgressWidth = isRealToken
     ? Math.min(95, Math.max(15, 100 - (displayPeopleAhead * 20)))
@@ -392,7 +416,7 @@ export default function HomePage() {
                       {displayShopName}
                     </span>
                     <span className="text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
-                      {isRealToken ? 'Your Token' : 'In Progress'}
+                      {isRealToken ? 'Your Token' : displayCategoryTag}
                     </span>
                   </div>
 
@@ -830,10 +854,15 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="sm:text-right">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Service Store</span>
-                <span className="text-lg font-black text-[#176B65]">
-                  {displayShopName}
-                </span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Service Category & Store</span>
+                <div className="flex items-center sm:justify-end gap-2 mt-0.5">
+                  <span className="text-lg font-black text-[#176B65]">
+                    {displayShopName}
+                  </span>
+                  <span className="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
+                    {isRealToken ? 'Your Token' : displayCategoryTag}
+                  </span>
+                </div>
               </div>
             </div>
 
