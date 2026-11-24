@@ -16,7 +16,7 @@ import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
-import { PwaInstallTopButton } from './PwaInstallPrompt';
+import { PwaInstallTopButton, ShareAppButton } from './PwaInstallPrompt';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -943,9 +943,10 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* Right Action Bar (Install App Button + Role Actions) */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Right Action Bar (Install App Button + Share Button + Role Actions) */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <PwaInstallTopButton />
+            <ShareAppButton />
 
             {/* ======================================================== */}
             {/* STATE 1: GUEST (NEITHER LOGGED IN)                       */}
