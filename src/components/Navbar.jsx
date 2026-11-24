@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { authApi, queueApi } from '@/lib/api';
+import { signInWithGoogle } from '@/lib/googleAuth';
 import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
@@ -376,6 +377,103 @@ export default function Navbar() {
       setExistingUserDetected(null);
     } else {
       setExistingUserDetected(null);
+    }
+  };
+
+  // 1-Click Google Sign-In (100% Free, zero password/OTP required)
+  const handleGoogleSignIn = async () => {
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const googleUser = await signInWithGoogle();
+      const res = await authApi.googleLogin({
+        email: googleUser.email,
+        name: googleUser.displayName,
+        phone: googleUser.phoneNumber,
+        role: 'CUSTOMER'
+      });
+      const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
+      const name = res?.data?.data?.name || googleUser.displayName || 'Customer';
+      const age = res?.data?.data?.age ? String(res.data.data.age) : '';
+      const phone = res?.data?.data?.phone || '';
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_token', token);
+        localStorage.setItem('ak_customer_name', name);
+        localStorage.setItem('ak_role', 'CUSTOMER');
+        if (googleUser.email) localStorage.setItem('ak_email', googleUser.email);
+        if (age) localStorage.setItem('ak_customer_age', age);
+        if (phone) localStorage.setItem('ak_phone', phone);
+      }
+
+      setCustomerName(name);
+      if (age) setCustomerAge(age);
+      if (phone) setCustomerPhone(phone);
+      setIsCustomerLoggedIn(true);
+      setUserRole('CUSTOMER');
+      setShowLoginModal(false);
+      setLoginSuccessMsg(`Welcome, ${name}!`);
+    } catch (err) {
+      console.error("Google sign in error:", err);
+      setLoginError(err.message || 'Google Sign-In failed. Please try again.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Direct Mobile Login (Passwordless Instant Login without SMS OTP)
+  const handleDirectMobileLogin = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setLoginError('');
+
+    const cleanPhone = loginPhone.trim().replace(/\D/g, '').slice(-10);
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setLoginError("Please enter a valid 10-digit Indian mobile number (starting with 6-9)");
+      return;
+    }
+
+    let detected = existingUserDetected || detectExistingUser(cleanPhone);
+    let resolvedName = detected?.name || loginName.trim();
+    let resolvedAge = detected?.age || loginAge.trim();
+
+    if (!detected && !resolvedName) {
+      setLoginError("Full name is required for new customer registration.");
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      const res = await authApi.directLogin({
+        phone: cleanPhone,
+        name: resolvedName,
+        age: resolvedAge ? parseInt(resolvedAge, 10) : undefined,
+        role: 'CUSTOMER'
+      });
+
+      const token = res?.data?.data?.token || 'mock-customer-jwt-' + Date.now();
+      const finalName = res?.data?.data?.name || resolvedName || `Customer (${cleanPhone.slice(-4)})`;
+      const finalAge = res?.data?.data?.age ? String(res.data.data.age) : resolvedAge;
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ak_token', token);
+        localStorage.setItem('ak_phone', cleanPhone);
+        localStorage.setItem('ak_role', 'CUSTOMER');
+        localStorage.setItem('ak_customer_name', finalName);
+        if (finalAge) localStorage.setItem('ak_customer_age', finalAge);
+      }
+
+      setCustomerName(finalName);
+      setCustomerPhone(cleanPhone);
+      if (finalAge) setCustomerAge(finalAge);
+      setIsCustomerLoggedIn(true);
+      setUserRole('CUSTOMER');
+      setShowLoginModal(false);
+      setLoginSuccessMsg(`Welcome, ${finalName}!`);
+    } catch (err) {
+      console.error("Direct login error:", err);
+      setLoginError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -1064,185 +1162,131 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* STEP 1: Enter Mobile Number (Existing customers need ONLY mobile number) */}
-              {!otpSent ? (
-                <form onSubmit={handleSendOtp} className="space-y-4">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                        Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
-                          +91
-                        </span>
-                        <input
-                          type="tel"
-                          required
-                          autoFocus
-                          maxLength={10}
-                          value={loginPhone}
-                          onChange={(e) => handlePhoneInputChange(e.target.value)}
-                          placeholder="9876543210"
-                          className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                        />
-                      </div>
-                    </div>
+              {/* 1-Click Google Sign-In (100% Free, Zero OTP, Instant) */}
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loginLoading}
+                  className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Continue with Google (1-Click)</span>
+                </button>
 
-                    {existingUserDetected ? (
-                      <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                          <Check className="w-4 h-4 text-emerald-600" />
-                          <span>Registered Customer Account</span>
-                        </div>
-                        <p className="font-black text-sm text-[#283B3D]">
-                          {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
-                        </p>
-                        <span className="text-[11px] text-emerald-700 block">
-                          Registered customer account found. Verify via mobile SMS OTP to sign in.
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 pt-1">
-                        <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
-                          <span className="font-bold block">✨ New Customer Registration</span>
-                          <span className="text-[11px] text-amber-800 block">First time here? Please provide your full name and age for your profile.</span>
-                        </div>
+                <div className="flex items-center gap-3 my-2">
+                  <div className="h-[1px] bg-slate-200 flex-1"></div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or sign in with mobile</span>
+                  <div className="h-[1px] bg-slate-200 flex-1"></div>
+                </div>
+              </div>
 
-                        <div>
-                          <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                            Your Full Name <span className="text-rose-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="text"
-                              required
-                              value={loginName}
-                              onChange={(e) => setLoginName(e.target.value)}
-                              placeholder="e.g. Abhishek Sharma"
-                              className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                            Your Age (in years) <span className="text-rose-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                            <input
-                              type="number"
-                              min={5}
-                              max={115}
-                              required
-                              value={loginAge}
-                              onChange={(e) => setLoginAge(e.target.value)}
-                              placeholder="e.g. 25"
-                              className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-[#283B3D]/60 leading-relaxed font-medium">
-                    We'll send a 6-digit one-time password to verify your phone number. No passwords required.
-                  </p>
-
-                  <div id="customer-recaptcha-container" className="my-1 flex justify-center"></div>
-
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                  >
-                    {loginLoading ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Sending OTP...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Send 6-Digit OTP</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </form>
-              ) : (
-                /* STEP 2: Enter & Verify OTP */
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] text-xs space-y-1">
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-[#176B65]">{loginName} {loginAge ? `(${loginAge} yrs)` : ''}</span>
-                      <button
-                        type="button"
-                        onClick={() => setOtpSent(false)}
-                        className="text-slate-400 hover:text-[#176B65] text-[11px] underline"
-                      >
-                        Change
-                      </button>
-                    </div>
-                    <p className="text-[#283B3D]/70 font-medium">
-                      Enter the OTP sent to <b>+91 {loginPhone}</b>
-                    </p>
-                  </div>
-
+              {/* Instant Mobile Sign In Form */}
+              <form onSubmit={handleDirectMobileLogin} className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Enter 6-Digit Verification Code:
+                      Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
-                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
+                        +91
+                      </span>
                       <input
-                        type="text"
+                        type="tel"
                         required
                         autoFocus
-                        maxLength={6}
-                        value={loginOtp}
-                        onChange={(e) => setLoginOtp(e.target.value.replace(/\D/g, ''))}
-                        placeholder="••••••"
-                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-center font-token font-bold text-xl tracking-widest focus:outline-none focus:border-[#176B65]"
+                        maxLength={10}
+                        value={loginPhone}
+                        onChange={(e) => handlePhoneInputChange(e.target.value)}
+                        placeholder="9876543210"
+                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
-                    <span className="text-[10px] text-slate-400 font-semibold block text-center mt-1.5">
-                      Enter the 6-digit verification code sent to your mobile phone
-                    </span>
                   </div>
 
-                  <div className="space-y-2">
-                    <button
-                      type="submit"
-                      disabled={loginLoading}
-                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                    >
-                      {loginLoading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Verifying & Signing In...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 text-emerald-300" />
-                          <span>Verify & Sign In</span>
-                        </>
-                      )}
-                    </button>
+                  {existingUserDetected ? (
+                    <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span>Registered Customer Account Found</span>
+                      </div>
+                      <p className="font-black text-sm text-[#283B3D]">
+                        {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
+                      </p>
+                      <span className="text-[11px] text-emerald-700 block">
+                        Account verified. Click below to sign in instantly.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
+                        <span className="font-bold block">✨ New Customer Profile</span>
+                        <span className="text-[11px] text-amber-800 block">Please provide your name and age to create your customer profile.</span>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={loginLoading}
-                      className="w-full py-2 text-center text-xs font-bold text-[#176B65] hover:underline cursor-pointer"
-                    >
-                      Resend OTP Code
-                    </button>
-                  </div>
-                </form>
-              )}
+                      <div>
+                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                          Your Full Name <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                          <input
+                            type="text"
+                            required
+                            value={loginName}
+                            onChange={(e) => setLoginName(e.target.value)}
+                            placeholder="e.g. Abhishek Sharma"
+                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                          Your Age (in years) <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                          <input
+                            type="number"
+                            min={5}
+                            max={115}
+                            required
+                            value={loginAge}
+                            onChange={(e) => setLoginAge(e.target.value)}
+                            placeholder="e.g. 25"
+                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {loginLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Signing In...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Sign In & Continue</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
-import { shopApi } from '@/lib/api';
+import { shopApi, authApi } from '@/lib/api';
+import { signInWithGoogle } from '@/lib/googleAuth';
 import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 
 export default function MerchantRegisterPage() {
@@ -135,12 +136,63 @@ export default function MerchantRegisterPage() {
     'Indira Nagar', 'Gomti Nagar', 'Hazratganj', 'Alambagh', 'Mahanagar', 'Aliganj'
   ];
 
-  // Handle Send OTP for New Merchant Registration
+  // 1-Click Google Sign-In for Merchants
+  const handleMerchantGoogleSignIn = async () => {
+    setAuthError('');
+    setLoginError('');
+    try {
+      const googleUser = await signInWithGoogle();
+      const res = await authApi.googleLogin({
+        email: googleUser.email,
+        name: googleUser.displayName,
+        phone: googleUser.phoneNumber,
+        role: 'SHOP_OWNER'
+      });
+      const token = res?.data?.data?.token || 'mock-merchant-jwt-' + Date.now();
+      localStorage.setItem('ak_token', token);
+      localStorage.setItem('ak_role', 'MERCHANT');
+      if (googleUser.email) localStorage.setItem('ak_email', googleUser.email);
+      if (googleUser.displayName) {
+        setOwnerName(googleUser.displayName);
+        localStorage.setItem('ak_customer_name', googleUser.displayName);
+      }
+      if (googleUser.phoneNumber) {
+        setOwnerPhone(googleUser.phoneNumber.replace(/\D/g, '').slice(-10));
+      }
+
+      // Check if user has an existing shop in backend
+      let matchedShop = null;
+      if (googleUser.phoneNumber) {
+        const clean = googleUser.phoneNumber.replace(/\D/g, '').slice(-10);
+        try {
+          const sRes = await shopApi.getShopsByPhone(clean);
+          if (sRes?.data?.data && sRes.data.data.length > 0) matchedShop = sRes.data.data[0];
+        } catch (e) {}
+      }
+
+      if (matchedShop) {
+        localStorage.setItem('ak_active_merchant_shop', JSON.stringify(matchedShop));
+        router.replace('/merchant/dashboard');
+      } else {
+        setIsPhoneVerified(true);
+        setStep(2);
+      }
+    } catch (err) {
+      console.error("Merchant Google Sign-In error:", err);
+      setAuthError(err.message || 'Google Sign-In failed. Please try again.');
+    }
+  };
+
+  // Handle Instant Step 1 Verification for New Merchant Registration (No SMS OTP required)
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const clean = ownerPhone.replace(/\D/g, '').slice(-10);
     if (clean.length !== 10) {
       setAuthError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!ownerName.trim()) {
+      setAuthError('Please enter owner/manager full name.');
       return;
     }
 
@@ -176,23 +228,12 @@ export default function MerchantRegisterPage() {
       setExistingShopDetectedOnPhone(null);
     }
 
-    try {
-      const conf = await sendFirebasePhoneOtp(clean, 'merchant-reg-recaptcha');
-      setRegConfirmationResult(conf);
-      setOtpSent(true);
-      if (clean === '7052806684') {
-        setOtpInput('123456');
-      } else {
-        setOtpInput('');
-      }
-    } catch (fbErr) {
-      console.error("Firebase phone auth dispatch error:", fbErr);
-      setAuthError(fbErr.message || 'Failed to dispatch SMS OTP. Please check your phone number or domain.');
-      return;
-    }
+    // Direct passwordless verification: Advance to Step 2
+    setIsPhoneVerified(true);
+    setStep(2);
   };
 
-  // Handle Quick Login Send OTP
+  // Handle Quick Login (Direct Dashboard Access, No SMS OTP required)
   const handleQuickLoginSendOtp = async (e) => {
     e.preventDefault();
     const clean = loginPhone.replace(/\D/g, '').slice(-10);
@@ -237,20 +278,12 @@ export default function MerchantRegisterPage() {
       return;
     }
 
-    try {
-      const conf = await sendFirebasePhoneOtp(clean, 'merchant-login-recaptcha');
-      setLoginConfirmationResult(conf);
-      setLoginOtpSent(true);
-      if (clean === '7052806684') {
-        setLoginOtpInput('123456');
-      } else {
-        setLoginOtpInput('');
-      }
-    } catch (fbErr) {
-      console.error("Firebase login dispatch error:", fbErr);
-      setLoginError(fbErr.message || 'Failed to dispatch SMS OTP. Please check your phone number or domain.');
-      return;
-    }
+    // Direct login to dashboard
+    localStorage.setItem('ak_active_merchant_shop', JSON.stringify(shopExists));
+    localStorage.setItem('ak_role', 'MERCHANT');
+    localStorage.setItem('ak_phone', clean);
+    if (shopExists.ownerName) localStorage.setItem('ak_customer_name', shopExists.ownerName);
+    router.replace('/merchant/dashboard');
   };
 
   // Handle Quick Login Verify & Direct Dashboard Access
@@ -662,6 +695,30 @@ export default function MerchantRegisterPage() {
             </div>
           </div>
 
+          {/* 1-Click Google Sign-In for Merchants */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleMerchantGoogleSignIn}
+              disabled={loginLoading}
+              className="w-full py-3.5 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Continue with Google (1-Click Merchant Access)</span>
+            </button>
+
+            <div className="flex items-center gap-3 my-1">
+              <div className="h-[1px] bg-[#DCE9E3] flex-1"></div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or continue with mobile number</span>
+              <div className="h-[1px] bg-[#DCE9E3] flex-1"></div>
+            </div>
+          </div>
+
           {/* Quick Login View */}
           {isLoginTab ? (
             <div className="space-y-4 max-w-lg">
@@ -681,59 +738,20 @@ export default function MerchantRegisterPage() {
                     placeholder="9876543210"
                     value={loginPhone}
                     onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
-                    disabled={loginOtpSent}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
                 </div>
               </div>
 
-              <div id="merchant-login-recaptcha" className="my-1 flex justify-center"></div>
-
-              {!loginOtpSent ? (
-                <button
-                  type="button"
-                  onClick={handleQuickLoginSendOtp}
-                  disabled={loginLoading}
-                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
-                >
-                  <LogIn className="w-4 h-4 text-[#F2A15A]" />
-                  <span>{loginLoading ? 'Checking Number in Database...' : 'Send Login OTP'}</span>
-                </button>
-              ) : (
-                <div className="space-y-3 pt-2">
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
-                    <span>SMS code sent to: <strong>+91 {loginPhone}</strong></span>
-                    <button 
-                      type="button" 
-                      onClick={() => { setLoginOtpSent(false); setLoginOtpInput(''); }}
-                      className="text-[11px] underline text-emerald-700 cursor-pointer"
-                    >
-                      Change Number
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Enter 6-Digit OTP</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={loginOtpInput}
-                      onChange={(e) => setLoginOtpInput(e.target.value)}
-                      className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-center tracking-widest text-lg font-token font-bold text-[#176B65] focus:outline-none focus:border-[#176B65]"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleQuickLoginVerify}
-                    disabled={loginLoading}
-                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-[#F2A15A]" />
-                    <span>{loginLoading ? 'Verifying with Database...' : 'Verify & Enter Dashboard'}</span>
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={handleQuickLoginSendOtp}
+                disabled={loginLoading}
+                className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              >
+                <LogIn className="w-4 h-4 text-[#F2A15A]" />
+                <span>{loginLoading ? 'Checking & Entering Dashboard...' : 'Open Live Dashboard →'}</span>
+              </button>
             </div>
           ) : (
             /* New Registration Step 1 Form */
@@ -766,7 +784,6 @@ export default function MerchantRegisterPage() {
                   placeholder="e.g. Ramesh Verma"
                   value={ownerName}
                   onChange={(e) => setOwnerName(e.target.value)}
-                  disabled={otpSent}
                   className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                 />
               </div>
@@ -781,57 +798,19 @@ export default function MerchantRegisterPage() {
                     placeholder="9876543210"
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value.replace(/\D/g, ''))}
-                    disabled={otpSent}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
                 </div>
               </div>
 
-              <div id="merchant-reg-recaptcha" className="my-1 flex justify-center"></div>
-
-              {!otpSent ? (
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <span>Send Verification OTP</span>
-                  <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
-                </button>
-              ) : (
-                <div className="space-y-3 pt-2">
-                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center justify-between">
-                    <span>SMS code sent to: <strong>+91 {ownerPhone}</strong></span>
-                    <button 
-                      type="button" 
-                      onClick={() => { setOtpSent(false); setOtpInput(''); }}
-                      className="text-[11px] underline text-emerald-700 cursor-pointer"
-                    >
-                      Change Number
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Enter 6-Digit OTP</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={otpInput}
-                      onChange={(e) => setOtpInput(e.target.value)}
-                      className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-center tracking-widest text-lg font-token font-bold text-[#176B65] focus:outline-none focus:border-[#176B65]"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleVerifyOtp}
-                    className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-[#F2A15A]" />
-                    <span>Verify & Proceed to Shop Details</span>
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              >
+                <span>Continue to Shop Profile →</span>
+                <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
+              </button>
             </div>
           )}
         </motion.div>

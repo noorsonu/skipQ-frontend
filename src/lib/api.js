@@ -21,8 +21,10 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Auth APIs (Passwordless OTP)
+// Auth APIs (Google & Direct Passwordless)
 export const authApi = {
+  googleLogin: (payload) => apiClient.post('/api/auth/google-login', payload),
+  directLogin: (payload) => apiClient.post('/api/auth/direct-login', payload),
   sendOtp: (phone) => apiClient.post('/api/auth/send-otp', { phone }),
   verifyOtp: (phone, otp, name, age) => apiClient.post('/api/auth/verify-otp', {
     phone,
