@@ -24,7 +24,7 @@ export default function MerchantRegisterPage() {
   // Existing registered shop check & bypass
   const [existingShop, setExistingShop] = useState(null);
   const [forceNewRegister, setForceNewRegister] = useState(false);
-  const [isLoginTab, setIsLoginTab] = useState(false);
+  const [isLoginTab, setIsLoginTab] = useState(true);
   const [existingShopDetectedOnPhone, setExistingShopDetectedOnPhone] = useState(null);
 
   // Quick Login State for returning merchants
@@ -103,7 +103,9 @@ export default function MerchantRegisterPage() {
             } catch (err) {}
           }
 
-          if (params.get('tab') === 'login' || params.get('login') === 'true') {
+          if (params.get('tab') === 'register' || params.get('new') === 'true') {
+            setIsLoginTab(false);
+          } else {
             setIsLoginTab(true);
           }
 
@@ -660,7 +662,7 @@ export default function MerchantRegisterPage() {
   };
 
   return (
-    <div className="min-h-[85vh] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-4xl mx-auto pt-2 sm:pt-6 pb-12 px-4 sm:px-6 lg:px-8 space-y-6">
       
       {/* Top Header */}
       <div className="text-center space-y-3">
@@ -740,6 +742,17 @@ export default function MerchantRegisterPage() {
               </button>
             </div>
           </div>
+
+          {/* Link back to Customer Sign In */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+            <Link
+              href="/login"
+              className="text-xs font-bold text-[#176B65] hover:text-[#125550] inline-flex items-center gap-1.5 transition-colors"
+            >
+              <span>Are you a customer? Go to Customer Sign In</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </motion.div>
       )}
 
@@ -799,31 +812,33 @@ export default function MerchantRegisterPage() {
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4 flex-wrap gap-3">
             <div>
               <h2 className="text-xl font-black text-[#283B3D]">
-                {isLoginTab ? 'Merchant Quick Login' : 'Step 1: Shop Owner Verification'}
+                {isLoginTab ? 'Shopkeeper / Partner Log In' : 'Step 1: Register New Shop'}
               </h2>
               <p className="text-xs text-[#283B3D]/70 font-medium">
-                {isLoginTab ? 'Already registered? Login directly to access your counter.' : 'Verify your mobile number to manage your digital counter.'}
+                {isLoginTab ? 'Log in directly to manage your store counter and queue live.' : 'Verify your mobile number to register your shop and start issuing tokens.'}
               </p>
             </div>
 
             <div className="inline-flex p-1 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => { setIsLoginTab(false); setAuthError(''); }}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
-                  !isLoginTab ? 'bg-[#176B65] text-white shadow-2xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
-                }`}
-              >
-                New Registration
-              </button>
-              <button
-                type="button"
                 onClick={() => { setIsLoginTab(true); setLoginError(''); }}
-                className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                   isLoginTab ? 'bg-[#176B65] text-white shadow-2xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
                 }`}
               >
-                Quick Login
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Log In</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsLoginTab(false); setAuthError(''); }}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                  !isLoginTab ? 'bg-[#176B65] text-white shadow-2xs' : 'text-[#283B3D]/70 hover:text-[#283B3D]'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Register Shop</span>
               </button>
             </div>
           </div>
@@ -1034,6 +1049,19 @@ export default function MerchantRegisterPage() {
                 <LogIn className="w-4 h-4 text-[#F2A15A]" />
                 <span>{loginLoading ? 'Checking & Entering Dashboard...' : 'Open Live Dashboard →'}</span>
               </button>
+
+              <div className="text-center pt-1">
+                <p className="text-xs text-slate-500 font-medium">
+                  New shopkeeper on SkipQ?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setIsLoginTab(false); setAuthError(''); }}
+                    className="font-bold text-[#176B65] hover:underline cursor-pointer"
+                  >
+                    Register your shop here
+                  </button>
+                </p>
+              </div>
             </div>
           ) : (
             /* New Registration Step 1 Form */
@@ -1132,8 +1160,32 @@ export default function MerchantRegisterPage() {
                 <span>Continue to Shop Profile →</span>
                 <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
               </button>
+
+              <div className="text-center pt-1">
+                <p className="text-xs text-slate-500 font-medium">
+                  Already have a registered shop?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setIsLoginTab(true); setLoginError(''); }}
+                    className="font-bold text-[#176B65] hover:underline cursor-pointer"
+                  >
+                    Log in here
+                  </button>
+                </p>
+              </div>
             </div>
           )}
+
+          {/* Link back to Customer Sign In */}
+          <div className="text-center pt-3 border-t border-[#DCE9E3]/70">
+            <Link
+              href="/login"
+              className="text-xs font-bold text-[#176B65] hover:text-[#125550] inline-flex items-center gap-1.5 transition-colors"
+            >
+              <span>Are you a customer? Go to Customer Sign In</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </motion.div>
       )}
 
