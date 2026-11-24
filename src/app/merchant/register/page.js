@@ -171,6 +171,7 @@ export default function MerchantRegisterPage() {
         localStorage.setItem('ak_logged_in', 'true');
         localStorage.setItem('ak_active_merchant_shop', JSON.stringify(matchedShop));
         localStorage.setItem('ak_role', 'MERCHANT');
+        window.dispatchEvent(new Event('storage'));
         router.replace('/merchant/dashboard');
       } else {
         setIsPhoneVerified(true);
@@ -369,6 +370,7 @@ export default function MerchantRegisterPage() {
     const isOwnerDigits = /^\+?\d{6,}$/.test(candidateOwner.replace(/[\s\-\(\)]/g, ''));
     const finalOwnerName = (!isOwnerDigits && candidateOwner) ? candidateOwner : (shopExists.name || 'Shop Owner');
     localStorage.setItem('ak_customer_name', finalOwnerName);
+    window.dispatchEvent(new Event('storage'));
     router.replace('/merchant/dashboard');
   };
 

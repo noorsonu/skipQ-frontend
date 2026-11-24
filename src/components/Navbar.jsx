@@ -54,7 +54,7 @@ export default function Navbar() {
 
   const customerFirstName = extractFirstName(customerName, 'Customer');
   const workerFirstName = extractFirstName(
-    registeredMerchantShop?.ownerName || (typeof window !== 'undefined' ? localStorage.getItem('ak_customer_name') : '') || registeredMerchantShop?.name,
+    registeredMerchantShop?.ownerName || registeredMerchantShop?.name,
     'Worker'
   );
 
@@ -157,9 +157,13 @@ export default function Navbar() {
       setRegisteredMerchantShop(merchantShop);
 
       const isMerchantRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
+      const isMerchantLoginTab = typeof window !== 'undefined' && 
+        window.location.pathname === '/merchant/register' &&
+        new URLSearchParams(window.location.search).get('tab') === 'login';
+      const isCustomerLoginRoute = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-      // 1. Merchant Session: Priority on merchant routes or when registered merchant shop exists
-      if ((role === 'MERCHANT' || isMerchantRoute) && merchantShop) {
+      // 1. Merchant Session: Only when role is MERCHANT, user is logged in, has active shop, AND is not explicitly on the login tab
+      if (role === 'MERCHANT' && isLoggedInFlag && merchantShop && !isMerchantLoginTab) {
         setUserRole('MERCHANT');
         setIsShopkeeperLoggedIn(true);
         setIsCustomerLoggedIn(false);
@@ -167,8 +171,8 @@ export default function Navbar() {
         setCustomerPhone('');
         setCustomerAge('');
       } 
-      // 2. Customer Persistent Session: Once logged in or registered on this device, STAY logged in
-      else if (isLoggedInFlag || role === 'CUSTOMER' || token || (phone && name) || email) {
+      // 2. Customer Persistent Session: Only on customer routes, when role is CUSTOMER, and user is logged in with valid token
+      else if (!isMerchantRoute && !isCustomerLoginRoute && role === 'CUSTOMER' && isLoggedInFlag && token) {
         setUserRole('CUSTOMER');
         setIsCustomerLoggedIn(true);
         setIsShopkeeperLoggedIn(false);
@@ -184,7 +188,7 @@ export default function Navbar() {
           setCustomerName('Customer');
         }
       } 
-      // 3. Guest (only before first login or after explicit logout)
+      // 3. Guest: When not logged in as worker or customer, or on login/register pages without active authenticated session
       else {
         setUserRole('GUEST');
         setIsCustomerLoggedIn(false);
