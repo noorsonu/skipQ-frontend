@@ -972,7 +972,6 @@ export default function Navbar() {
                       Partner / Shop
                     </span>
                   </div>
-                  <ChevronDown className={`w-3.5 h-3.5 text-[#283B3D]/60 transition-transform ${guestMerchantDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Guest Shopkeeper Dropdown Menu */}
