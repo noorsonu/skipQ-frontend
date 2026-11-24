@@ -75,6 +75,7 @@ export default function MerchantDashboardPage() {
   const [billPaymentMode, setBillPaymentMode] = useState('CASH'); // 'CASH' | 'UPI' | 'PENDING' | 'PARTIAL'
   const [billPaidAmount, setBillPaidAmount] = useState('');
   const [billNotes, setBillNotes] = useState('');
+  const [billingScope, setBillingScope] = useState('SINGLE'); // 'SINGLE' (Individual member) | 'GROUP' (All members combined)
 
   // BRD FR-712: Customer Khata / Udhaar & Balance Ledger State
   const [khataList, setKhataList] = useState([]);
@@ -2068,6 +2069,15 @@ export default function MerchantDashboardPage() {
   const handleAssignStationToServingToken = (station) => {
     if (!servingToken) return;
 
+    // Strict Busy Protection: Cannot assign to a chair that is occupied by another customer!
+    if (station.currentToken && !isTokenMatch(station.currentToken, servingToken)) {
+      alert(`⚠️ ${station.name} abhi busy hai! Yahan pehle se ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber}) baitha hai.\n\nKripya koi doosri Free 🟢 chair chunein ya is chair ka kaam pehle Done karein.`);
+      return;
+    }
+
+    const previousStationName = servingToken.assignedStation?.name || servingToken.assignedStation;
+    const isReassignment = previousStationName && previousStationName !== station.name;
+
     const tokenWithStation = {
       ...servingToken,
       assignedStation: {
@@ -2082,13 +2092,13 @@ export default function MerchantDashboardPage() {
 
     // Update stationsList:
     // 1. Assign this token to target station
-    // 2. Remove this token from any other station so it's not duplicated
+    // 2. Free up any previous station this token was assigned to (Seamless Reassign)
     const updatedStations = stationsList.map(s => {
       if (s.id === station.id) {
         return {
           ...s,
           currentToken: tokenWithStation,
-          timerSeconds: 0
+          timerSeconds: isReassignment ? (s.timerSeconds || 0) : 0
         };
       }
       if (s.currentToken && isTokenMatch(s.currentToken, servingToken)) {
@@ -2110,8 +2120,66 @@ export default function MerchantDashboardPage() {
       : `Token ${servingToken.tokenNumber}`;
     speakAnnouncement(servingToken.tokenNumber, custFullName, station.name);
 
-    setAnnouncementMsg(`🪑 Assigned ${custFullName} to ${station.name} (${station.staffName})`);
+    if (isReassignment) {
+      setAnnouncementMsg(`🔀 Reassigned ${custFullName} from ${previousStationName} to ${station.name}`);
+    } else {
+      setAnnouncementMsg(`🪑 Assigned ${custFullName} to ${station.name} (${station.staffName})`);
+    }
     setTimeout(() => setAnnouncementMsg(''), 4000);
+  };
+
+  // Reassign / Move a customer from one station to another available station
+  const handleReassignStation = (fromStationId, toStationId) => {
+    const fromStation = stationsList.find(s => s.id === fromStationId);
+    const toStation = stationsList.find(s => s.id === toStationId);
+    if (!fromStation || !toStation) return;
+    if (!fromStation.currentToken) {
+      alert(`${fromStation.name} par koi active customer nahi hai jise transfer kiya ja sake.`);
+      return;
+    }
+    if (toStation.currentToken) {
+      alert(`⚠️ ${toStation.name} abhi busy hai (#${toStation.currentToken.tokenNumber} ${toStation.currentToken.customerName || 'Customer'}). Kripya koi khaali (Free 🟢) chair chunein.`);
+      return;
+    }
+
+    const movingToken = {
+      ...fromStation.currentToken,
+      assignedStation: {
+        id: toStation.id,
+        name: toStation.name,
+        staffName: toStation.staffName,
+        role: toStation.role
+      }
+    };
+
+    const updatedStations = stationsList.map(s => {
+      if (s.id === fromStationId) {
+        return {
+          ...s,
+          currentToken: null,
+          timerSeconds: 0
+        };
+      }
+      if (s.id === toStationId) {
+        return {
+          ...s,
+          currentToken: movingToken,
+          timerSeconds: fromStation.timerSeconds || 0
+        };
+      }
+      return s;
+    });
+
+    saveStationsList(updatedStations);
+    if (servingToken && isTokenMatch(servingToken, movingToken)) {
+      setServingToken(movingToken);
+    }
+    syncWithCustomerStorage(movingToken);
+
+    const custFullName = movingToken.customerName || `Token ${movingToken.tokenNumber}`;
+    speakAnnouncement(movingToken.tokenNumber, custFullName, toStation.name);
+    setAnnouncementMsg(`🔀 Reassigned ${custFullName} from ${fromStation.name} to ${toStation.name}`);
+    setTimeout(() => setAnnouncementMsg(''), 4500);
   };
 
   const handleToggleStationActive = (stationId) => {
@@ -2172,6 +2240,13 @@ export default function MerchantDashboardPage() {
       alert(`${station.name} is currently inactive or on leave.`);
       return;
     }
+
+    // STRICT BUSY GUARD: If chair is already busy, NEVER bump or overwrite!
+    if (station.currentToken) {
+      alert(`⚠️ ${station.name} abhi busy hai! Yahan pehle se ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber}) baitha hai.\n\nKripya pehle unka kaam/bill Done karein ya koi doosri Free 🟢 chair chunein.`);
+      return;
+    }
+
     const tokenToCall = targetToken || waitingQueue[0];
     if (!tokenToCall) {
       alert('No more customers currently waiting in the queue.');
@@ -2179,42 +2254,6 @@ export default function MerchantDashboardPage() {
     }
 
     playChime();
-
-    const prevStationToken = station.currentToken;
-    const todayDate = new Date().toISOString().slice(0, 10);
-    if (prevStationToken) {
-      const durMins = Math.max(1, Math.floor((station.timerSeconds || 0) / 60));
-      setCompletedList(prev => [
-        {
-          tokenNumber: prevStationToken.tokenNumber,
-          customerName: prevStationToken.customerName,
-          completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          duration: `${durMins} min`,
-          amount: 0,
-          paymentMode: '-',
-          service: prevStationToken.service || 'General Service',
-          stationName: station.name
-        },
-        ...prev
-      ]);
-
-      updateRecordInHistory(activeShop, {
-        id: prevStationToken.id || `token-${prevStationToken.tokenNumber}`,
-        tokenNumber: prevStationToken.tokenNumber,
-        customerName: prevStationToken.customerName,
-        customerPhone: prevStationToken.customerPhone || 'Offline',
-        groupSize: prevStationToken.groupSize || 1,
-        service: prevStationToken.service || 'General Service',
-        date: todayDate,
-        hour: new Date().getHours(),
-        status: 'COMPLETED',
-        completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        durationMin: durMins,
-        amount: 0,
-        paymentMode: '-',
-        assignedStation: station.name
-      });
-    }
 
     const nextToken = tokenToCall;
     const remaining = waitingQueue.filter(item => !isTokenMatch(item, nextToken)).map((item, idx) => ({
@@ -2312,6 +2351,7 @@ export default function MerchantDashboardPage() {
     setBillPaidAmount('');
     setBillPaymentMode('CASH');
     setBillNotes('');
+    setBillingScope('SINGLE');
     setBillingModalOpen(true);
   };
 
@@ -2781,7 +2821,7 @@ export default function MerchantDashboardPage() {
   };
 
   // Sync token state changes with customer localStorage
-  const syncWithCustomerStorage = (nextServing, prevCompleted, nextAbsent, billDetails) => {
+  const syncWithCustomerStorage = (nextServing, prevCompleted, nextAbsent, billDetails, remainingGroupToken) => {
     if (typeof window === 'undefined') return;
     try {
       const storedStr = localStorage.getItem('ak_customer_tokens');
@@ -2826,10 +2866,13 @@ export default function MerchantDashboardPage() {
           }
         }
 
-        // Keep only remaining active tokens in ak_customer_tokens
-        const updated = list
-          .filter(t => !prevCompleted || !matchTarget(t, prevCompleted))
-          .map(t => {
+        // Keep remaining active tokens in ak_customer_tokens
+        let remainingTokensList = list.filter(t => !prevCompleted || !matchTarget(t, prevCompleted));
+        if (remainingGroupToken) {
+          remainingTokensList = [remainingGroupToken, ...remainingTokensList.filter(t => !matchTarget(t, remainingGroupToken))];
+        }
+
+        const updated = remainingTokensList.map(t => {
             if (nextServing && matchTarget(t, nextServing)) {
               return { 
                 ...t, 
@@ -2976,6 +3019,7 @@ export default function MerchantDashboardPage() {
     setBillPaidAmount('');
     setBillPaymentMode('CASH');
     setBillNotes('');
+    setBillingScope('SINGLE');
     setBillingModalOpen(true);
   };
 
@@ -3024,12 +3068,93 @@ export default function MerchantDashboardPage() {
       });
     }
 
+    // Helper to identify companion/group tokens
+    const isRelatedGroupMember = (a, b) => {
+      if (!a || !b) return false;
+      if (a.groupId && b.groupId && a.groupId === b.groupId) return true;
+      if (a.primaryTokenId && b.id && String(a.primaryTokenId) === String(b.id)) return true;
+      if (b.primaryTokenId && a.id && String(b.primaryTokenId) === String(a.id)) return true;
+      const pa = (a.customerPhone || '').replace(/\D/g, '').slice(-10);
+      const pb = (b.customerPhone || '').replace(/\D/g, '').slice(-10);
+      if (pa && pb && pa.length === 10 && pa === pb) return true;
+      return false;
+    };
+
+    let remainingGroupToken = null;
+    const isMultiPersonGroup = (tokenToFinalize.groupSize || 1) > 1;
+
+    // OPTION 1: billingScope === 'SINGLE' (Individual member checkout)
+    // If the token is a merged group pass, complete ONLY 1 person and keep the rest in line!
+    if (billingScope === 'SINGLE' && isMultiPersonGroup && !tokenToFinalize.isCompanion) {
+      const remainingCount = (tokenToFinalize.groupSize || 1) - 1;
+      const cleanBaseName = (tokenToFinalize.customerName || 'Customer').replace(/\s*\(Party of \d+\)/, '').replace(/\s*\(\d+ Remaining.*?\)/, '').trim();
+      remainingGroupToken = {
+        ...tokenToFinalize,
+        id: `rem-${Date.now()}-${tokenToFinalize.tokenNumber}`,
+        customerName: `${cleanBaseName} (${remainingCount} Remaining in Line)`,
+        groupSize: remainingCount,
+        status: 'WAITING',
+        assignedStation: null
+      };
+
+      // Add remaining members back to waiting queue
+      setWaitingQueue(prev => [remainingGroupToken, ...prev.filter(t => !isTokenMatch(t, tokenToFinalize))]);
+    }
+
+    // OPTION 2: billingScope === 'GROUP' (All companions/group members completed together in one bill!)
+    if (billingScope === 'GROUP') {
+      const relatedQueueTokens = waitingQueue.filter(t => !isTokenMatch(t, tokenToFinalize) && isRelatedGroupMember(t, tokenToFinalize));
+      const relatedStationTokens = stationsList.filter(s => s.currentToken && !isTokenMatch(s.currentToken, tokenToFinalize) && isRelatedGroupMember(s.currentToken, tokenToFinalize));
+
+      if (relatedQueueTokens.length > 0) {
+        const relatedIds = new Set(relatedQueueTokens.map(t => String(t.id || t.tokenNumber)));
+        setWaitingQueue(prev => prev.filter(t => !relatedIds.has(String(t.id || t.tokenNumber))));
+      }
+
+      if (relatedStationTokens.length > 0) {
+        const relatedStationIds = new Set(relatedStationTokens.map(s => s.id));
+        const cleanedStations = stationsList.map(s => {
+          if (relatedStationIds.has(s.id)) {
+            return {
+              ...s,
+              currentToken: null,
+              timerSeconds: 0,
+              totalServedToday: (s.totalServedToday || 0) + 1
+            };
+          }
+          return s;
+        });
+        saveStationsList(cleanedStations);
+      }
+
+      // Add companion tokens to completedList
+      relatedQueueTokens.forEach(comp => {
+        setCompletedList(prev => [
+          {
+            tokenNumber: comp.tokenNumber,
+            customerName: comp.customerName,
+            customerPhone: comp.customerPhone || 'Offline',
+            completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            duration: 'Group Member',
+            amount: 0,
+            paymentMode: 'GROUP_BILLED',
+            service: comp.service || 'General Service',
+            billNotes: `Billed together under Pass #${tokenToFinalize.tokenNumber}`
+          },
+          ...prev
+        ]);
+        if (activeShop?.id && comp.id) {
+          queueApi.completeToken(activeShop.id, comp.id).catch(() => {});
+        }
+      });
+    }
+
     // Sync with customer storage
     syncWithCustomerStorage(null, tokenToFinalize, null, {
       amount: finalAmount,
       paymentMode: finalPayment,
       serviceDetails: finalServices
-    });
+    }, remainingGroupToken);
 
     if (activeShop?.id && tokenToFinalize.id) {
       queueApi.completeToken(activeShop.id, tokenToFinalize.id).catch(() => {});
@@ -3037,7 +3162,9 @@ export default function MerchantDashboardPage() {
 
     const completedRecord = {
       tokenNumber: tokenToFinalize.tokenNumber,
-      customerName: tokenToFinalize.customerName,
+      customerName: (billingScope === 'SINGLE' && isMultiPersonGroup)
+        ? `${(tokenToFinalize.customerName || 'Customer').replace(/\s*\(Party of \d+\)/, '')} (Person 1)`
+        : tokenToFinalize.customerName,
       customerPhone: tokenToFinalize.customerPhone || 'Offline',
       completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: `${durationMins} min`,
@@ -3054,9 +3181,9 @@ export default function MerchantDashboardPage() {
     updateRecordInHistory(activeShop, {
       id: tokenToFinalize.id || `token-${tokenToFinalize.tokenNumber}`,
       tokenNumber: tokenToFinalize.tokenNumber,
-      customerName: tokenToFinalize.customerName,
+      customerName: completedRecord.customerName,
       customerPhone: tokenToFinalize.customerPhone || 'Offline',
-      groupSize: tokenToFinalize.groupSize || 1,
+      groupSize: billingScope === 'SINGLE' ? 1 : (tokenToFinalize.groupSize || 1),
       service: finalServices,
       serviceBreakdown: finalServices,
       date: todayDate,
@@ -4508,16 +4635,18 @@ export default function MerchantDashboardPage() {
                             servingToken.assignedStation.name === station.name ||
                             servingToken.assignedStation === station.name
                           );
+                          const isOccupiedByOther = station.currentToken && !isTokenMatch(station.currentToken, servingToken);
                           const statusTag = isAssigned
                             ? "✓ Currently Assigned"
-                            : station.currentToken
+                            : isOccupiedByOther
                             ? `🔴 Busy: ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber})`
                             : "🟢 Free / Ready";
                           return (
                             <option
                               key={station.id}
                               value={station.id}
-                              className="bg-[#283B3D] text-white py-2"
+                              disabled={isOccupiedByOther}
+                              className={isOccupiedByOther ? "bg-slate-700 text-slate-400 py-2 cursor-not-allowed" : "bg-[#283B3D] text-white py-2"}
                             >
                               {station.name} {station.role ? `(${station.role})` : ''} — [{statusTag}]
                             </option>
@@ -4614,23 +4743,24 @@ export default function MerchantDashboardPage() {
                           <button
                             key={st.id}
                             type="button"
+                            disabled={isBusy}
                             onClick={() => handleCallNextForStation(st.id)}
-                            className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1 cursor-pointer active:scale-95 ${
+                            className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1 ${
                               isBusy
-                                ? 'bg-white/5 border-white/10 opacity-60 text-slate-400'
-                                : 'bg-emerald-700/80 hover:bg-emerald-600 border-emerald-400 text-white font-bold shadow-xs'
+                                ? 'bg-white/5 border-white/10 opacity-40 text-slate-400 cursor-not-allowed'
+                                : 'bg-emerald-700/80 hover:bg-emerald-600 border-emerald-400 text-white font-bold shadow-xs cursor-pointer active:scale-95'
                             }`}
                           >
                             <div className="min-w-0">
                               <span className="text-xs font-bold truncate block">{st.name}</span>
                               <span className="text-[10px] text-slate-300 truncate block">
-                                {st.currentToken ? (st.currentToken.customerName || 'Busy') : (st.role || 'Available')}
+                                {st.currentToken ? `Busy (#${st.currentToken.tokenNumber})` : (st.role || 'Available')}
                               </span>
                             </div>
                             <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                              isBusy ? 'bg-black/30 text-slate-400' : 'bg-emerald-300 text-emerald-950 font-black'
+                              isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 font-black'
                             }`}>
-                              {isBusy ? 'Busy' : 'Send 🟢'}
+                              {isBusy ? '🔴 Busy' : 'Send 🟢'}
                             </span>
                           </button>
                         );
@@ -4682,26 +4812,27 @@ export default function MerchantDashboardPage() {
                           <button
                             key={st.id}
                             type="button"
+                            disabled={isBusy}
                             onClick={() => handleCallNextForStation(st.id)}
-                            className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1.5 cursor-pointer active:scale-95 shadow-sm ${
+                            className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1.5 shadow-sm ${
                               isBusy
-                                ? 'bg-white/5 border-white/10 opacity-70 hover:opacity-100 hover:border-amber-400/50'
-                                : 'bg-gradient-to-br from-emerald-600/90 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400 text-white shadow-md hover:shadow-lg'
+                                ? 'bg-white/5 border-white/10 opacity-40 text-slate-400 cursor-not-allowed'
+                                : 'bg-gradient-to-br from-emerald-600/90 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400 text-white shadow-md hover:shadow-lg cursor-pointer active:scale-95'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-1">
                               <span className="font-black text-xs text-white">{st.name}</span>
                               <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
-                                isBusy ? 'bg-amber-400/20 text-amber-300' : 'bg-emerald-300 text-emerald-950 animate-pulse font-extrabold'
+                                isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 animate-pulse font-extrabold'
                               }`}>
-                                {isBusy ? `In Use (#${st.currentToken.tokenNumber})` : 'Free • Send Here 🟢'}
+                                {isBusy ? `🔴 Busy (#${st.currentToken.tokenNumber})` : 'Free • Send Here 🟢'}
                               </span>
                             </div>
                             <div className="text-[11px] text-slate-200 truncate font-semibold">
                               {st.currentToken ? `👤 ${st.currentToken.customerName || 'Customer'}` : (st.role || 'Service Station')}
                             </div>
                             <div className="text-[10px] font-bold text-amber-200/90 pt-1 border-t border-white/10 flex items-center justify-between">
-                              <span>{isBusy ? `Busy (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
+                              <span>{isBusy ? `In Service (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
                               <ArrowRight className="w-3 h-3 text-emerald-300" />
                             </div>
                           </button>
@@ -4931,11 +5062,19 @@ export default function MerchantDashboardPage() {
                           title="1-Tap Send this customer to a specific counter / chair"
                         >
                           <option value="" disabled className="bg-white text-slate-800">Send to ▾</option>
-                          {stationsList.filter(s => s.active).map(st => (
-                            <option key={st.id} value={st.id} className="bg-white text-slate-800">
-                              {st.name} {st.currentToken ? `(Busy #${st.currentToken.tokenNumber})` : '• Free 🟢'}
-                            </option>
-                          ))}
+                          {stationsList.filter(s => s.active).map(st => {
+                            const isBusy = !!st.currentToken;
+                            return (
+                              <option 
+                                key={st.id} 
+                                value={st.id} 
+                                disabled={isBusy}
+                                className={isBusy ? "bg-slate-100 text-slate-400 font-normal cursor-not-allowed" : "bg-white text-slate-800 font-bold"}
+                              >
+                                {st.name} {isBusy ? `(🔴 Busy #${st.currentToken.tokenNumber})` : '• Free 🟢'}
+                              </option>
+                            );
+                          })}
                         </select>
                       )}
 
@@ -5153,14 +5292,45 @@ export default function MerchantDashboardPage() {
                   )}
 
                   {station.active && isStationServing && (
-                    <button
-                      type="button"
-                      onClick={() => handleAnnounceStationToken(station.id)}
-                      className="w-full py-1 rounded-lg text-slate-500 hover:text-[#176B65] text-[10px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Volume2 className="w-3 h-3" />
-                      <span>Re-announce to {station.name}</span>
-                    </button>
+                    <div className="space-y-1 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleAnnounceStationToken(station.id)}
+                        className="w-full py-1 rounded-lg text-slate-500 hover:text-[#176B65] text-[10px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        <span>Re-announce to {station.name}</span>
+                      </button>
+
+                      {stationsList.filter(s => s.active && s.id !== station.id).length > 0 && (
+                        <div className="pt-0.5">
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const targetId = e.target.value;
+                              if (targetId) handleReassignStation(station.id, targetId);
+                            }}
+                            className="w-full text-[10px] font-bold bg-[#F3F1E9] text-[#176B65] hover:bg-[#DCE9E3] py-1 px-2 rounded-lg border border-[#DCE9E3] cursor-pointer"
+                            title="Transfer this customer to another free chair"
+                          >
+                            <option value="" disabled>🔀 Transfer / Change Chair...</option>
+                            {stationsList.filter(s => s.active && s.id !== station.id).map(targetStation => {
+                              const isTargetBusy = !!targetStation.currentToken;
+                              return (
+                                <option
+                                  key={targetStation.id}
+                                  value={targetStation.id}
+                                  disabled={isTargetBusy}
+                                  className={isTargetBusy ? "text-slate-400 bg-slate-100" : "text-emerald-900 bg-white font-bold"}
+                                >
+                                  Move to: {targetStation.name} {isTargetBusy ? '(Busy 🔴)' : '(Free 🟢)'}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -8011,6 +8181,27 @@ export default function MerchantDashboardPage() {
       <AnimatePresence>
         {billingModalOpen && (billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken) && (() => {
           const activeBillingToken = billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken;
+
+          const isRelatedGroupMember = (a, b) => {
+            if (!a || !b) return false;
+            if (a.groupId && b.groupId && a.groupId === b.groupId) return true;
+            if (a.primaryTokenId && b.id && String(a.primaryTokenId) === String(b.id)) return true;
+            if (b.primaryTokenId && a.id && String(b.primaryTokenId) === String(a.id)) return true;
+            const pa = (a.customerPhone || '').replace(/\D/g, '').slice(-10);
+            const pb = (b.customerPhone || '').replace(/\D/g, '').slice(-10);
+            if (pa && pb && pa.length === 10 && pa === pb) return true;
+            return false;
+          };
+
+          const relatedTokens = [
+            ...waitingQueue,
+            ...(servingToken ? [servingToken] : []),
+            ...stationsList.filter(s => s.currentToken).map(s => s.currentToken)
+          ].filter(t => t && !isTokenMatch(t, activeBillingToken) && isRelatedGroupMember(t, activeBillingToken));
+
+          const isGroupBooking = (activeBillingToken.groupSize > 1) || (relatedTokens.length > 0);
+          const totalGroupCount = (activeBillingToken.groupSize > 1) ? activeBillingToken.groupSize : (relatedTokens.length + 1);
+
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <motion.div 
@@ -8060,7 +8251,7 @@ export default function MerchantDashboardPage() {
                     <div>
                       <span className="font-black text-sm text-[#283B3D] block">{activeBillingToken.customerName}</span>
                       <span className="text-xs text-slate-500 font-medium block">
-                        {activeBillingToken.customerPhone ? `+91 ${activeBillingToken.customerPhone}` : 'Walk-in Guest'} • Party of {activeBillingToken.groupSize || 1}
+                        {activeBillingToken.customerPhone ? `+91 ${activeBillingToken.customerPhone}` : 'Walk-in Guest'} • Party of {totalGroupCount}
                       </span>
                     </div>
                   </div>
@@ -8068,6 +8259,59 @@ export default function MerchantDashboardPage() {
                     {activeBillingToken.service || 'General Service'}
                   </span>
                 </div>
+
+                {/* Group Billing & Checkout Mode Selector (When >1 Person) */}
+                {isGroupBooking && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-amber-700" />
+                        <span>Group Booking ({totalGroupCount} Persons Detected)</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-md">
+                        Payment Choice
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBillingScope('SINGLE')}
+                        className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${
+                          billingScope === 'SINGLE'
+                            ? 'bg-white border-[#176B65] ring-2 ring-[#176B65]/20 shadow-xs'
+                            : 'bg-white/60 border-amber-200 hover:bg-white text-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs text-[#176B65]">👤 Alag-Alag Payment</span>
+                          {billingScope === 'SINGLE' && <span className="text-[10px] font-black text-[#176B65]">✓ Selected</span>}
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
+                          Sirf is 1 person ka hisaab karein. Baaki {totalGroupCount - 1} log line ya chair par active rahenge!
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBillingScope('GROUP')}
+                        className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${
+                          billingScope === 'GROUP'
+                            ? 'bg-white border-[#176B65] ring-2 ring-[#176B65]/20 shadow-xs'
+                            : 'bg-white/60 border-amber-200 hover:bg-white text-slate-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs text-[#176B65]">👥 Ek Saath Payment</span>
+                          {billingScope === 'GROUP' && <span className="text-[10px] font-black text-[#176B65]">✓ Selected</span>}
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
+                          Pure group ke sabhi {totalGroupCount} logo ka combined payment ek sath finalize karein.
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Billing Form */}
                 <form 

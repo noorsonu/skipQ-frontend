@@ -780,25 +780,36 @@ export default function ShopDetailClient() {
       }
 
       // Save to customer's active token list in localStorage
-      // If groupSize > 1, create distinct companion token passes so each member can be independently rung & called!
-      const tokensToSave = [finalToken];
+      // If groupSize > 1, create distinct individual token passes so each member can be independently called, assigned to chairs, and paid!
       const primaryNum = Number(String(finalToken.tokenNumber || '').replace(/\D/g, '')) || Math.floor(10 + Math.random() * 80);
       const cleanPhoneForTokens = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+      const sharedGroupId = `grp-${finalToken.id || primaryNum}-${Date.now()}`;
+
+      const primaryTokenEnhanced = {
+        ...finalToken,
+        groupId: sharedGroupId,
+        groupMemberIndex: 1,
+        totalGroupSize: effectiveGroupSize,
+        groupSize: 1
+      };
+      const tokensToSave = [primaryTokenEnhanced];
 
       if (effectiveGroupSize > 1 && Array.isArray(companionDetails)) {
         for (let i = 0; i < companionDetails.length; i++) {
           const comp = companionDetails[i];
           const compNum = primaryNum + (i + 1);
-          const cName = comp?.name?.trim() || `Companion #${i + 2}`;
+          const cName = comp?.name?.trim() || `${mainName} (Companion #${i + 2})`;
           const cPurp = comp?.purpose?.trim() || customerPurpose || 'General Service';
           const companionToken = {
             id: `${finalToken.id || Date.now()}-comp-${i + 1}`,
-            displayToken: `#${compNum}`,
+            displayToken: `${shop.tokenPrefix || 'AK'}-${String(compNum).padStart(3, '0')}`,
             tokenNumber: compNum,
             customerName: cName,
             customerPhone: cleanPhoneForTokens,
-            groupSize: effectiveGroupSize,
+            groupSize: 1,
+            totalGroupSize: effectiveGroupSize,
             groupMemberIndex: i + 2,
+            groupId: sharedGroupId,
             service: cPurp,
             customerPurpose: cPurp,
             status: 'WAITING',
