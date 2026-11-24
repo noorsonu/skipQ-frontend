@@ -302,59 +302,112 @@ export default function HomePage() {
               <div className="w-24 h-4 bg-[#283B3D] rounded-full mx-auto"></div>
 
               {/* Inside Screen */}
-              <div className="bg-[#F3F1E9] rounded-[30px] p-5 space-y-4 border border-[#DCE9E3]">
+              <div className="bg-[#F3F1E9] rounded-[30px] p-4 sm:p-5 space-y-3.5 border border-[#DCE9E3]">
                 
                 {/* Store Header inside Phone */}
                 <div className="flex items-center justify-between">
                   <OfficialBrandLogo height={28} animate={false} />
-                  <span className="text-[10px] font-black uppercase bg-[#DCE9E3] text-[#176B65] px-2.5 py-1 rounded-full">
-                    Live Station
+                  <span className="text-[10px] font-black uppercase bg-[#DCE9E3] text-[#176B65] px-2.5 py-1 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{activeUserToken ? 'Live Ticket' : 'Live Station'}</span>
                   </span>
                 </div>
 
                 {/* Live Token Card inside Phone */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#283B3D]/10 space-y-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#176B65]">City Style Salon</span>
-                    <span className="text-[10px] font-extrabold uppercase bg-[#F2A15A]/25 text-[#283B3D] px-2 py-0.5 rounded">
-                      In Progress
+                    <span className="font-black text-[#176B65] truncate max-w-[170px]">
+                      {activeUserToken?.shopName || 'City Style Salon'}
+                    </span>
+                    <span className="text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
+                      {activeUserToken ? 'Your Token' : 'In Progress'}
                     </span>
                   </div>
 
-                  <div className="text-center py-1">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Your Token Number</span>
-                    <div className="text-4xl font-token font-bold text-[#176B65]">AK - 024</div>
+                  <div className="text-center py-0.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Your Token Number
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-token font-bold text-[#176B65] tracking-tight mt-0.5">
+                      {activeUserToken?.displayToken || 'AK - 024'}
+                    </div>
                   </div>
 
-                  {/* Progress Indicator */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-[11px] font-semibold text-[#283B3D]/70">
-                      <span>Queue Progress</span>
-                      <span className="font-bold text-[#176B65]">3 Ahead</span>
+                  {/* 2 Metrics: Minutes & People Ahead (from 2nd screenshot) */}
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="bg-[#F3F1E9] rounded-xl p-2 border border-[#DCE9E3]">
+                      <span className="font-token text-xl font-bold text-[#176B65] block leading-none">
+                        {activeUserToken ? String(activeUserToken.estimatedWaitMin || 8).padStart(2, '0') : '08'}
+                      </span>
+                      <span className="text-[9px] font-bold text-[#283B3D]/70 uppercase tracking-wider block mt-1">
+                        Est. Minutes
+                      </span>
                     </div>
-                    <div className="w-full bg-[#DCE9E3] h-2 rounded-full overflow-hidden">
+
+                    <div className="bg-[#F3F1E9] rounded-xl p-2 border border-[#DCE9E3]">
+                      <span className="font-token text-xl font-bold text-[#176B65] block leading-none">
+                        {activeUserToken ? String(activeUserToken.peopleAhead ?? 3).padStart(2, '0') : String(Math.max(0, Math.round((100 - progressWidth) / 20))).padStart(2, '0')}
+                      </span>
+                      <span className="text-[9px] font-bold text-[#283B3D]/70 uppercase tracking-wider block mt-1">
+                        People Ahead
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Progress Indicator (interactive with progressWidth) */}
+                  <div className="space-y-1.5 pt-0.5">
+                    <div className="flex justify-between text-[11px] font-bold text-[#283B3D]">
+                      <span>Queue Progress</span>
+                      <span className="text-[#176B65]">{progressWidth}%</span>
+                    </div>
+                    <div className="w-full bg-[#DCE9E3] h-2.5 rounded-full overflow-hidden p-0.5">
                       <motion.div 
-                        animate={{ width: ['40%', '65%', '40%'] }}
-                        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                        animate={{ width: `${progressWidth}%` }}
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
                         className="bg-[#176B65] h-full rounded-full"
                       />
                     </div>
                   </div>
 
-                  {/* Estimated Wait Counter */}
-                  <div className="bg-[#F3F1E9] rounded-xl p-2.5 flex items-center justify-between text-xs">
-                    <span className="text-[#283B3D]/70 font-medium">Estimated wait:</span>
-                    <span className="font-bold text-[#F2A15A] bg-[#283B3D] px-2.5 py-0.5 rounded-lg text-white font-token">
-                      08 min
-                    </span>
-                  </div>
+                  {/* Interactive Queue Test Controls (Next Customer / Reset) */}
+                  {activeUserToken ? (
+                    <Link
+                      href="/tokens"
+                      className="w-full py-2 px-3 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all text-center shadow-xs"
+                    >
+                      <Ticket className="w-3.5 h-3.5" />
+                      <span>View Live Pass in My Tokens</span>
+                    </Link>
+                  ) : (
+                    <div className="pt-1.5 flex items-center justify-between text-[11px] border-t border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400">Test queue:</span>
+                      <div className="flex gap-1.5">
+                        <button 
+                          type="button"
+                          onClick={() => setProgressWidth(prev => Math.min(100, prev + 15))}
+                          className="px-2.5 py-1 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[10px] transition-colors cursor-pointer flex items-center gap-1 text-[#176B65]"
+                        >
+                          <Play className="w-2.5 h-2.5" />
+                          <span>Next</span>
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setProgressWidth(40)}
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[10px] transition-colors cursor-pointer text-slate-600"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
 
                 {/* Next Customer Indicator inside Phone */}
-                <div className="bg-[#DCE9E3] rounded-2xl p-3 flex items-center justify-between text-xs font-bold text-[#176B65]">
+                <div className="bg-[#DCE9E3] rounded-2xl p-2.5 flex items-center justify-between text-xs font-bold text-[#176B65]">
                   <span>Counter Serving:</span>
-                  <span className="font-token text-sm bg-white px-3 py-1 rounded-lg text-[#283B3D] shadow-xs">
-                    AK - 021
+                  <span className="font-token text-xs bg-white px-2.5 py-0.5 rounded-lg text-[#283B3D] shadow-xs">
+                    {activeUserToken ? `AK - ${String(Math.max(1, (parseInt(activeUserToken.displayToken?.replace(/\D/g, '') || 24)) - (activeUserToken.peopleAhead || 3))).padStart(3, '0')}` : 'AK - 021'}
                   </span>
                 </div>
 
@@ -673,9 +726,9 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================= */}
-      {/* SECTION 4: LIVE TOKEN TRACKING (HIGHLIGHT OF WEBSITE)     */}
+      {/* SECTION 4: LIVE TOKEN TRACKING (DESKTOP ONLY, HIDDEN ON MOBILE) */}
       {/* ========================================================= */}
-      <section id="live-token" className="bg-[#283B3D] text-[#F3F1E9] py-16 sm:py-24 rounded-3xl mx-4 sm:mx-6 lg:mx-8 px-6 sm:px-12 relative overflow-hidden shadow-2xl">
+      <section id="live-token" className="hidden md:block bg-[#283B3D] text-[#F3F1E9] py-16 sm:py-24 rounded-3xl mx-4 sm:mx-6 lg:mx-8 px-6 sm:px-12 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#176B65]/30 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="max-w-4xl mx-auto space-y-10 relative z-10 text-center">
