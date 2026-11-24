@@ -22,6 +22,15 @@ export function usePwaInstall() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // Register Service Worker for PWA installability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('SW register failed:', err);
+        });
+      });
+    }
+
     setIsMerchant(window.location.pathname.startsWith('/merchant'));
 
     // Check if already running as installed standalone app
@@ -153,6 +162,12 @@ export function PwaInstallBottomButton() {
 
 // 3. VISUAL GUIDE MODAL (FOR IOS & MANUAL INSTALL)
 function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
+  const [activeTab, setActiveTab] = useState(isIOS ? 'ios' : 'android');
+
+  useEffect(() => {
+    setActiveTab(isIOS ? 'ios' : 'android');
+  }, [isIOS]);
+
   if (!isOpen) return null;
 
   return (
@@ -170,8 +185,9 @@ function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-4 z-10"
+          className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#DCE9E3] space-y-4 z-10 max-h-[90vh] overflow-y-auto"
         >
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
             <div className="flex items-center gap-2">
               <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-2xs ${
@@ -190,24 +206,52 @@ function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {isIOS ? (
-            <div className="space-y-3 py-1">
+          {/* OS Switcher Tabs */}
+          <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveTab('android')}
+              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                activeTab === 'android' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              📱 Android / Chrome
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ios')}
+              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+                activeTab === 'ios' ? 'bg-white text-[#283B3D] shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              🍎 iPhone / iPad (iOS)
+            </button>
+          </div>
+
+          {/* Important Info Note */}
+          <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 leading-snug">
+            💡 <strong>Dhyan dein:</strong> Ye koi heavy <code>.apk</code> file download nahi karta! Ye direct aapke phone ke Home screen par <strong>App icon</strong> banakar install hota hai.
+          </div>
+
+          {/* Instructions */}
+          {activeTab === 'ios' ? (
+            <div className="space-y-2.5 py-1">
               <p className="text-xs text-[#283B3D] font-bold">
-                iPhone / iPad Par Install Karne Ke Liye (2 Steps):
+                iPhone / iPad (Safari Browser) Me Install Karne Ke Steps:
               </p>
               
               <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
                 <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65]">
                   <Share2 className="w-4 h-4" />
                 </div>
-                <div className="text-xs">
-                  <strong>Step 1:</strong> Neeche Safari me <strong>Share button (⬆)</strong> dabayein.
+                <div className="text-xs text-[#283B3D]">
+                  <strong>Step 1:</strong> Safari me neeche <strong>Share button (⬆)</strong> dabayein.
                 </div>
               </div>
 
@@ -215,30 +259,48 @@ function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
                 <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65]">
                   <PlusSquare className="w-4 h-4" />
                 </div>
-                <div className="text-xs">
-                  <strong>Step 2:</strong> Menu me <strong>"Add to Home Screen" (+)</strong> select karein.
+                <div className="text-xs text-[#283B3D]">
+                  <strong>Step 2:</strong> Menu me thoda scroll karke <strong>"Add to Home Screen" (+)</strong> select karein.
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
+                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-emerald-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div className="text-xs text-[#283B3D]">
+                  <strong>Step 3:</strong> Top-right me <strong>"Add"</strong> dabayein. App iPhone ke screen par aa jayega!
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-3 py-1">
+            <div className="space-y-2.5 py-1">
               <p className="text-xs text-[#283B3D] font-bold">
-                Android / Computer Par Install Karne Ke Liye:
+                Android (Chrome) Me Install Karne Ke 2 Tarike:
               </p>
 
-              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center gap-3">
-                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65]">
+              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-start gap-3">
+                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65] mt-0.5">
                   <Download className="w-4 h-4" />
                 </div>
-                <div className="text-xs">
-                  Screen par <strong>"Install / Add to Home screen"</strong> ka pop-up aayega, uspe <strong>"Install"</strong> dabayein.
+                <div className="text-xs text-[#283B3D]">
+                  <strong>Tarika 1 (Direct Pop-up):</strong> Agar Chrome me neeche <strong>"Add to Home screen"</strong> ya <strong>"Install"</strong> ka pop-up dikhe to uspe click karein.
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-start gap-3">
+                <div className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-xs shrink-0 text-[#176B65] mt-0.5">
+                  <PlusSquare className="w-4 h-4" />
+                </div>
+                <div className="text-xs text-[#283B3D]">
+                  <strong>Tarika 2 (Menu se):</strong> Chrome ke top-right me <strong>3 dots (⋮)</strong> dabayein ➔ fir <strong>"Install app"</strong> ya <strong>"Add to Home screen"</strong> select karein.
                 </div>
               </div>
 
               <div className="text-[11px] text-slate-500 leading-relaxed">
                 {isMerchant 
-                  ? 'SkipQ Partner App aapke phone screen par save ho jayega — direct Counter dashboard khulega!' 
-                  : 'SkipQ App aapke phone screen par save ho jayega aur bina browser ke direct khulega!'}
+                  ? '✅ SkipQ Partner App bina browser ke seedhe alag app ki tarah open hoga!' 
+                  : '✅ SkipQ App phone screen par regular app ki tarah bina address bar ke open hoga!'}
               </div>
             </div>
           )}
@@ -250,7 +312,7 @@ function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
               isMerchant ? 'bg-amber-700 hover:bg-amber-800' : 'bg-[#176B65] hover:bg-[#125550]'
             }`}
           >
-            Samajh Gaya (Close)
+            Samajh Gaya (Done)
           </button>
         </motion.div>
       </div>

@@ -2,6 +2,7 @@
   "name": "SkipQ Partner | Store Manager",
   "short_name": "SkipQ Partner",
   "description": "Counter Operations, Live Token Calling & Store Billing Dashboard",
+  "id": "/merchant/",
   "start_url": "/merchant/dashboard",
   "scope": "/merchant/",
   "display": "standalone",
