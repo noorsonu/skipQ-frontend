@@ -47,118 +47,64 @@ function ShopsDirectoryContent() {
   useEffect(() => {
     const fetchShops = async () => {
       setLoading(true);
+      let loadedShops = [];
+
+      // 1. Fetch live shops from backend API
       try {
-        const res = await shopApi.getAll();
-        if (res?.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          setShops(res.data.data);
-          return;
+        const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
+        if (res?.data?.data && Array.isArray(res.data.data)) {
+          const DUMMY_SLUGS = [
+            'royal-barber-indira-nagar', 'gupta-medical-indira-nagar', 'suresh-sweets-590',
+            'city-style-salon', 'dr-verma-clinic', 'speedy-auto-bike-care',
+            'apollo-pharmacy-lucknow', 'royal-hair-studio', 'shukla-chaat-bhandar'
+          ];
+          loadedShops = res.data.data.filter(s => {
+            const slug = (s.slug || '').toLowerCase();
+            const name = (s.name || '').toLowerCase();
+            return (
+              !DUMMY_SLUGS.includes(slug) &&
+              !slug.includes('royal-barber') &&
+              !slug.includes('gupta-medical') &&
+              !name.includes('royal barber') &&
+              !name.includes('gupta medical')
+            );
+          });
         }
       } catch (err) {
-        console.warn('API shops fetch fallback to local:', err);
+        console.warn('API shops fetch error:', err);
       }
 
-      // Local fallback
+      // 2. Fetch locally registered merchant shops from worker session
       try {
-        const local = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        if (local.length > 0) {
-          setShops(local);
-          return;
+        const localStr = localStorage.getItem('ak_merchant_shops');
+        if (localStr) {
+          const local = JSON.parse(localStr);
+          if (Array.isArray(local)) {
+            const DUMMY_SLUGS = [
+              'royal-barber-indira-nagar', 'gupta-medical-indira-nagar', 'suresh-sweets-590',
+              'city-style-salon', 'dr-verma-clinic', 'speedy-auto-bike-care',
+              'apollo-pharmacy-lucknow', 'royal-hair-studio', 'shukla-chaat-bhandar'
+            ];
+            const validLocal = local.filter(s => {
+              const slug = (s.slug || '').toLowerCase();
+              const name = (s.name || '').toLowerCase();
+              return (
+                !DUMMY_SLUGS.includes(slug) &&
+                !slug.includes('royal-barber') &&
+                !slug.includes('gupta-medical') &&
+                !name.includes('royal barber') &&
+                !name.includes('gupta medical')
+              );
+            });
+            const existingSlugs = new Set(loadedShops.map(s => s.slug));
+            const uniqueLocal = validLocal.filter(s => !existingSlugs.has(s.slug));
+            loadedShops = [...loadedShops, ...uniqueLocal];
+          }
         }
       } catch (e) {}
 
-      // Default mock shops
-      setShops([
-        {
-          id: 'shop-1',
-          name: 'City Style Salon',
-          slug: 'city-style-salon',
-          category: 'salon',
-          categoryName: 'Salons & Parlours',
-          address: 'Hazratganj Main Market, Lucknow',
-          phone: '+91 9876543210',
-          rating: 4.8,
-          reviewCount: 124,
-          queueLength: 3,
-          avgWaitMin: 12,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-          id: 'shop-2',
-          name: 'Dr. Verma Family Clinic',
-          slug: 'dr-verma-clinic',
-          category: 'clinic',
-          categoryName: 'Doctor Clinics',
-          address: 'Aliganj Sector B, Near Post Office, Lucknow',
-          phone: '+91 9876543211',
-          rating: 4.9,
-          reviewCount: 88,
-          queueLength: 5,
-          avgWaitMin: 18,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-          id: 'shop-3',
-          name: 'Speedy Auto Bike Care',
-          slug: 'speedy-auto-bike-care',
-          category: 'auto-repair',
-          categoryName: 'Auto Repair & Garage',
-          address: 'Gomti Nagar, Near Manoj Pandey Chauraha, Lucknow',
-          phone: '+91 9876543212',
-          rating: 4.7,
-          reviewCount: 65,
-          queueLength: 2,
-          avgWaitMin: 15,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-          id: 'shop-4',
-          name: 'Apollo Pharmacy & Diagnostic',
-          slug: 'apollo-pharmacy-lucknow',
-          category: 'medical',
-          categoryName: 'Medical & Pharmacy',
-          address: 'Indira Nagar, Ring Road, Lucknow',
-          phone: '+91 9876543213',
-          rating: 4.6,
-          reviewCount: 92,
-          queueLength: 1,
-          avgWaitMin: 5,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1586015555751-63c26027a414?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-          id: 'shop-5',
-          name: 'Royal Hair Studio',
-          slug: 'royal-hair-studio',
-          category: 'salon',
-          categoryName: 'Salons & Parlours',
-          address: 'Mahanagar Gol Chauraha, Lucknow',
-          phone: '+91 9876543214',
-          rating: 4.8,
-          reviewCount: 76,
-          queueLength: 4,
-          avgWaitMin: 14,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80'
-        },
-        {
-          id: 'shop-6',
-          name: 'Shukla Chaat Bhandar',
-          slug: 'shukla-chaat-bhandar',
-          category: 'food',
-          categoryName: 'Food & Chaat Points',
-          address: 'Shahnajaf Road, Hazratganj, Lucknow',
-          phone: '+91 9876543215',
-          rating: 4.9,
-          reviewCount: 210,
-          queueLength: 6,
-          avgWaitMin: 8,
-          isAcceptingTokens: true,
-          photo: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80'
-        }
-      ]);
+      // ONLY set genuine registered shops. NO mock shops fallback!
+      setShops(loadedShops);
       setLoading(false);
     };
 
@@ -240,19 +186,31 @@ function ShopsDirectoryContent() {
 
       {/* Shops Grid */}
       {filteredShops.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-[#DCE9E3] space-y-3">
-          <Store className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="text-lg font-black text-[#283B3D]">No Shops Found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Try searching for another service or choose "All Places" above.
-          </p>
-          <button
-            type="button"
-            onClick={() => { setSelectedCat('all'); setSearch(''); }}
-            className="px-4 py-2 rounded-xl bg-[#176B65] text-white font-bold text-xs"
-          >
-            Show All Places
-          </button>
+        <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[#DCE9E3] space-y-4 max-w-lg mx-auto shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+            <Store className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-xl font-black text-[#283B3D]">No Shops Registered Yet</h3>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              No store owner, doctor, or salon has registered yet in this category. As soon as a business registers on SkipQ, it will appear here in real time.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/merchant/register"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-2"
+            >
+              <Store className="w-4 h-4" />
+              <span>Register Your Shop (Free)</span>
+            </Link>
+            <Link
+              href="/"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all"
+            >
+              Back to Home
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -749,9 +749,8 @@ export default function HomePage() {
                       </span>
 
                       <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#283B3D] text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs">
-                        {matchingShops.length || cat.count || 2} Places Connected
+                        {matchingShops.length} {matchingShops.length === 1 ? 'Place' : 'Places'} Connected
                       </span>
-
                       {/* Bottom Category Name on Photo */}
                       <div className="absolute bottom-3 left-4 right-4 text-white">
                         <h3 className="text-2xl font-black drop-shadow-md">{cat.name}</h3>
@@ -765,7 +764,7 @@ export default function HomePage() {
                           {cat.name}
                         </h3>
                         <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg">
-                          {matchingShops.length || cat.count || 2} Shops
+                          {matchingShops.length} {matchingShops.length === 1 ? 'Shop' : 'Shops'}
                         </span>
                       </div>
 
@@ -777,10 +776,14 @@ export default function HomePage() {
                         <div className="flex items-center gap-1.5 text-[#283B3D]/80">
                           <Clock className="w-3.5 h-3.5 text-[#176B65]" />
                           <span className="font-semibold text-[11px]">Avg. Wait:</span>
-                          <span className="font-bold text-[#176B65] text-[11px]">{cat.avgWait || '~10-15 min'}</span>
+                          <span className="font-bold text-[#176B65] text-[11px]">
+                            {matchingShops.length > 0 ? (cat.avgWait || '~10-15 min') : 'Queue Closed'}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
-                          Zero Physical Line
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                          matchingShops.length > 0 ? 'text-emerald-800 bg-emerald-100' : 'text-slate-600 bg-slate-200'
+                        }`}>
+                          {matchingShops.length > 0 ? 'Zero Physical Line' : 'No Active Line'}
                         </span>
                       </div>
                     </div>
