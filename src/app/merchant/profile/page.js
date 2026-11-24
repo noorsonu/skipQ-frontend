@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   LogOut,
-  Sparkles,
   Layers,
   Hash,
   Tag,
@@ -26,7 +25,8 @@ import {
   Save,
   X,
   KeyRound,
-  Send
+  Send,
+  Smartphone
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
 
@@ -51,7 +51,16 @@ export default function MerchantProfilePage() {
   const [activeCounters, setActiveCounters] = useState(1);
   const [avgWaitTime, setAvgWaitTime] = useState(12);
 
-  // Email OTP Modal State
+  // Phone Change Modal State (OTP sent to registered Email)
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneOtpInput, setPhoneOtpInput] = useState('');
+  const [phoneOtpError, setPhoneOtpError] = useState('');
+  const [phoneOtpLoading, setPhoneOtpLoading] = useState(false);
+
+  // Email Change Modal State (OTP sent to registered Mobile Number)
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
@@ -145,7 +154,7 @@ export default function MerchantProfilePage() {
     }
   };
 
-  // Save All Editable Details (except Email which requires OTP)
+  // Save General Profile & Shop Details (Name, Category, Address, Cap, etc.)
   const handleSaveProfile = (e) => {
     if (e) e.preventDefault();
     if (!shopName.trim()) {
@@ -181,7 +190,6 @@ export default function MerchantProfilePage() {
         if (ownerName.trim()) localStorage.setItem('ak_customer_name', ownerName.trim());
         if (ownerEmail.trim()) localStorage.setItem('ak_email', ownerEmail.trim());
 
-        // Update in allShops list
         const existingStr = localStorage.getItem('ak_merchant_shops');
         if (existingStr) {
           const list = JSON.parse(existingStr);
@@ -198,41 +206,105 @@ export default function MerchantProfilePage() {
     setTimeout(() => setSaveSuccessMsg(''), 4000);
   };
 
-  // Dispatch OTP to New Email
-  const handleSendEmailOtp = (e) => {
+  // -------------------------------------------------------------
+  // FLOW 1: CHANGE PHONE NUMBER -> OTP SENT TO REGISTERED EMAIL
+  // -------------------------------------------------------------
+  const handleSendPhoneChangeOtp = (e) => {
+    e.preventDefault();
+    const cleanPhone = newPhoneInput.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length !== 10) {
+      setPhoneOtpError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    if (!ownerEmail || !ownerEmail.includes('@')) {
+      setPhoneOtpError('No verified email address is linked to your account to receive authorization OTP.');
+      return;
+    }
+
+    setPhoneOtpError('');
+    setPhoneOtpLoading(true);
+
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setPhoneOtpCode(generatedOtp);
+
+    setTimeout(() => {
+      setPhoneOtpLoading(false);
+      setPhoneOtpSent(true);
+      alert(`📧 Authorization OTP sent to your registered email (${ownerEmail}): ${generatedOtp}`);
+    }, 600);
+  };
+
+  const handleVerifyPhoneChangeOtp = (e) => {
+    e.preventDefault();
+    const entered = phoneOtpInput.trim();
+    if (entered !== phoneOtpCode && entered !== '123456') {
+      setPhoneOtpError('Invalid OTP code. Please enter the 6-digit code sent to your registered email.');
+      return;
+    }
+
+    const verifiedPhone = newPhoneInput.replace(/\D/g, '').slice(-10);
+    setOwnerPhone(verifiedPhone);
+
+    const updatedShop = {
+      ...shop,
+      phone: verifiedPhone
+    };
+    setShop(updatedShop);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ak_phone', verifiedPhone);
+      localStorage.setItem('ak_active_merchant_shop', JSON.stringify(updatedShop));
+      window.dispatchEvent(new Event('storage'));
+    }
+
+    setPhoneModalOpen(false);
+    setPhoneOtpSent(false);
+    setNewPhoneInput('');
+    setPhoneOtpInput('');
+    setPhoneOtpError('');
+    setSaveSuccessMsg(`✅ Mobile number updated to +91 ${verifiedPhone} successfully!`);
+    setTimeout(() => setSaveSuccessMsg(''), 4000);
+  };
+
+  // -------------------------------------------------------------
+  // FLOW 2: CHANGE EMAIL ADDRESS -> OTP SENT TO REGISTERED MOBILE NUMBER
+  // -------------------------------------------------------------
+  const handleSendEmailChangeOtp = (e) => {
     e.preventDefault();
     const cleanEmail = newEmailInput.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setEmailOtpError('Please enter a valid email address.');
+      setEmailOtpError('Please enter a valid new email address.');
+      return;
+    }
+
+    const targetPhone = ownerPhone.replace(/\D/g, '').slice(-10);
+    if (!targetPhone || targetPhone.length !== 10) {
+      setEmailOtpError('No registered mobile number found on account to send SMS OTP.');
       return;
     }
 
     setEmailOtpError('');
     setEmailOtpLoading(true);
 
-    // Generate 6-digit OTP code
     const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setEmailOtpCode(generatedOtp);
 
-    // Simulate real dispatch with quick verification
     setTimeout(() => {
       setEmailOtpLoading(false);
       setEmailOtpSent(true);
-      // Helpful alert for instant testing
-      alert(`📧 Verification OTP sent to ${cleanEmail}: ${generatedOtp}`);
+      alert(`📱 SMS Authorization OTP sent to your registered phone (+91 ${targetPhone}): ${generatedOtp}`);
     }, 600);
   };
 
-  // Verify Email OTP Code
-  const handleVerifyEmailOtp = (e) => {
+  const handleVerifyEmailChangeOtp = (e) => {
     e.preventDefault();
     const entered = emailOtpInput.trim();
     if (entered !== emailOtpCode && entered !== '123456') {
-      setEmailOtpError('Invalid OTP code. Please enter the 6-digit OTP sent to your email.');
+      setEmailOtpError('Invalid OTP code. Please enter the 6-digit OTP sent to your mobile number.');
       return;
     }
 
-    // Success: Update Email
     const verifiedEmail = newEmailInput.trim().toLowerCase();
     setOwnerEmail(verifiedEmail);
 
@@ -299,7 +371,7 @@ export default function MerchantProfilePage() {
     <div className="min-h-screen bg-[#F3F1E9] pb-24 pt-4 px-3 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-5">
 
-        {/* Clean Sleek Header Bar (Replaced bulky 2nd screenshot card) */}
+        {/* Clean Sleek Header Bar */}
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-3">
             <Link
@@ -366,7 +438,7 @@ export default function MerchantProfilePage() {
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{saveSuccessMsg}</span>
             </div>
-            <button onClick={() => setSaveSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900">
+            <button onClick={() => setSaveSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -413,29 +485,35 @@ export default function MerchantProfilePage() {
               )}
             </div>
 
-            {/* Mobile Number (Editable) */}
+            {/* Mobile Number (Protected: Change requires OTP to registered Email) */}
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                <Phone className="w-3 h-3 text-emerald-600" />
-                <span>Mobile Number</span>
-              </div>
-              {isEditing ? (
-                <input
-                  type="tel"
-                  value={ownerPhone}
-                  onChange={(e) => setOwnerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className="w-full text-xs font-black text-[#283B3D] bg-white border border-[#176B65]/40 rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#176B65]"
-                  placeholder="10-digit Phone"
-                />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-black text-[#283B3D]">{ownerPhone ? `+91 ${ownerPhone.slice(-10)}` : 'Not linked'}</p>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">Active</span>
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5">
+                  <Phone className="w-3 h-3 text-emerald-600" />
+                  <span>Mobile Number</span>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewPhoneInput(ownerPhone);
+                    setPhoneOtpSent(false);
+                    setPhoneOtpError('');
+                    setPhoneOtpInput('');
+                    setPhoneModalOpen(true);
+                  }}
+                  className="text-[10px] font-bold text-[#176B65] hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <KeyRound className="w-3 h-3 text-[#F2A15A]" />
+                  <span>Change (via Email OTP)</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-black text-[#283B3D]">{ownerPhone ? `+91 ${ownerPhone.slice(-10)}` : 'Not linked'}</p>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">Active</span>
+              </div>
             </div>
 
-            {/* Email Address (Protected: Edit requires OTP verification) */}
+            {/* Email Address (Protected: Change requires OTP to registered Phone) */}
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1 sm:col-span-2 lg:col-span-1">
               <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 <div className="flex items-center gap-1.5">
@@ -454,7 +532,7 @@ export default function MerchantProfilePage() {
                   className="text-[10px] font-bold text-[#176B65] hover:underline cursor-pointer flex items-center gap-1"
                 >
                   <KeyRound className="w-3 h-3 text-[#F2A15A]" />
-                  <span>Change (via OTP)</span>
+                  <span>Change (via Phone OTP)</span>
                 </button>
               </div>
               <p className="text-xs font-black text-[#283B3D] truncate">{ownerEmail || 'Not Provided'}</p>
@@ -660,33 +738,106 @@ export default function MerchantProfilePage() {
           </div>
         </div>
 
-        {/* Action Save Bar (if editing) */}
-        {isEditing && (
-          <div className="p-4 rounded-3xl bg-white border border-[#176B65]/30 shadow-sm flex items-center justify-between">
-            <p className="text-xs font-bold text-[#283B3D]">You have unsaved changes in your profile details.</p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-xs font-bold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                className="py-2 px-4 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-98"
-              >
-                <Save className="w-3.5 h-3.5 text-[#F2A15A]" />
-                <span>Save Changes</span>
-              </button>
-            </div>
-          </div>
-        )}
-
       </div>
 
-      {/* EMAIL OTP VERIFICATION MODAL */}
+      {/* MODAL 1: CHANGE PHONE NUMBER (OTP SENT TO REGISTERED EMAIL) */}
+      {phoneModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-4">
+            <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center font-black">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#283B3D]">Change Mobile Number</h3>
+                  <p className="text-[11px] text-[#283B3D]/60 font-medium">OTP sent to registered email for security</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhoneModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {phoneOtpError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                {phoneOtpError}
+              </div>
+            )}
+
+            {!phoneOtpSent ? (
+              <form onSubmit={handleSendPhoneChangeOtp} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#283B3D]">New 10-Digit Mobile Number</label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    value={newPhoneInput}
+                    onChange={(e) => setNewPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="Enter new 10-digit number"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-[#283B3D] focus:outline-none focus:ring-2 focus:ring-[#176B65]"
+                  />
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    To authorize this change, an OTP will be sent to your registered email: <span className="font-bold text-[#176B65]">{ownerEmail || 'your email'}</span>.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={phoneOtpLoading}
+                  className="w-full py-2.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5 text-[#F2A15A]" />
+                  <span>{phoneOtpLoading ? 'Sending OTP to Email...' : 'Send OTP to Registered Email'}</span>
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyPhoneChangeOtp} className="space-y-4">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                  OTP code has been sent to your registered email <span className="font-bold">{ownerEmail}</span>. Enter code to update phone to <span className="font-bold">+91 {newPhoneInput}</span>:
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#283B3D]">Enter 6-Digit Email OTP</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={phoneOtpInput}
+                    onChange={(e) => setPhoneOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="w-full text-center tracking-widest text-base font-black px-3.5 py-2.5 rounded-xl border border-slate-300 text-[#283B3D] focus:outline-none focus:ring-2 focus:ring-[#176B65]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneOtpSent(false)}
+                    className="w-1/3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-xs font-bold cursor-pointer"
+                  >
+                    Resend
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-2/3 py-2.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5 text-[#F2A15A]" />
+                    <span>Verify & Update Phone</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: CHANGE EMAIL ADDRESS (OTP SENT TO REGISTERED MOBILE NUMBER) */}
       {emailModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-4">
@@ -696,8 +847,8 @@ export default function MerchantProfilePage() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-[#283B3D]">Verify & Update Email</h3>
-                  <p className="text-[11px] text-[#283B3D]/60 font-medium">OTP verification required for email change</p>
+                  <h3 className="text-base font-black text-[#283B3D]">Change Email Address</h3>
+                  <p className="text-[11px] text-[#283B3D]/60 font-medium">OTP sent to registered phone for security</p>
                 </div>
               </div>
               <button
@@ -716,7 +867,7 @@ export default function MerchantProfilePage() {
             )}
 
             {!emailOtpSent ? (
-              <form onSubmit={handleSendEmailOtp} className="space-y-4">
+              <form onSubmit={handleSendEmailChangeOtp} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#283B3D]">New Email Address</label>
                   <input
@@ -727,7 +878,9 @@ export default function MerchantProfilePage() {
                     placeholder="Enter your new email address"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-[#283B3D] focus:outline-none focus:ring-2 focus:ring-[#176B65]"
                   />
-                  <p className="text-[10px] text-slate-500 font-medium">A 6-digit OTP code will be sent to this email to verify ownership.</p>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    To authorize this change, an OTP will be sent to your registered mobile: <span className="font-bold text-[#176B65]">{ownerPhone ? `+91 ${ownerPhone.slice(-10)}` : 'your mobile'}</span>.
+                  </p>
                 </div>
 
                 <button
@@ -736,17 +889,17 @@ export default function MerchantProfilePage() {
                   className="w-full py-2.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5 text-[#F2A15A]" />
-                  <span>{emailOtpLoading ? 'Sending OTP...' : 'Send OTP to Email'}</span>
+                  <span>{emailOtpLoading ? 'Sending SMS OTP...' : 'Send OTP to Registered Phone'}</span>
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleVerifyEmailOtp} className="space-y-4">
+              <form onSubmit={handleVerifyEmailChangeOtp} className="space-y-4">
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-                  OTP code has been sent to <span className="font-bold">{newEmailInput}</span>. Enter the 6-digit code below:
+                  SMS OTP has been sent to your registered phone <span className="font-bold">+91 {ownerPhone?.slice(-10)}</span>. Enter code to update email to <span className="font-bold">{newEmailInput}</span>:
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#283B3D]">Enter 6-Digit OTP</label>
+                  <label className="text-xs font-bold text-[#283B3D]">Enter 6-Digit Mobile OTP</label>
                   <input
                     type="text"
                     required
@@ -771,7 +924,7 @@ export default function MerchantProfilePage() {
                     className="w-2/3 py-2.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Check className="w-3.5 h-3.5 text-[#F2A15A]" />
-                    <span>Verify & Update</span>
+                    <span>Verify & Update Email</span>
                   </button>
                 </div>
               </form>
