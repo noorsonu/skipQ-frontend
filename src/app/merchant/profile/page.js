@@ -295,19 +295,7 @@ export default function MerchantProfilePage() {
               </p>
             </div>
 
-            {/* Security & Password */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <Lock className="w-3.5 h-3.5 text-amber-600" />
-                <span>Password Security</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black tracking-widest text-slate-600">••••••••</span>
-                <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                  End-to-End Encrypted
-                </span>
-              </div>
-            </div>
+
 
             {/* Account Status */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">

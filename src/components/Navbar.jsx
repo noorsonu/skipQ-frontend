@@ -1031,23 +1031,18 @@ export default function Navbar() {
             <div className="relative flex items-center gap-2">
               <Link
                 href="/merchant/profile"
-                className="inline-flex items-center gap-2.5 px-3 sm:px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/30 text-[#283B3D]"
-                title="View Full Shopkeeper & Store Details"
+                className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/30 text-[#283B3D]"
+                title="View Store Profile"
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white">
                   <Store className="w-4 h-4" />
                 </div>
 
-                <div className="text-left pr-1 max-w-[110px] sm:max-w-[160px]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
-                      Shopkeeper
-                    </span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />
-                  </div>
-                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight mt-0.5">
+                <div className="flex items-center gap-1.5 pr-1 max-w-[120px] sm:max-w-[180px]">
+                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight">
                     {registeredMerchantShop?.name || 'My Shop'}
                   </span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse shrink-0" />
                 </div>
               </Link>
             </div>
