@@ -34,10 +34,24 @@ export function usePwaInstall() {
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     setIsStandalone(checkStandalone);
 
+    const triggerIfRequested = (promptObj) => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('install') === 'true' && promptObj) {
+          setTimeout(() => {
+            try {
+              promptObj.prompt();
+            } catch (err) {}
+          }, 700);
+        }
+      }
+    };
+
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       globalDeferredPrompt = e;
       setDeferredPrompt(e);
+      triggerIfRequested(e);
     };
 
     const handleAppInstalled = () => {
@@ -51,6 +65,7 @@ export function usePwaInstall() {
 
     if (globalDeferredPrompt) {
       setDeferredPrompt(globalDeferredPrompt);
+      triggerIfRequested(globalDeferredPrompt);
     }
 
     return () => {
@@ -60,45 +75,49 @@ export function usePwaInstall() {
   }, []);
 
   const triggerInstall = async (forMerchant = false) => {
-    const promptEvent = deferredPrompt || globalDeferredPrompt;
+    const isCurrentlyMerchant = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
 
+    // 1. If user wants to install Worker App but is currently on Customer pages (/ or /login or /shops):
+    // The browser needs the Worker App manifest & scope (/merchant/*) to install it!
+    if (forMerchant && !isCurrentlyMerchant) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/merchant/register?install=true';
+      }
+      return 'redirecting';
+    }
+
+    // 2. If user wants to install Customer App but is currently on Merchant pages:
+    if (!forMerchant && isCurrentlyMerchant) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/?install=true';
+      }
+      return 'redirecting';
+    }
+
+    // 3. Trigger native browser prompt if captured
+    const promptEvent = deferredPrompt || globalDeferredPrompt;
     if (promptEvent) {
       try {
-        promptEvent.prompt();
+        await promptEvent.prompt();
         const choice = await promptEvent.userChoice;
         if (choice?.outcome === 'accepted') {
           globalDeferredPrompt = null;
           setDeferredPrompt(null);
-          return true;
+          return 'installed';
         }
+        return 'dismissed';
       } catch (err) {
         console.warn('Install prompt error:', err);
       }
     }
 
-    // Direct native system trigger (Safari iOS / Android)
-    const shareUrl = forMerchant 
-      ? 'https://skipq-smoky.vercel.app/merchant/dashboard' 
-      : 'https://skipq-smoky.vercel.app/';
-    const shareTitle = forMerchant ? 'SkipQ Partner App' : 'SkipQ App';
-    const shareText = forMerchant 
-      ? '📲 Install SkipQ Partner App — Store Queue & Counter Dashboard:\n' 
-      : '📲 Install SkipQ App — Book live tokens & avoid waiting:\n';
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: shareTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-        return true;
-      } catch (err) {
-        // user closed native sheet
-        return false;
-      }
+    // 4. Clean device fallback instructions (NEVER trigger navigator.share on a Download button!)
+    const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      return 'ios_safari';
     }
-    return false;
+
+    return 'browser_menu';
   };
 
   const triggerShare = async (forMerchant = false) => {
@@ -149,6 +168,40 @@ export function UniversalDualAppFooter() {
   const { triggerInstall, triggerShare } = usePwaInstall();
   const [customerCopied, setCustomerCopied] = useState(false);
   const [merchantCopied, setMerchantCopied] = useState(false);
+  const [customerInstallMsg, setCustomerInstallMsg] = useState('');
+  const [merchantInstallMsg, setMerchantInstallMsg] = useState('');
+
+  const handleCustomerInstall = async () => {
+    const res = await triggerInstall(false);
+    if (res === 'redirecting') {
+      setCustomerInstallMsg('Opening Customer App to Install...');
+    } else if (res === 'ios_safari') {
+      setCustomerInstallMsg('Safari: tap Share (⎋) → "Add to Home Screen"');
+      setTimeout(() => setCustomerInstallMsg(''), 5000);
+    } else if (res === 'browser_menu') {
+      setCustomerInstallMsg('Tap browser menu (⋮) → "Install app"');
+      setTimeout(() => setCustomerInstallMsg(''), 5000);
+    } else if (res === 'installed') {
+      setCustomerInstallMsg('App Installed Successfully!');
+      setTimeout(() => setCustomerInstallMsg(''), 4000);
+    }
+  };
+
+  const handleMerchantInstall = async () => {
+    const res = await triggerInstall(true);
+    if (res === 'redirecting') {
+      setMerchantInstallMsg('Opening Worker App to Install...');
+    } else if (res === 'ios_safari') {
+      setMerchantInstallMsg('Safari: tap Share (⎋) → "Add to Home Screen"');
+      setTimeout(() => setMerchantInstallMsg(''), 5000);
+    } else if (res === 'browser_menu') {
+      setMerchantInstallMsg('Tap browser menu (⋮) → "Install app"');
+      setTimeout(() => setMerchantInstallMsg(''), 5000);
+    } else if (res === 'installed') {
+      setMerchantInstallMsg('Worker App Installed Successfully!');
+      setTimeout(() => setMerchantInstallMsg(''), 4000);
+    }
+  };
 
   const handleCustomerShare = async () => {
     const res = await triggerShare(false);
@@ -214,7 +267,7 @@ export function UniversalDualAppFooter() {
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               type="button"
-              onClick={() => triggerInstall(false)}
+              onClick={handleCustomerInstall}
               className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
             >
               <Download className="w-4 h-4 shrink-0" />
@@ -230,6 +283,11 @@ export function UniversalDualAppFooter() {
               <span>{customerCopied ? 'Link Copied!' : 'Share Customer App'}</span>
             </button>
           </div>
+          {customerInstallMsg && (
+            <p className="text-[11px] font-bold text-emerald-300 text-center animate-pulse pt-0.5">
+              {customerInstallMsg}
+            </p>
+          )}
         </div>
 
         {/* CARD 2: WORKER / MERCHANT PARTNER APP */}
@@ -254,7 +312,7 @@ export function UniversalDualAppFooter() {
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               type="button"
-              onClick={() => triggerInstall(true)}
+              onClick={handleMerchantInstall}
               className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
             >
               <Download className="w-4 h-4 shrink-0" />
@@ -270,6 +328,11 @@ export function UniversalDualAppFooter() {
               <span>{merchantCopied ? 'Link Copied!' : 'Share Worker App'}</span>
             </button>
           </div>
+          {merchantInstallMsg && (
+            <p className="text-[11px] font-bold text-amber-300 text-center animate-pulse pt-0.5">
+              {merchantInstallMsg}
+            </p>
+          )}
         </div>
 
       </div>
