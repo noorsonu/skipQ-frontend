@@ -2200,46 +2200,7 @@ export default function ShopDetailClient() {
                   </div>
                 )}
 
-                {/* Multi-Counter / Multi-Stylist / Doctor Preference (BRD FR-709) */}
-                {shopStations.length > 0 && (
-                  <div className="space-y-1.5 pt-2">
-                    <label className="block text-[11px] font-bold text-[#283B3D]">
-                      Select Preferred Counter / Doctor / Stylist (Optional):
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPreferredStation('')}
-                        className={`text-[11px] px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer ${
-                          preferredStation === ''
-                            ? 'bg-[#176B65] text-white border-[#176B65] font-bold'
-                            : 'bg-[#F3F1E9] text-[#283B3D]/80 border-[#DCE9E3] hover:border-[#176B65] font-medium'
-                        }`}
-                      >
-                        ⚡ Any Available (Fastest Turn)
-                      </button>
-                      {shopStations.map((st) => (
-                        <button
-                          key={st.id}
-                          type="button"
-                          onClick={() => setPreferredStation(st.name)}
-                          className={`text-[11px] px-2.5 py-1.5 rounded-xl transition-all border flex items-center gap-1 cursor-pointer ${
-                            preferredStation === st.name
-                              ? 'bg-[#176B65] text-white border-[#176B65] font-bold shadow-2xs'
-                              : 'bg-white text-[#283B3D] border-[#DCE9E3] hover:border-[#176B65] font-semibold'
-                          }`}
-                        >
-                          <span>📍 {st.name}</span>
-                          {st.staffName && (
-                            <span className={`text-[10px] ${preferredStation === st.name ? 'text-white/80' : 'text-slate-400'}`}>
-                              ({st.staffName.split(' ')[0]})
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
               </div>
 
               {/* 3. Companion Members Details (if groupSize > 1) */}
