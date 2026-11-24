@@ -28,6 +28,8 @@ export default function MerchantRegisterPage() {
   const [existingShopDetectedOnPhone, setExistingShopDetectedOnPhone] = useState(null);
 
   // Quick Login State for returning merchants
+  const [merchantLoginMethod, setMerchantLoginMethod] = useState('phone'); // 'phone' | 'email'
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -235,6 +237,7 @@ export default function MerchantRegisterPage() {
 
     try {
       const authRes = await authApi.directLogin({
+        action: 'register',
         phone: clean,
         name: ownerName.trim(),
         email: ownerEmail.trim(),
@@ -249,7 +252,10 @@ export default function MerchantRegisterPage() {
       localStorage.setItem('ak_email', ownerEmail.trim());
       localStorage.setItem('ak_customer_name', ownerName.trim());
     } catch (err) {
-      console.warn("Direct register merchant notice:", err?.message);
+      console.warn("Direct register merchant error:", err);
+      const msg = err.response?.data?.message || err.message || 'Registration failed. Mobile or email may already be registered.';
+      setAuthError(msg);
+      return;
     }
 
     setIsPhoneVerified(true);
@@ -259,30 +265,60 @@ export default function MerchantRegisterPage() {
   // Handle Quick Login with Password (Direct Dashboard Access)
   const handleQuickLoginSendOtp = async (e) => {
     e.preventDefault();
-    const clean = loginPhone.replace(/\D/g, '').slice(-10);
-    if (clean.length !== 10) {
-      setLoginError('Please enter a valid 10-digit mobile number.');
-      return;
+    setLoginError('');
+
+    let cleanPhone = null;
+    let cleanEmail = null;
+
+    if (merchantLoginMethod === 'phone') {
+      cleanPhone = loginPhone.replace(/\D/g, '').slice(-10);
+      if (cleanPhone.length !== 10) {
+        setLoginError('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+    } else {
+      cleanEmail = loginEmail.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        setLoginError('Please enter a valid registered email address.');
+        return;
+      }
     }
+
     if (!loginPassword) {
       setLoginError('Please enter your account password.');
       return;
     }
-    setLoginError('');
     setLoginLoading(true);
 
+    const payload = {
+      action: 'login',
+      password: loginPassword.trim(),
+      role: 'SHOP_OWNER'
+    };
+    if (cleanPhone) payload.phone = cleanPhone;
+    if (cleanEmail) payload.email = cleanEmail;
+
     // 1. Authenticate password with Backend
+    let userPhone = cleanPhone;
+    let userName = '';
     try {
-      const authRes = await authApi.directLogin({
-        phone: clean,
-        password: loginPassword.trim(),
-        role: 'SHOP_OWNER'
-      });
+      const authRes = await authApi.directLogin(payload);
       const token = authRes?.data?.data?.token;
       if (token) localStorage.setItem('ak_token', token);
+      if (authRes?.data?.data?.phone) {
+        userPhone = authRes.data.data.phone;
+        localStorage.setItem('ak_phone', userPhone);
+      }
+      if (authRes?.data?.data?.email) {
+        localStorage.setItem('ak_email', authRes.data.data.email);
+      }
+      if (authRes?.data?.data?.name) {
+        userName = authRes.data.data.name;
+        localStorage.setItem('ak_customer_name', userName);
+      }
     } catch (authErr) {
       setLoginLoading(false);
-      const msg = authErr.response?.data?.message || authErr.message || 'Incorrect password. Please try again or click Forgot Password.';
+      const msg = authErr.response?.data?.message || authErr.message || 'Worker account not found with this mobile number/email. Please register your shop first.';
       setLoginError(msg);
       return;
     }
@@ -290,24 +326,26 @@ export default function MerchantRegisterPage() {
     // 2. Check if a shop is registered with this phone number
     let shopExists = null;
     let backendChecked = false;
-    try {
-      const res = await shopApi.getShopsByPhone(clean);
-      backendChecked = true;
-      if (res?.data?.data && res.data.data.length > 0) {
-        shopExists = res.data.data[0];
+    if (userPhone) {
+      try {
+        const res = await shopApi.getShopsByPhone(userPhone);
+        backendChecked = true;
+        if (res?.data?.data && res.data.data.length > 0) {
+          shopExists = res.data.data[0];
+        }
+      } catch (err) {
+        console.warn("Backend phone lookup error:", err?.message);
       }
-    } catch (err) {
-      console.warn("Backend phone lookup error:", err?.message);
     }
 
     // Fallback to localStorage if offline
-    if (!shopExists && !backendChecked) {
+    if (!shopExists && !backendChecked && userPhone) {
       try {
         const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        shopExists = allShops.find(s => (s.phone || '').slice(-10) === clean);
+        shopExists = allShops.find(s => (s.phone || '').slice(-10) === userPhone);
         if (!shopExists) {
           const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-          if (active && (active.phone || '').slice(-10) === clean) {
+          if (active && (active.phone || '').slice(-10) === userPhone) {
             shopExists = active;
           }
         }
@@ -317,7 +355,7 @@ export default function MerchantRegisterPage() {
     setLoginLoading(false);
 
     if (!shopExists) {
-      setLoginError('❌ Mobile number authenticated, but no shop profile was found. Please register your shop profile under the "New Registration" tab.');
+      setLoginError('❌ Account authenticated, but no shop profile was found yet. Please register your shop under the "New Registration" tab.');
       return;
     }
 
@@ -325,8 +363,9 @@ export default function MerchantRegisterPage() {
     localStorage.setItem('ak_logged_in', 'true');
     localStorage.setItem('ak_active_merchant_shop', JSON.stringify(shopExists));
     localStorage.setItem('ak_role', 'MERCHANT');
-    localStorage.setItem('ak_phone', clean);
-    if (shopExists.ownerName) localStorage.setItem('ak_customer_name', shopExists.ownerName);
+    if (userPhone) localStorage.setItem('ak_phone', userPhone);
+    if (shopExists.name) localStorage.setItem('ak_shop_name', shopExists.name);
+    if (shopExists.ownerName || userName) localStorage.setItem('ak_customer_name', shopExists.ownerName || userName);
     router.replace('/merchant/dashboard');
   };
 
@@ -984,24 +1023,79 @@ export default function MerchantRegisterPage() {
             /* Quick Login View */
             <div className="space-y-4 max-w-lg">
               {loginError && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
-                  {loginError}
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 space-y-1">
+                  <p>{loginError}</p>
+                  {(loginError.toLowerCase().includes('not found') || loginError.toLowerCase().includes('register')) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoginTab(false);
+                        setLoginError('');
+                        setAuthError('');
+                      }}
+                      className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer mt-1"
+                    >
+                      👉 Click here to Register New Shop Profile
+                    </button>
+                  )}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Registered 10-Digit Mobile Number</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-3 text-xs font-bold text-slate-400">+91</span>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    placeholder="9876543210"
-                    value={loginPhone}
-                    onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                  />
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Sign In Using</label>
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold gap-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setMerchantLoginMethod('phone'); setLoginError(''); }}
+                    className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      merchantLoginMethod === 'phone'
+                        ? 'bg-white text-[#176B65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Mobile Number</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMerchantLoginMethod('email'); setLoginError(''); }}
+                    className={`py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      merchantLoginMethod === 'email'
+                        ? 'bg-white text-[#176B65] shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Email Address</span>
+                  </button>
                 </div>
+
+                {merchantLoginMethod === 'phone' ? (
+                  <div className="relative">
+                    <span className="absolute left-4 top-3 text-xs font-bold text-slate-400">+91</span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      value={loginPhone}
+                      onChange={(e) => setLoginPhone(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <span className="absolute left-4 top-3 text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </span>
+                    <input
+                      type="email"
+                      placeholder="owner@gmail.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

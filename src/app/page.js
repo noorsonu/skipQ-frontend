@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  MapPin, Search, Clock, Users, ShieldCheck, Sparkles, Store, 
-  ArrowUpRight, ArrowRight, Ticket, CheckCircle2, UserCheck, 
+import {
+  MapPin, Search, Clock, Users, ShieldCheck, Sparkles, Store,
+  ArrowUpRight, ArrowRight, Ticket, CheckCircle2, UserCheck,
   ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power, Play, Compass, Heart, Coffee, XCircle,
   Star, Eye
 } from 'lucide-react';
@@ -137,7 +137,7 @@ export default function HomePage() {
               setActiveUserToken(activeBackendTokens[0]);
               try {
                 localStorage.setItem('ak_customer_tokens', JSON.stringify(activeBackendTokens));
-              } catch (e) {}
+              } catch (e) { }
               return;
             }
           }
@@ -165,7 +165,7 @@ export default function HomePage() {
               return;
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       setActiveUserToken(null);
@@ -267,7 +267,7 @@ export default function HomePage() {
           setShops([...liveList, ...uniqueLocal]);
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
       setShops(localShops);
     }
     fetchLiveShops();
@@ -315,23 +315,23 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10 sm:space-y-14">
-      
+
       {/* ========================================================= */}
       {/* SECTION 1: HERO SECTION                                   */}
       {/* ========================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 sm:pb-16 relative overflow-hidden">
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-          
+
           {/* Left Side: Punchy Heading & CTAs */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-7 space-y-6"
           >
             {/* Soft Peach Tag */}
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.15 }}
@@ -389,7 +389,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Right Side: Animated Product Mockup & Floating Token Card */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.2 }}
@@ -400,13 +400,13 @@ export default function HomePage() {
 
             {/* Phone Mockup Frame */}
             <div className="relative w-80 sm:w-84 bg-white rounded-[44px] p-4 shadow-2xl border-4 border-[#283B3D] space-y-4">
-              
+
               {/* Speaker Notch */}
               <div className="w-24 h-4 bg-[#283B3D] rounded-full mx-auto"></div>
 
               {/* Inside Screen */}
               <div className="bg-[#F3F1E9] rounded-[30px] p-4 sm:p-5 space-y-3.5 border border-[#DCE9E3]">
-                
+
                 {/* Store Header inside Phone */}
                 <div className="flex items-center justify-between">
                   <OfficialBrandLogo height={28} animate={false} />
@@ -464,7 +464,7 @@ export default function HomePage() {
                       <span className="text-[#176B65]">{effectiveProgressWidth}%</span>
                     </div>
                     <div className="w-full bg-[#DCE9E3] h-2.5 rounded-full overflow-hidden p-0.5">
-                      <motion.div 
+                      <motion.div
                         animate={{ width: `${effectiveProgressWidth}%` }}
                         transition={{ duration: 0.5, ease: "easeInOut" }}
                         className="bg-[#176B65] h-full rounded-full"
@@ -485,7 +485,7 @@ export default function HomePage() {
                     <div className="pt-1.5 flex items-center justify-between text-[11px] border-t border-slate-100">
                       <span className="text-[10px] font-bold text-slate-400">Test queue:</span>
                       <div className="flex gap-1.5">
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setProgressWidth(prev => Math.min(100, prev + 15))}
                           className="px-2.5 py-1 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[10px] transition-colors cursor-pointer flex items-center gap-1 text-[#176B65]"
@@ -493,7 +493,7 @@ export default function HomePage() {
                           <Play className="w-2.5 h-2.5" />
                           <span>Next</span>
                         </button>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => setProgressWidth(40)}
                           className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[10px] transition-colors cursor-pointer text-slate-600"
@@ -519,7 +519,7 @@ export default function HomePage() {
             </div>
 
             {/* Secondary Floating Pill */}
-            <motion.div 
+            <motion.div
               animate={{ y: [0, 8, 0], rotate: [1, -2, 1] }}
               transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 1 }}
               className="absolute -top-4 -right-4 sm:-right-8 bg-white rounded-2xl px-4 py-2.5 shadow-xl border border-[#DCE9E3] flex items-center gap-2"
@@ -544,7 +544,7 @@ export default function HomePage() {
       {/* ========================================================= */}
       <section id="how-it-works" className="bg-[#DCE9E3]/45 py-10 sm:py-14 border-y border-[#DCE9E3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-          
+
           <div className="text-center max-w-2xl mx-auto space-y-3">
             <span className="text-xs font-bold uppercase tracking-widest text-[#176B65] bg-[#DCE9E3] px-3.5 py-1 rounded-full">
               Simple 3-Step Flow
@@ -593,10 +593,10 @@ export default function HomePage() {
                   className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between"
                 >
                   <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                    <img 
-                      src={st.img} 
-                      alt={st.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    <img
+                      src={st.img}
+                      alt={st.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-[#176B65]">
                       Step {st.step}
@@ -631,7 +631,7 @@ export default function HomePage() {
       {/* SECTION 3: EXPLORE NEARBY SHOPS (WITH PHOTOS)             */}
       {/* ========================================================= */}
       <section id="shops" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        
+
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#DCE9E3] pb-6">
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Category Directory</span>
@@ -715,12 +715,12 @@ export default function HomePage() {
 
               // Strict guaranteed photo per category
               const catPhoto = cat.id === 'salon' ? '/images/barber.jpg' :
-                               cat.id === 'pharmacy' ? '/images/pharmacy.jpg' :
-                               cat.id === 'clinic' ? '/images/clinic.jpg' :
-                               cat.id === 'food' ? '/images/food.jpg' :
-                               cat.id === 'diagnostic' ? '/images/diagnostic.jpg' :
-                               cat.id === 'auto' ? '/images/auto.jpg' :
-                               cat.imageUrl || '/images/clinic.jpg';
+                cat.id === 'pharmacy' ? '/images/pharmacy.jpg' :
+                  cat.id === 'clinic' ? '/images/clinic.jpg' :
+                    cat.id === 'food' ? '/images/food.jpg' :
+                      cat.id === 'diagnostic' ? '/images/diagnostic.jpg' :
+                        cat.id === 'auto' ? '/images/auto.jpg' :
+                          cat.imageUrl || '/images/clinic.jpg';
 
               return (
                 <Link
@@ -733,73 +733,72 @@ export default function HomePage() {
                     transition={{ duration: 0.2 }}
                     className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
                   >
-                  <div>
-                    {/* Category Photo Header */}
-                    <div className="relative h-48 w-full overflow-hidden bg-slate-900">
-                      <img 
-                        src={catPhoto} 
-                        alt={cat.name} 
-                        className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"></div>
+                    <div>
+                      {/* Category Photo Header */}
+                      <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                        <img
+                          src={catPhoto}
+                          alt={cat.name}
+                          className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"></div>
 
-                      {/* Top Badges */}
-                      <span className="absolute top-3 left-3 bg-[#176B65] text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
-                        {cat.name}
-                      </span>
-
-                      <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#283B3D] text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs">
-                        {matchingShops.length} {matchingShops.length === 1 ? 'Place' : 'Places'} Connected
-                      </span>
-                      {/* Bottom Category Name on Photo */}
-                      <div className="absolute bottom-3 left-4 right-4 text-white">
-                        <h3 className="text-2xl font-black drop-shadow-md">{cat.name}</h3>
-                      </div>
-                    </div>
-
-                    {/* Content Body */}
-                    <div className="p-5 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors">
+                        {/* Top Badges */}
+                        <span className="absolute top-3 left-3 bg-[#176B65] text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
                           {cat.name}
-                        </h3>
-                        <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg">
-                          {matchingShops.length} {matchingShops.length === 1 ? 'Shop' : 'Shops'}
                         </span>
+
+                        <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#283B3D] text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs">
+                          {matchingShops.length} {matchingShops.length === 1 ? 'Place' : 'Places'} Connected
+                        </span>
+                        {/* Bottom Category Name on Photo */}
+                        <div className="absolute bottom-3 left-4 right-4 text-white">
+                          <h3 className="text-2xl font-black drop-shadow-md">{cat.name}</h3>
+                        </div>
                       </div>
 
-                      <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2">
-                        {cat.description}
-                      </p>
-
-                      <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5 text-[#283B3D]/80">
-                          <Clock className="w-3.5 h-3.5 text-[#176B65]" />
-                          <span className="font-semibold text-[11px]">Avg. Wait:</span>
-                          <span className="font-bold text-[#176B65] text-[11px]">
-                            {matchingShops.length > 0 ? (cat.avgWait || '~10-15 min') : 'Queue Closed'}
+                      {/* Content Body */}
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors">
+                            {cat.name}
+                          </h3>
+                          <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg">
+                            {matchingShops.length} {matchingShops.length === 1 ? 'Shop' : 'Shops'}
                           </span>
                         </div>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          matchingShops.length > 0 ? 'text-emerald-800 bg-emerald-100' : 'text-slate-600 bg-slate-200'
-                        }`}>
-                          {matchingShops.length > 0 ? 'Zero Physical Line' : 'No Active Line'}
-                        </span>
+
+                        <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2">
+                          {cat.description}
+                        </p>
+
+                        <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 text-[#283B3D]/80">
+                            <Clock className="w-3.5 h-3.5 text-[#176B65]" />
+                            <span className="font-semibold text-[11px]">Avg. Wait:</span>
+                            <span className="font-bold text-[#176B65] text-[11px]">
+                              {matchingShops.length > 0 ? (cat.avgWait || '~10-15 min') : 'Queue Closed'}
+                            </span>
+                          </div>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${matchingShops.length > 0 ? 'text-emerald-800 bg-emerald-100' : 'text-slate-600 bg-slate-200'
+                            }`}>
+                            {matchingShops.length > 0 ? 'Zero Physical Line' : 'No Active Line'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Card Action Button */}
-                  <div className="p-5 pt-0">
-                    <button
-                      type="button"
-                      className="w-full py-3.5 rounded-2xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                    >
-                      <span>View {cat.name} Shops & Tokens</span>
-                      <ArrowRight className="w-4 h-4 text-[#F2A15A] group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-                </motion.div>
+                    {/* Card Action Button */}
+                    <div className="p-5 pt-0">
+                      <button
+                        type="button"
+                        className="w-full py-3.5 rounded-2xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        <span>View {cat.name} Shops & Tokens</span>
+                        <ArrowRight className="w-4 h-4 text-[#F2A15A] group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  </motion.div>
                 </Link>
               );
             })}
@@ -838,7 +837,7 @@ export default function HomePage() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#176B65]/30 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="max-w-4xl mx-auto space-y-10 relative z-10 text-center">
-          
+
           <div className="space-y-3">
             <span className="text-xs font-bold uppercase tracking-widest text-[#DCE9E3] bg-white/10 px-4 py-1.5 rounded-full border border-white/15">
               {isRealToken ? 'Your Real Active Token' : 'Live Interactive Queue Demo'}
@@ -847,7 +846,7 @@ export default function HomePage() {
               {isRealToken ? 'Your Live Token In Progress' : 'Your Live Token (In Progress)'}
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto font-medium">
-              {isRealToken 
+              {isRealToken
                 ? 'Your booked token is syncing live with the shop counter desk.'
                 : 'Real-time synchronization between the counter desk and your smartphone.'}
             </p>
@@ -855,7 +854,7 @@ export default function HomePage() {
 
           {/* Featured Live Token Card with Smooth Progress Bar Animation */}
           <div className="bg-white text-[#283B3D] rounded-3xl p-6 sm:p-10 shadow-2xl max-w-2xl mx-auto space-y-8 text-left border-4 border-[#176B65]">
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#DCE9E3] pb-4">
               <div>
                 <span className="text-xs uppercase font-extrabold text-[#176B65] tracking-wider">Your token number</span>
@@ -904,7 +903,7 @@ export default function HomePage() {
                 <span className="text-[#176B65]">{effectiveProgressWidth}% (Moving smoothly)</span>
               </div>
               <div className="w-full bg-[#DCE9E3] h-3.5 rounded-full overflow-hidden p-0.5">
-                <motion.div 
+                <motion.div
                   initial={{ width: '40%' }}
                   animate={{ width: `${effectiveProgressWidth}%` }}
                   transition={{ duration: 0.8, ease: "easeInOut" }}
@@ -912,8 +911,8 @@ export default function HomePage() {
                 ></motion.div>
               </div>
               <p className="text-[11px] text-slate-400 font-medium">
-                {isRealToken 
-                  ? 'Real-time sync active. You will receive an alert when your turn is called.' 
+                {isRealToken
+                  ? 'Real-time sync active. You will receive an alert when your turn is called.'
                   : 'Live progress – illustrative example showing real-time slot progression.'}
               </p>
             </div>
@@ -942,14 +941,14 @@ export default function HomePage() {
               <div className="pt-2 flex items-center justify-between text-xs text-[#283B3D]/70 border-t border-slate-100">
                 <span className="font-medium">Test queue movement:</span>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => setProgressWidth(prev => Math.min(100, prev + 15))}
                     className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 text-[#176B65]"
                   >
                     <Play className="w-3 h-3" />
                     <span>Next Customer</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => setProgressWidth(40)}
                     className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer text-slate-600"
                   >
@@ -1010,7 +1009,7 @@ export default function HomePage() {
       {/* ========================================================= */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         <div className="bg-[#DCE9E3] rounded-3xl p-8 sm:p-14 text-center space-y-6 border border-[#176B65]/20 shadow-md">
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.05, y: -4 }}
             className="inline-flex p-3 rounded-3xl bg-white text-[#176B65] items-center justify-center mx-auto shadow-sm cursor-pointer"
           >

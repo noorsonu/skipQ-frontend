@@ -162,6 +162,7 @@ function LoginContent() {
     }
 
     const payload = {
+      action: activeTab === 'login' ? 'login' : 'register',
       password: password.trim(),
       role: 'CUSTOMER'
     };
@@ -182,26 +183,30 @@ function LoginContent() {
         payload.email = loginEmail.trim().toLowerCase();
       }
     } else {
-      // Register Mode
+      // Register Mode - Strictly validate Name, Mobile Number, Email, Age, and Password
       if (!fullName.trim()) {
         setErrorMsg("Please enter your full name.");
+        return;
+      }
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+      if (cleanPhone.length !== 10) {
+        setErrorMsg("Please enter a valid 10-digit mobile number.");
         return;
       }
       if (!email.trim() || !email.includes('@')) {
         setErrorMsg("Please enter a valid email address.");
         return;
       }
-      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
-      if (cleanPhone && cleanPhone.length !== 10) {
-        setErrorMsg("If providing a mobile number, it must be 10 digits.");
+      const parsedAge = parseInt(age, 10);
+      if (!age || isNaN(parsedAge) || parsedAge < 5 || parsedAge > 115) {
+        setErrorMsg("Please enter a valid age (between 5 and 115 years).");
         return;
       }
+
       payload.name = fullName.trim();
+      payload.phone = cleanPhone;
       payload.email = email.trim().toLowerCase();
-      if (cleanPhone) payload.phone = cleanPhone;
-      if (age && parseInt(age, 10) >= 5 && parseInt(age, 10) <= 115) {
-        payload.age = parseInt(age, 10);
-      }
+      payload.age = parsedAge;
     }
 
     setLoading(true);
@@ -356,10 +361,36 @@ function LoginContent() {
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl font-semibold flex items-center gap-2"
+            className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl font-semibold flex items-start gap-2.5"
           >
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{errorMsg}</span>
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <p>{errorMsg}</p>
+              {activeTab === 'login' && (errorMsg.toLowerCase().includes('not found') || errorMsg.toLowerCase().includes('register')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('register');
+                    setErrorMsg('');
+                  }}
+                  className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer"
+                >
+                  👉 Click here to Register your Account now
+                </button>
+              )}
+              {activeTab === 'register' && errorMsg.toLowerCase().includes('already registered') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setErrorMsg('');
+                  }}
+                  className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer"
+                >
+                  👉 Click here to Log In instead
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -589,38 +620,32 @@ function LoginContent() {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-[#283B3D]">
-                        10-Digit Mobile Number
-                      </label>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        Optional / Recommended
-                      </span>
-                    </div>
+                    <label className="text-xs font-bold text-[#283B3D] block mb-1">
+                      10-Digit Mobile Number <span className="text-rose-500">*</span>
+                    </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
                       <input
                         type="tel"
+                        required
                         maxLength={10}
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        placeholder="9876543210 (recommended for SMS alerts)"
+                        placeholder="9876543210"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Enter mobile number to enable both Mobile & Email sign-in, or leave blank.
-                    </p>
                   </div>
 
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Your Age (in years) <span className="text-slate-400 font-normal">(Optional)</span>
+                      Your Age (in years) <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <input
                         type="number"
+                        required
                         min={5}
                         max={115}
                         value={age}
