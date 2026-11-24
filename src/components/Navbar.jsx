@@ -16,6 +16,7 @@ import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
+import { PwaInstallTopButton } from './PwaInstallPrompt';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -942,12 +943,16 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* ======================================================== */}
-          {/* STATE 1: GUEST (NEITHER LOGGED IN)                       */}
-          {/* Show BOTH Shopkeeper & Customer buttons, identical style */}
-          {/* ======================================================== */}
-          {userRole === 'GUEST' && (
-            <div className="flex items-center gap-2.5">
+          {/* Right Action Bar (Install App Button + Role Actions) */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <PwaInstallTopButton />
+
+            {/* ======================================================== */}
+            {/* STATE 1: GUEST (NEITHER LOGGED IN)                       */}
+            {/* Show BOTH Shopkeeper & Customer buttons, identical style */}
+            {/* ======================================================== */}
+            {userRole === 'GUEST' && (
+              <div className="flex items-center gap-2 sm:gap-2.5">
               {/* Shopkeeper Button (Guest Mode - Identical Customer Styling) */}
               <Link
                 href="/merchant/register?tab=login"
@@ -1290,6 +1295,8 @@ export default function Navbar() {
 
           </div>
         )}
+
+          </div>
 
         </div>
       </motion.header>
