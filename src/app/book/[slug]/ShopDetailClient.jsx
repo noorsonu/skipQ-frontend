@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Clock, MapPin, Users, ShieldCheck, Ticket, 
-  CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap,
+  CheckCircle2, AlertCircle, Sparkles, Phone, Store, UserPlus, Zap, LogIn,
   Lock, ArrowRight, RefreshCw, KeyRound, Wrench, Briefcase, Plus, Minus,
   Navigation, ArrowUpRight, Share2, Star, Heart, Radio, Calendar, User, MessageSquare, Send, Reply, Edit3, CornerDownRight,
   ChevronLeft, ChevronRight, Image as ImageIcon, Check, Tag, ChevronDown, ChevronUp, Search
@@ -15,6 +15,7 @@ import { MOCK_SHOPS } from '@/lib/mockData';
 import { authApi, queueApi, shopApi, reviewApi } from '@/lib/api';
 import { shareTokenPass } from '@/lib/shareToken';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
+import { signInWithGoogle } from '@/lib/googleAuth';
 
 const resolveShopImage = (shop) => {
   if (shop?.imageUrl) return shop.imageUrl;
@@ -451,10 +452,20 @@ export default function ShopDetailClient() {
   // Auto-fill phone and name if previously logged in as customer
   const [userRole, setUserRole] = useState('GUEST');
   const [activeMerchantShop, setActiveMerchantShop] = useState(null);
+  const [isCustomerAuthenticated, setIsCustomerAuthenticated] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [googleBookingLoading, setGoogleBookingLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const role = localStorage.getItem('ak_role');
+      const token = localStorage.getItem('ak_token');
+      const loggedIn = localStorage.getItem('ak_logged_in') === 'true';
+      const savedPhone = localStorage.getItem('ak_phone');
+      const savedName = localStorage.getItem('ak_customer_name');
+      const savedAge = localStorage.getItem('ak_customer_age');
+      const savedEmail = localStorage.getItem('ak_email');
+
       setUserRole(role || 'GUEST');
 
       const savedMerchant = localStorage.getItem('ak_active_merchant_shop');
@@ -464,14 +475,83 @@ export default function ShopDetailClient() {
         } catch (e) {}
       }
 
-      const savedPhone = localStorage.getItem('ak_phone');
       if (savedPhone) setCustomerPhone(savedPhone);
-      const savedName = localStorage.getItem('ak_customer_name');
       if (savedName) setCustomerName(savedName);
-      const savedAge = localStorage.getItem('ak_customer_age');
       if (savedAge) setCustomerAge(savedAge);
+      if (savedEmail) setCustomerEmail(savedEmail);
+
+      const isAuthed = ((loggedIn && !!token) || (role === 'CUSTOMER' && !!token)) && role !== 'MERCHANT';
+      setIsCustomerAuthenticated(!!isAuthed);
     }
+
+    const handleStorageChange = () => {
+      if (typeof window !== 'undefined') {
+        const role = localStorage.getItem('ak_role');
+        const token = localStorage.getItem('ak_token');
+        const loggedIn = localStorage.getItem('ak_logged_in') === 'true';
+        const savedPhone = localStorage.getItem('ak_phone');
+        const savedName = localStorage.getItem('ak_customer_name');
+        const savedAge = localStorage.getItem('ak_customer_age');
+        const savedEmail = localStorage.getItem('ak_email');
+
+        setUserRole(role || 'GUEST');
+        if (savedPhone) setCustomerPhone(savedPhone);
+        if (savedName) setCustomerName(savedName);
+        if (savedAge) setCustomerAge(savedAge);
+        if (savedEmail) setCustomerEmail(savedEmail);
+
+        const isAuthed = ((loggedIn && !!token) || (role === 'CUSTOMER' && !!token)) && role !== 'MERCHANT';
+        setIsCustomerAuthenticated(!!isAuthed);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  const handleGoogleSignInForBooking = async () => {
+    try {
+      setGoogleBookingLoading(true);
+      setErrorMsg('');
+      const googleUser = await signInWithGoogle();
+      if (!googleUser) return;
+
+      const res = await authApi.googleLogin({
+        email: googleUser.email,
+        name: googleUser.displayName,
+        phone: googleUser.phoneNumber,
+        googleId: googleUser.uid,
+        action: 'login'
+      });
+
+      const token = res?.data?.data?.token;
+      if (!token) {
+        throw new Error("Login failed. No token returned from server.");
+      }
+
+      const name = res?.data?.data?.name || googleUser.displayName || 'Customer';
+      const phone = res?.data?.data?.phone || googleUser.phoneNumber || '';
+
+      localStorage.setItem('ak_token', token);
+      localStorage.setItem('ak_role', 'CUSTOMER');
+      localStorage.setItem('ak_logged_in', 'true');
+      localStorage.setItem('ak_customer_name', name);
+      if (phone) localStorage.setItem('ak_phone', phone);
+      if (googleUser.email) localStorage.setItem('ak_email', googleUser.email);
+
+      setCustomerName(name);
+      if (phone) setCustomerPhone(phone.replace(/\D/g, '').slice(-10));
+      if (googleUser.email) setCustomerEmail(googleUser.email);
+      setIsCustomerAuthenticated(true);
+      setUserRole('CUSTOMER');
+
+      window.dispatchEvent(new Event('storage'));
+    } catch (err) {
+      console.error("Google booking login error:", err);
+      setErrorMsg(err?.response?.data?.message || err.message || 'Google Sign-In failed.');
+    } finally {
+      setGoogleBookingLoading(false);
+    }
+  };
 
   // Fetch shop by slug from localStorage registered shops or backend API
   useEffect(() => {
@@ -639,33 +719,32 @@ export default function ShopDetailClient() {
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('ak_token') : null;
-    const savedPhone = typeof window !== 'undefined' ? localStorage.getItem('ak_phone') : null;
+    const loggedIn = typeof window !== 'undefined' ? localStorage.getItem('ak_logged_in') === 'true' : false;
+    const role = typeof window !== 'undefined' ? localStorage.getItem('ak_role') : null;
 
-    // If already authenticated with the same phone, proceed directly to join queue
-    if (token && savedPhone === cleanPhone) {
-      await executeJoinQueue(cleanPhone);
+    // Strict customer authentication check: Block dummy number bookings without login!
+    if (!isCustomerAuthenticated || !token || (!loggedIn && role !== 'CUSTOMER') || role === 'MERCHANT') {
+      setIsCustomerAuthenticated(false);
+      setErrorMsg("Kripya token book karne ke liye pehle Login ya Register karein. Bina login ke dummy data se booking allowed nahi hai.");
       return;
     }
 
-    // Otherwise, trigger OTP flow
-    try {
-      setBooking(true);
-      const res = await authApi.sendOtp(cleanPhone);
-      setOtpSuccessMessage(res.data?.data?.message || `OTP sent to +91 ${cleanPhone}`);
-      setShowOtpModal(true);
-    } catch (err) {
-      setOtpSuccessMessage(`OTP sent to +91 ${cleanPhone} (Dev OTP: 1234)`);
-      setShowOtpModal(true);
-    } finally {
-      setBooking(false);
+    // Save verified customer info to session
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ak_phone', cleanPhone);
+      localStorage.setItem('ak_customer_name', customerName.trim());
+      localStorage.setItem('ak_customer_age', String(ageNum));
     }
+
+    // Directly join queue for verified customer
+    await executeJoinQueue(cleanPhone);
   };
 
-  // Verify OTP and Complete Queue Token Generation
+  // Verify OTP and Complete Queue Token Generation (If OTP flow used)
   const handleVerifyOtpAndJoin = async (e) => {
     e.preventDefault();
     if (!otp || otp.length < 4) {
-      setOtpError('Please enter the 4-digit OTP (Default: 1234)');
+      setOtpError('Please enter the 4-digit verification code');
       return;
     }
 
@@ -679,20 +758,15 @@ export default function ShopDetailClient() {
       if (res?.data?.data?.token) {
         localStorage.setItem('ak_token', res.data.data.token);
         localStorage.setItem('ak_phone', cleanPhone);
+        localStorage.setItem('ak_logged_in', 'true');
+        localStorage.setItem('ak_role', 'CUSTOMER');
+        setIsCustomerAuthenticated(true);
       }
 
       setShowOtpModal(false);
       await executeJoinQueue(cleanPhone);
     } catch (err) {
-      // In dev/demo mode, accept '1234'
-      if (otp === '1234') {
-        localStorage.setItem('ak_token', 'dev-demo-token');
-        localStorage.setItem('ak_phone', customerPhone.trim());
-        setShowOtpModal(false);
-        await executeJoinQueue(customerPhone.trim());
-      } else {
-        setOtpError(err?.response?.data?.message || 'Invalid OTP. Please enter 1234.');
-      }
+      setOtpError(err?.response?.data?.message || 'Invalid verification code. Please enter the valid OTP.');
     } finally {
       setOtpLoading(false);
     }
@@ -1720,12 +1794,86 @@ export default function ShopDetailClient() {
                 </button>
               </div>
             </div>
+          ) : !isCustomerAuthenticated ? (
+            <div className="text-center py-10 space-y-6">
+              <div className="w-16 h-16 rounded-3xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center mx-auto shadow-xs border border-[#176B65]/20">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#176B65] bg-[#DCE9E3] px-3.5 py-1 rounded-full border border-[#176B65]/20">
+                  Customer Authentication Required
+                </span>
+                <h2 className="text-2xl font-black text-[#283B3D]">
+                  Log In to Book Your Digital Token
+                </h2>
+                <p className="text-xs text-[#283B3D]/70 font-medium max-w-md mx-auto leading-relaxed">
+                  Bina customer login ya registration ke dummy number se token pass generate nahi kiya ja sakta. Kripya continue karne ke liye apna account verify karein.
+                </p>
+              </div>
+
+              <div className="pt-2 space-y-3.5 max-w-sm mx-auto">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignInForBooking}
+                  disabled={googleBookingLoading}
+                  className="w-full py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-xs font-bold text-[#283B3D] transition-all shadow-xs flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60"
+                >
+                  {googleBookingLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#176B65]" />
+                      <span>Signing in with Google...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                      </svg>
+                      <span>Continue with Google</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
+                    <span className="bg-white px-3">or log in with mobile / email</span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/login?returnUrl=/book/${encodeURIComponent(slug)}`}
+                  className="w-full py-3.5 px-5 rounded-2xl bg-[#176B65] hover:bg-[#135954] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Log In / Register Customer</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {errorMsg && (
+                <p className="text-xs font-bold text-rose-600 bg-rose-50 p-3 rounded-2xl border border-rose-200 max-w-sm mx-auto">
+                  {errorMsg}
+                </p>
+              )}
+            </div>
           ) : (
             <>
               <div>
-                <h2 className="text-2xl font-black text-[#283B3D]">Book Your Digital Token</h2>
-                <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
-                  Select people count, specify optional service requirements, and verify your phone.
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <h2 className="text-2xl font-black text-[#283B3D]">Book Your Digital Token</h2>
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#176B65]/10 text-[#176B65] border border-[#176B65]/20 text-[11px] font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Verified Customer</span>
+                  </div>
+                </div>
+                <p className="text-xs text-[#283B3D]/70 font-medium">
+                  Logged in as <strong>{customerName || 'Customer'}</strong> {customerEmail ? `(${customerEmail})` : ''}. Select people count and confirm your token.
                 </p>
               </div>
 
@@ -2236,7 +2384,7 @@ export default function ShopDetailClient() {
                     required
                   />
                   <span className="block text-[11px] text-center text-slate-400 font-medium mt-1.5">
-                    Testing in Dev Mode? Default OTP is <strong className="text-[#176B65]">1234</strong>
+                    Enter the code received on your registered phone number
                   </span>
                 </div>
 
