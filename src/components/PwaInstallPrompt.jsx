@@ -122,9 +122,8 @@ export function PwaInstallTopButton() {
         }`}
         title={isMerchant ? "Install SkipQ Partner App for Workers & Counters" : "Install SkipQ App directly to your Mobile Home Screen"}
       >
-        <Smartphone className={`w-3.5 h-3.5 animate-bounce ${isMerchant ? 'text-amber-200' : 'text-amber-300'}`} />
-        <span className="hidden sm:inline">{isMerchant ? 'Install Partner App' : 'Install App'}</span>
-        <span className="sm:hidden">{isMerchant ? 'Partner App' : 'App'}</span>
+        <Download className={`w-3.5 h-3.5 animate-bounce ${isMerchant ? 'text-amber-200' : 'text-emerald-200'}`} />
+        <span>{isMerchant ? 'Install Partner' : 'Install'}</span>
       </button>
 
       {/* Guide Modal */}
@@ -146,8 +145,8 @@ export function PwaInstallBottomButton() {
         onClick={triggerInstall}
         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] hover:text-white border border-white/20 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
       >
-        <Smartphone className="w-4 h-4 text-emerald-400" />
-        <span>{isMerchant ? '📲 Install SkipQ Partner App' : '📲 Install SkipQ Mobile App'}</span>
+        <Download className="w-4 h-4 text-emerald-400" />
+        <span>{isMerchant ? 'Install SkipQ Partner' : 'Install SkipQ'}</span>
       </button>
 
       <InstallGuideModal isOpen={modalOpen} onClose={() => setModalOpen(false)} isIOS={isIOS} isMerchant={isMerchant} />
