@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS, MOCK_CATEGORIES } from '@/lib/mockData';
-import { shopApi } from '@/lib/api';
+import { shopApi, queueApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import FreshUrbanLogo from '@/components/FreshUrbanLogo';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
@@ -84,7 +84,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
 
-  // Live progress simulation for Section 4
+  // Live progress simulation for Section 4 & Hero phone mockup
   const [progressWidth, setProgressWidth] = useState(65);
   const [activeUserToken, setActiveUserToken] = useState(null);
 
@@ -102,33 +102,105 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    const syncActiveToken = () => {
-      if (typeof window !== 'undefined') {
-        const currentPhone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
-        const savedStr = localStorage.getItem('ak_customer_tokens');
-        if (savedStr) {
-          try {
-            const list = JSON.parse(savedStr);
-            if (Array.isArray(list)) {
-              const filtered = list.filter(t => {
-                if (currentPhone) {
-                  return (t.customerPhone || '').replace(/\D/g, '').slice(-10) === currentPhone;
-                }
-                return !t.customerPhone || t.isGuest;
-              });
-              setActiveUserToken(filtered.length > 0 ? filtered[0] : null);
+    let intervalId;
+
+    const syncActiveToken = async () => {
+      if (typeof window === 'undefined') return;
+
+      const currentPhone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
+      const authToken = localStorage.getItem('ak_token');
+
+      // 1. Try fetching real active tokens from backend if authenticated
+      if (authToken && currentPhone) {
+        try {
+          const res = await queueApi.getMyActiveTokens();
+          if (res?.data?.data && Array.isArray(res.data.data)) {
+            const activeBackendTokens = res.data.data.filter(t => {
+              const status = (t.status || '').toUpperCase();
+              return status !== 'CANCELLED' && status !== 'COMPLETED';
+            });
+            if (activeBackendTokens.length > 0) {
+              setActiveUserToken(activeBackendTokens[0]);
+              try {
+                localStorage.setItem('ak_customer_tokens', JSON.stringify(activeBackendTokens));
+              } catch (e) {}
               return;
             }
-          } catch (e) {}
+          }
+        } catch (err) {
+          // If token expired or network error, fallback to local storage
         }
-        setActiveUserToken(null);
       }
+
+      // 2. Fallback to localStorage
+      const savedStr = localStorage.getItem('ak_customer_tokens');
+      if (savedStr) {
+        try {
+          const list = JSON.parse(savedStr);
+          if (Array.isArray(list)) {
+            const filtered = list.filter(t => {
+              const status = (t.status || '').toUpperCase();
+              if (status === 'CANCELLED' || status === 'COMPLETED') return false;
+              if (currentPhone) {
+                return (t.customerPhone || '').replace(/\D/g, '').slice(-10) === currentPhone;
+              }
+              return !t.customerPhone || t.isGuest;
+            });
+            if (filtered.length > 0) {
+              setActiveUserToken(filtered[0]);
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+
+      setActiveUserToken(null);
     };
 
     syncActiveToken();
-    window.addEventListener('storage', syncActiveToken);
-    return () => window.removeEventListener('storage', syncActiveToken);
+
+    // Poll every 10 seconds to keep live wait-time, people ahead & status in sync with merchant updates
+    intervalId = setInterval(syncActiveToken, 10000);
+
+    const onStorageOrCustom = () => syncActiveToken();
+    window.addEventListener('storage', onStorageOrCustom);
+    window.addEventListener('ak_tokens_updated', onStorageOrCustom);
+    window.addEventListener('ak_token_booked', onStorageOrCustom);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', onStorageOrCustom);
+      window.removeEventListener('ak_tokens_updated', onStorageOrCustom);
+      window.removeEventListener('ak_token_booked', onStorageOrCustom);
+    };
   }, []);
+
+  // Dynamic real-time metrics synced between Hero phone mockup & Section 4
+  const isRealToken = Boolean(activeUserToken);
+
+  const displayPeopleAhead = isRealToken
+    ? (activeUserToken.peopleAhead ?? 0)
+    : Math.max(0, Math.round((100 - progressWidth) / 18));
+
+  const displayWaitMin = isRealToken
+    ? (activeUserToken.estimatedWaitMin ?? Math.max(0, displayPeopleAhead * 4))
+    : Math.max(0, displayPeopleAhead * 3);
+
+  const displayTokenNum = isRealToken
+    ? (activeUserToken.displayToken || activeUserToken.tokenNumber || 'AK - 024')
+    : 'AK - 024';
+
+  const displayShopName = isRealToken
+    ? (activeUserToken.shopName || 'Partner Store')
+    : 'City Style Salon';
+
+  const tokenNumInt = parseInt(String(displayTokenNum).replace(/\D/g, '') || '24', 10);
+  const servingNumInt = Math.max(1, tokenNumInt - displayPeopleAhead);
+  const displayCounterServing = `AK - ${String(servingNumInt).padStart(3, '0')}`;
+
+  const effectiveProgressWidth = isRealToken
+    ? Math.min(95, Math.max(15, 100 - (displayPeopleAhead * 20)))
+    : progressWidth;
 
   useEffect(() => {
     async function fetchLiveShops() {
@@ -309,7 +381,7 @@ export default function HomePage() {
                   <OfficialBrandLogo height={28} animate={false} />
                   <span className="text-[10px] font-black uppercase bg-[#DCE9E3] text-[#176B65] px-2.5 py-1 rounded-full flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>{activeUserToken ? 'Live Ticket' : 'Live Station'}</span>
+                    <span>{isRealToken ? 'Live Ticket' : 'Live Station'}</span>
                   </span>
                 </div>
 
@@ -317,10 +389,10 @@ export default function HomePage() {
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#283B3D]/10 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-black text-[#176B65] truncate max-w-[170px]">
-                      {activeUserToken?.shopName || 'City Style Salon'}
+                      {displayShopName}
                     </span>
                     <span className="text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
-                      {activeUserToken ? 'Your Token' : 'In Progress'}
+                      {isRealToken ? 'Your Token' : 'In Progress'}
                     </span>
                   </div>
 
@@ -329,15 +401,15 @@ export default function HomePage() {
                       Your Token Number
                     </span>
                     <div className="text-3xl sm:text-4xl font-token font-bold text-[#176B65] tracking-tight mt-0.5">
-                      {activeUserToken?.displayToken || 'AK - 024'}
+                      {displayTokenNum}
                     </div>
                   </div>
 
-                  {/* 2 Metrics: Minutes & People Ahead (from 2nd screenshot) */}
+                  {/* 2 Metrics: Minutes & People Ahead (dynamically synced) */}
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div className="bg-[#F3F1E9] rounded-xl p-2 border border-[#DCE9E3]">
                       <span className="font-token text-xl font-bold text-[#176B65] block leading-none">
-                        {activeUserToken ? String(activeUserToken.estimatedWaitMin || 8).padStart(2, '0') : '08'}
+                        {String(displayWaitMin).padStart(2, '0')}
                       </span>
                       <span className="text-[9px] font-bold text-[#283B3D]/70 uppercase tracking-wider block mt-1">
                         Est. Minutes
@@ -346,7 +418,7 @@ export default function HomePage() {
 
                     <div className="bg-[#F3F1E9] rounded-xl p-2 border border-[#DCE9E3]">
                       <span className="font-token text-xl font-bold text-[#176B65] block leading-none">
-                        {activeUserToken ? String(activeUserToken.peopleAhead ?? 3).padStart(2, '0') : String(Math.max(0, Math.round((100 - progressWidth) / 20))).padStart(2, '0')}
+                        {String(displayPeopleAhead).padStart(2, '0')}
                       </span>
                       <span className="text-[9px] font-bold text-[#283B3D]/70 uppercase tracking-wider block mt-1">
                         People Ahead
@@ -354,15 +426,15 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Dynamic Progress Indicator (interactive with progressWidth) */}
+                  {/* Dynamic Progress Indicator (interactive with effectiveProgressWidth) */}
                   <div className="space-y-1.5 pt-0.5">
                     <div className="flex justify-between text-[11px] font-bold text-[#283B3D]">
                       <span>Queue Progress</span>
-                      <span className="text-[#176B65]">{progressWidth}%</span>
+                      <span className="text-[#176B65]">{effectiveProgressWidth}%</span>
                     </div>
                     <div className="w-full bg-[#DCE9E3] h-2.5 rounded-full overflow-hidden p-0.5">
                       <motion.div 
-                        animate={{ width: `${progressWidth}%` }}
+                        animate={{ width: `${effectiveProgressWidth}%` }}
                         transition={{ duration: 0.5, ease: "easeInOut" }}
                         className="bg-[#176B65] h-full rounded-full"
                       />
@@ -370,7 +442,7 @@ export default function HomePage() {
                   </div>
 
                   {/* Interactive Queue Test Controls (Next Customer / Reset) */}
-                  {activeUserToken ? (
+                  {isRealToken ? (
                     <Link
                       href="/tokens"
                       className="w-full py-2 px-3 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all text-center shadow-xs"
@@ -407,7 +479,7 @@ export default function HomePage() {
                 <div className="bg-[#DCE9E3] rounded-2xl p-2.5 flex items-center justify-between text-xs font-bold text-[#176B65]">
                   <span>Counter Serving:</span>
                   <span className="font-token text-xs bg-white px-2.5 py-0.5 rounded-lg text-[#283B3D] shadow-xs">
-                    {activeUserToken ? `AK - ${String(Math.max(1, (parseInt(activeUserToken.displayToken?.replace(/\D/g, '') || 24)) - (activeUserToken.peopleAhead || 3))).padStart(3, '0')}` : 'AK - 021'}
+                    {displayCounterServing}
                   </span>
                 </div>
 
@@ -735,13 +807,13 @@ export default function HomePage() {
           
           <div className="space-y-3">
             <span className="text-xs font-bold uppercase tracking-widest text-[#DCE9E3] bg-white/10 px-4 py-1.5 rounded-full border border-white/15">
-              {activeUserToken ? 'Your Real Active Token' : 'Live Interactive Queue Demo'}
+              {isRealToken ? 'Your Real Active Token' : 'Live Interactive Queue Demo'}
             </span>
             <h2 className="text-3xl sm:text-5xl font-black text-white">
-              {activeUserToken ? 'Your Live Token In Progress' : 'Your Live Token (In Progress)'}
+              {isRealToken ? 'Your Live Token In Progress' : 'Your Live Token (In Progress)'}
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto font-medium">
-              {activeUserToken 
+              {isRealToken 
                 ? 'Your booked token is syncing live with the shop counter desk.'
                 : 'Real-time synchronization between the counter desk and your smartphone.'}
             </p>
@@ -754,22 +826,22 @@ export default function HomePage() {
               <div>
                 <span className="text-xs uppercase font-extrabold text-[#176B65] tracking-wider">Your token number</span>
                 <div className="font-token text-4xl sm:text-5xl font-bold text-[#283B3D] tracking-tight mt-1">
-                  {activeUserToken?.displayToken || 'AK - 024'}
+                  {displayTokenNum}
                 </div>
               </div>
               <div className="sm:text-right">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Service Store</span>
                 <span className="text-lg font-black text-[#176B65]">
-                  {activeUserToken?.shopName || 'City Style Salon'}
+                  {displayShopName}
                 </span>
               </div>
             </div>
 
-            {/* Metrics: Minutes & People Ahead */}
+            {/* Metrics: Minutes & People Ahead (dynamically synced) */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#F3F1E9] rounded-2xl p-4 text-center border border-[#DCE9E3]">
                 <span className="font-token text-4xl sm:text-5xl font-bold text-[#176B65] block">
-                  {activeUserToken ? String(activeUserToken.estimatedWaitMin || 10).padStart(2, '0') : '08'}
+                  {String(displayWaitMin).padStart(2, '0')}
                 </span>
                 <span className="text-xs font-bold text-[#283B3D]/70 uppercase tracking-wider mt-1 block">
                   Estimated minutes
@@ -778,7 +850,7 @@ export default function HomePage() {
 
               <div className="bg-[#F3F1E9] rounded-2xl p-4 text-center border border-[#DCE9E3]">
                 <span className="font-token text-4xl sm:text-5xl font-bold text-[#176B65] block">
-                  {activeUserToken ? String(activeUserToken.peopleAhead ?? 2).padStart(2, '0') : '03'}
+                  {String(displayPeopleAhead).padStart(2, '0')}
                 </span>
                 <span className="text-xs font-bold text-[#283B3D]/70 uppercase tracking-wider mt-1 block">
                   People ahead
@@ -790,25 +862,33 @@ export default function HomePage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="text-[#283B3D]">Queue progress</span>
-                <span className="text-[#176B65]">{progressWidth}% (Moving smoothly)</span>
+                <span className="text-[#176B65]">{effectiveProgressWidth}% (Moving smoothly)</span>
               </div>
               <div className="w-full bg-[#DCE9E3] h-3.5 rounded-full overflow-hidden p-0.5">
                 <motion.div 
                   initial={{ width: '40%' }}
-                  animate={{ width: `${progressWidth}%` }}
+                  animate={{ width: `${effectiveProgressWidth}%` }}
                   transition={{ duration: 0.8, ease: "easeInOut" }}
                   className="bg-[#176B65] h-full rounded-full"
                 ></motion.div>
               </div>
               <p className="text-[11px] text-slate-400 font-medium">
-                {activeUserToken 
+                {isRealToken 
                   ? 'Real-time sync active. You will receive an alert when your turn is called.' 
                   : 'Live progress – illustrative example showing real-time slot progression.'}
               </p>
             </div>
 
+            {/* Counter Serving Badge inside Section 4 */}
+            <div className="bg-[#DCE9E3] rounded-2xl p-3 flex items-center justify-between text-sm font-bold text-[#176B65]">
+              <span>Counter Serving:</span>
+              <span className="font-token text-base bg-white px-3.5 py-1 rounded-xl text-[#283B3D] shadow-xs">
+                {displayCounterServing}
+              </span>
+            </div>
+
             {/* Interactive Progress Demo Controls or Direct Link */}
-            {activeUserToken ? (
+            {isRealToken ? (
               <div className="pt-2">
                 <Link
                   href="/tokens"
@@ -824,15 +904,15 @@ export default function HomePage() {
                 <span className="font-medium">Test queue movement:</span>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setProgressWidth(Math.min(100, progressWidth + 15))}
-                    className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                    onClick={() => setProgressWidth(prev => Math.min(100, prev + 15))}
+                    className="px-3.5 py-1.5 bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1 text-[#176B65]"
                   >
                     <Play className="w-3 h-3" />
                     <span>Next Customer</span>
                   </button>
                   <button 
                     onClick={() => setProgressWidth(40)}
-                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer text-slate-600"
                   >
                     Reset
                   </button>
