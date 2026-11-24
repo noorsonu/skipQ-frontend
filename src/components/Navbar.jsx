@@ -905,10 +905,29 @@ export default function Navbar() {
 
           {/* Desktop Navigation Links */}
           {userRole === 'MERCHANT' ? (
-            <div className="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#DCE9E3]/70 border border-[#176B65]/20 text-xs font-bold text-[#176B65]">
-              <Store className="w-4 h-4 text-[#176B65]" />
-              <span>Counter Operations Active</span>
-              <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />
+            <div className="hidden md:flex items-center gap-2 bg-[#DCE9E3]/70 p-1.5 rounded-2xl border border-[#DCE9E3]">
+              <Link
+                href="/merchant/dashboard"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  pathname === '/merchant/dashboard'
+                    ? 'bg-white text-[#176B65] shadow-xs'
+                    : 'text-[#283B3D]/80 hover:text-[#176B65]'
+                }`}
+              >
+                <Store className="w-4 h-4" />
+                <span>Live Dashboard</span>
+              </Link>
+              <Link
+                href="/merchant/profile"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  pathname === '/merchant/profile'
+                    ? 'bg-white text-[#176B65] shadow-xs'
+                    : 'text-[#283B3D]/80 hover:text-[#176B65]'
+                }`}
+              >
+                <User className="w-4 h-4" />
+                <span>Shopkeeper Details</span>
+              </Link>
             </div>
           ) : (
             <nav className="hidden md:flex items-center gap-1.5 bg-[#DCE9E3]/70 p-1.5 rounded-2xl border border-[#DCE9E3]">
@@ -1005,11 +1024,11 @@ export default function Navbar() {
           {/* Customer button is HIDDEN. Only Shopkeeper Pill & Logout */}
           {/* ======================================================== */}
           {userRole === 'MERCHANT' && (
-            <div className="relative flex items-center gap-2.5" ref={merchantDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setMerchantDropdownOpen(!merchantDropdownOpen)}
+            <div className="relative flex items-center gap-2.5">
+              <Link
+                href="/merchant/profile"
                 className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-[#DCE9E3]/70 hover:bg-[#DCE9E3] border-[#176B65]/20 text-[#283B3D]"
+                title="View Full Shopkeeper & Store Details"
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white">
                   <Store className="w-4 h-4" />
@@ -1026,80 +1045,7 @@ export default function Navbar() {
                     {workerFirstName}
                   </span>
                 </div>
-
-                <ChevronDown className={`w-3.5 h-3.5 text-[#283B3D]/60 transition-transform ${merchantDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Shopkeeper Dropdown Menu */}
-              <AnimatePresence>
-                {merchantDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute right-0 top-14 w-76 sm:w-84 bg-white rounded-3xl p-5 shadow-2xl border border-[#DCE9E3] space-y-4 z-50 text-[#283B3D]"
-                  >
-                    {/* Header */}
-                    <div className="flex items-start gap-3 border-b border-[#DCE9E3] pb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#DCE9E3] border border-[#176B65]/30 text-[#176B65] flex items-center justify-center shrink-0">
-                        <Store className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-black text-sm text-[#283B3D] truncate">
-                          {registeredMerchantShop?.name || 'My Shop'}
-                        </h4>
-                        <p className="text-xs text-[#283B3D]/70 font-medium mt-0.5">
-                          {registeredMerchantShop?.categoryName || 'Store'} • {registeredMerchantShop?.zone || 'Lucknow'}
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md mt-1.5 border border-emerald-200">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          <span>Active Shopkeeper Console</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="space-y-1.5 pt-1">
-                      <Link
-                        href="/merchant/dashboard"
-                        onClick={() => setMerchantDropdownOpen(false)}
-                        className="w-full py-2.5 px-3.5 rounded-xl bg-[#176B65] text-white hover:bg-[#135954] text-xs font-bold flex items-center justify-between transition-colors cursor-pointer shadow-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Store className="w-4 h-4 text-[#F2A15A]" />
-                          <span>Open Live Dashboard</span>
-                        </div>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-
-                      <Link
-                        href="/merchant/register?new=true"
-                        onClick={() => setMerchantDropdownOpen(false)}
-                        className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-[#DCE9E3]/40 text-xs font-bold flex items-center justify-between text-[#283B3D] transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#176B65]" />
-                          <span>Register Another Branch</span>
-                        </div>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                      </Link>
-                    </div>
-
-                    {/* Shopkeeper Logout */}
-                    <div className="pt-2 border-t border-[#DCE9E3]">
-                      <button
-                        type="button"
-                        onClick={handleMerchantLogout}
-                        className="w-full py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Log Out as Shopkeeper</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              </Link>
             </div>
           )}
 
