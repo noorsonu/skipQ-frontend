@@ -411,7 +411,7 @@ export default function Navbar() {
       if (phone) setCustomerPhone(phone);
       setIsCustomerLoggedIn(true);
       setUserRole('CUSTOMER');
-      setShowLoginModal(false);
+      setLoginModalOpen(false);
       setLoginSuccessMsg(`Welcome, ${name}!`);
     } catch (err) {
       console.error("Google sign in error:", err);
@@ -467,7 +467,7 @@ export default function Navbar() {
       if (finalAge) setCustomerAge(finalAge);
       setIsCustomerLoggedIn(true);
       setUserRole('CUSTOMER');
-      setShowLoginModal(false);
+      setLoginModalOpen(false);
       setLoginSuccessMsg(`Welcome, ${finalName}!`);
     } catch (err) {
       console.error("Direct login error:", err);
