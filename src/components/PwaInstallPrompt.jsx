@@ -125,11 +125,6 @@ export function PwaInstallTopButton() {
         <Smartphone className={`w-3.5 h-3.5 animate-bounce ${isMerchant ? 'text-amber-200' : 'text-amber-300'}`} />
         <span className="hidden sm:inline">{isMerchant ? 'Install Partner App' : 'Install App'}</span>
         <span className="sm:hidden">{isMerchant ? 'Partner App' : 'App'}</span>
-        <span className={`text-[9px] uppercase font-bold px-1 py-0.2 rounded-md ${
-          isMerchant ? 'bg-amber-200 text-amber-950' : 'bg-amber-400 text-slate-900'
-        }`}>
-          {isMerchant ? 'Worker' : 'Free'}
-        </span>
       </button>
 
       {/* Guide Modal */}
