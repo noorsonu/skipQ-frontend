@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Smartphone, X, Check, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Global shared state for install prompt
 let globalDeferredPrompt = null;
@@ -14,7 +15,6 @@ export function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isMerchant, setIsMerchant] = useState(false);
-  const [installedSuccess, setInstalledSuccess] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -30,7 +30,7 @@ export function usePwaInstall() {
 
     setIsMerchant(window.location.pathname.startsWith('/merchant'));
 
-    // Check if already running as installed standalone app
+    // Check if running in standalone mode
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     setIsStandalone(checkStandalone);
 
@@ -42,10 +42,8 @@ export function usePwaInstall() {
 
     const handleAppInstalled = () => {
       setIsStandalone(true);
-      setInstalledSuccess(true);
       globalDeferredPrompt = null;
       setDeferredPrompt(null);
-      setTimeout(() => setInstalledSuccess(false), 5000);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -61,7 +59,7 @@ export function usePwaInstall() {
     };
   }, []);
 
-  const triggerInstall = async () => {
+  const triggerInstall = async (forMerchant = null) => {
     const promptEvent = deferredPrompt || globalDeferredPrompt;
 
     if (promptEvent) {
@@ -71,130 +69,299 @@ export function usePwaInstall() {
         if (choice?.outcome === 'accepted') {
           globalDeferredPrompt = null;
           setDeferredPrompt(null);
-          setInstalledSuccess(true);
-          setTimeout(() => setInstalledSuccess(false), 5000);
-          return;
+          return true;
         }
       } catch (err) {
         console.warn('Install prompt error:', err);
       }
     }
 
-    // Direct native system action (Safari on iOS & native mobile share)
+    // Direct native system trigger (Safari iOS / Android)
+    const isMerch = forMerchant !== null ? forMerchant : isMerchant;
+    const shareUrl = isMerch ? 'https://skipq-smoky.vercel.app/merchant/dashboard' : 'https://skipq-smoky.vercel.app/';
+    const shareTitle = isMerch ? 'SkipQ Partner App' : 'SkipQ App';
+    const shareText = isMerch 
+      ? '📲 Install SkipQ Partner App — Store Queue & Counter Dashboard:\n' 
+      : '📲 Install SkipQ App — Book live tokens & avoid waiting:\n';
+
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: isMerchant ? 'SkipQ Partner' : 'SkipQ',
-          text: isMerchant ? 'Manage store queue with SkipQ Partner' : 'Book tokens online without physical waiting: SkipQ',
-          url: window.location.href,
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
         });
+        return true;
       } catch (err) {
-        // user dismissed sheet, no error
+        // user closed native sheet
+        return false;
       }
     }
+    return false;
+  };
+
+  const triggerShare = async (forMerchant = null) => {
+    const isMerch = forMerchant !== null ? forMerchant : isMerchant;
+    const shareUrl = isMerch 
+      ? 'https://skipq-smoky.vercel.app/merchant/dashboard' 
+      : 'https://skipq-smoky.vercel.app/';
+    const shareTitle = isMerch ? 'SkipQ Partner App' : 'SkipQ App';
+    const shareText = isMerch 
+      ? '📲 Install SkipQ Partner App — Store Queue & Counter Calling Dashboard:\n' 
+      : '📲 Install SkipQ App — Book digital tokens and skip waiting:\n';
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return true;
+      } catch (err) {
+        // user cancelled share
+        return false;
+      }
+    }
+
+    // Clipboard fallback
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(`${shareText}${shareUrl}`);
+        return 'copied';
+      } catch (err) {
+        console.warn('Clipboard error:', err);
+      }
+    }
+    return false;
   };
 
   return {
     isStandalone,
     isMerchant,
-    installedSuccess,
     triggerInstall,
+    triggerShare,
   };
 }
 
-// 1. TOP NAVBAR DOWNLOAD / INSTALL BUTTON
-export function PwaInstallTopButton() {
-  const { isStandalone, isMerchant, triggerInstall } = usePwaInstall();
+// 1. MODAL WITH [INSTALL] AND [SHARE] OPTIONS
+export function AppActionModal({ isOpen, onClose, forMerchant = false }) {
+  const { triggerInstall, triggerShare } = usePwaInstall();
+  const [copied, setCopied] = useState(false);
 
-  // Hide if already running in standalone app mode
-  if (isStandalone) return null;
+  if (!isOpen) return null;
+
+  const handleInstallClick = async () => {
+    await triggerInstall(forMerchant);
+    onClose();
+  };
+
+  const handleShareClick = async () => {
+    const res = await triggerShare(forMerchant);
+    if (res === 'copied') {
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        onClose();
+      }, 1500);
+    } else {
+      onClose();
+    }
+  };
 
   return (
-    <button
-      type="button"
-      onClick={triggerInstall}
-      className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl text-white text-xs font-black shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95 border shrink-0 ${
-        isMerchant 
-          ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/40 text-amber-50' 
-          : 'bg-gradient-to-r from-emerald-600 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400/30'
-      }`}
-      title={isMerchant ? "Install SkipQ Partner" : "Download / Install SkipQ"}
-      aria-label="Download / Install"
-    >
-      <Download className="w-4 h-4 animate-bounce text-white shrink-0" />
-      <span className="hidden sm:inline font-bold">
-        {isMerchant ? 'Install Partner' : 'Install'}
-      </span>
-    </button>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0"
+        />
+
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="relative w-full max-w-[320px] bg-white rounded-3xl p-5 shadow-2xl border border-[#DCE9E3] space-y-4 z-10"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-[#DCE9E3]/70 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-xs shrink-0 ${
+                forMerchant ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-[#176B65]'
+              }`}>
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-[#283B3D] leading-tight">
+                  {forMerchant ? 'SkipQ Partner App' : 'SkipQ App'}
+                </h3>
+                <p className="text-[10px] text-slate-500 font-medium">Select an action</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 2 Main Action Choices */}
+          <div className="space-y-2.5">
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className={`w-full p-3 rounded-2xl text-white font-bold text-xs flex items-center justify-between transition-all cursor-pointer shadow-sm active:scale-98 ${
+                forMerchant ? 'bg-amber-700 hover:bg-amber-800' : 'bg-[#176B65] hover:bg-[#125550]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Download className="w-4 h-4 shrink-0" />
+                <span className="text-left font-black">Download & Install App</span>
+              </div>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md font-bold">1-Tap</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShareClick}
+              className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-[#DCE9E3]/50 text-[#283B3D] border border-[#DCE9E3] font-bold text-xs flex items-center justify-between transition-all cursor-pointer active:scale-98"
+            >
+              <div className="flex items-center gap-2.5">
+                <Share2 className="w-4 h-4 text-[#176B65] shrink-0" />
+                <span className="text-left font-black">
+                  {copied ? 'Link Copied to Clipboard!' : 'Share Direct App Link'}
+                </span>
+              </div>
+              <span className="text-[10px] bg-emerald-100 text-[#176B65] px-2 py-0.5 rounded-md font-bold">Share</span>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
   );
 }
 
-// 2. DEDICATED NATIVE SHARE BUTTON
-export function ShareAppButton() {
+// 2. EMBEDDED INSIDE CUSTOMER PROFILE / DROPDOWN
+export function CustomerAppMenuSection() {
+  const { triggerInstall, triggerShare } = usePwaInstall();
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    const isMerchant = typeof window !== 'undefined' && window.location.pathname.startsWith('/merchant');
-    const shareData = {
-      title: isMerchant ? 'SkipQ Partner | Store Manager' : 'SkipQ | Skip the Wait. Own Your Time.',
-      text: isMerchant 
-        ? 'Manage counters and live customer tokens with SkipQ Partner:' 
-        : 'Skip physical lines! Book your live token on SkipQ:',
-      url: typeof window !== 'undefined' ? window.location.href : 'https://skipq-smoky.vercel.app/',
-    };
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (err) {
-        // user closed native share tray
-        return;
-      }
-    }
-
-    // Fallback: Copy URL to clipboard
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(shareData.url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
-      } catch (err) {
-        console.warn('Clipboard error:', err);
-      }
+    const res = await triggerShare(false);
+    if (res === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleShare}
-      className="inline-flex items-center justify-center p-2 sm:px-2.5 sm:py-2 rounded-2xl bg-white hover:bg-[#DCE9E3]/50 text-[#176B65] border border-[#DCE9E3] shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
-      title="Share SkipQ App with friends or customers"
-      aria-label="Share App"
-    >
-      <Share2 className="w-4 h-4 text-[#176B65]" />
-      <span className="hidden sm:inline ml-1 text-xs font-bold text-[#283B3D]">
-        {copied ? 'Copied!' : 'Share'}
-      </span>
-    </button>
+    <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase text-[#176B65] tracking-wider flex items-center gap-1">
+          <Smartphone className="w-3.5 h-3.5" /> SkipQ Mobile App
+        </span>
+        <span className="text-[9px] font-bold bg-[#176B65] text-white px-1.5 py-0.5 rounded-md">
+          Official
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => triggerInstall(false)}
+          className="py-2 px-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+        >
+          <Download className="w-3.5 h-3.5 shrink-0" />
+          <span>Install</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleShare}
+          className="py-2 px-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#DCE9E3] text-[#283B3D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+        >
+          <Share2 className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
+          <span>{copied ? 'Copied!' : 'Share'}</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
-// 3. BOTTOM FOOTER BUTTON
+// 3. EMBEDDED INSIDE SHOPKEEPER / MERCHANT PROFILE / DROPDOWN
+export function MerchantAppMenuSection() {
+  const { triggerInstall, triggerShare } = usePwaInstall();
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const res = await triggerShare(true);
+    if (res === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider flex items-center gap-1">
+          <Smartphone className="w-3.5 h-3.5 text-amber-700" /> SkipQ Partner App
+        </span>
+        <span className="text-[9px] font-bold bg-amber-700 text-white px-1.5 py-0.5 rounded-md">
+          Worker
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => triggerInstall(true)}
+          className="py-2 px-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+        >
+          <Download className="w-3.5 h-3.5 shrink-0" />
+          <span>Install</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleShare}
+          className="py-2 px-2.5 rounded-xl bg-white hover:bg-amber-50 border border-amber-200 text-[#283B3D] text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+        >
+          <Share2 className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+          <span>{copied ? 'Copied!' : 'Share'}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 4. BOTTOM FOOTER BUTTON (OPENS THE 2-CHOICE MODAL)
 export function PwaInstallBottomButton() {
-  const { isStandalone, isMerchant, triggerInstall } = usePwaInstall();
+  const { isStandalone, isMerchant } = usePwaInstall();
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (isStandalone) return null;
 
   return (
-    <button
-      type="button"
-      onClick={triggerInstall}
-      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] hover:text-white border border-white/20 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-    >
-      <Download className="w-4 h-4 text-emerald-400" />
-      <span>{isMerchant ? 'Install SkipQ Partner' : 'Install SkipQ'}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] hover:text-white border border-white/20 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+      >
+        <Download className="w-4 h-4 text-emerald-400" />
+        <span>{isMerchant ? 'SkipQ Partner App' : 'SkipQ Mobile App'}</span>
+      </button>
+
+      <AppActionModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        forMerchant={isMerchant}
+      />
+    </>
   );
 }

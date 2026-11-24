@@ -16,7 +16,7 @@ import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
-import { PwaInstallTopButton, ShareAppButton } from './PwaInstallPrompt';
+import { CustomerAppMenuSection, MerchantAppMenuSection } from './PwaInstallPrompt';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -943,10 +943,8 @@ export default function Navbar() {
             </nav>
           )}
 
-          {/* Right Action Bar (Install App Button + Share Button + Role Actions) */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <PwaInstallTopButton />
-            <ShareAppButton />
+          {/* Right Action Bar (Role Actions) */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
 
             {/* ======================================================== */}
             {/* STATE 1: GUEST (NEITHER LOGGED IN)                       */}
@@ -1084,6 +1082,9 @@ export default function Navbar() {
                         <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                       </Link>
                     </div>
+
+                    {/* SkipQ Partner App Section */}
+                    <MerchantAppMenuSection />
 
                     {/* Shopkeeper Logout */}
                     <div className="pt-2 border-t border-[#DCE9E3]">
@@ -1277,6 +1278,9 @@ export default function Navbar() {
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                     </Link>
                   </div>
+
+                  {/* SkipQ Customer App Section */}
+                  <CustomerAppMenuSection />
 
                   {/* Logout Button */}
                   <div className="pt-2 border-t border-[#DCE9E3]">
@@ -1674,6 +1678,11 @@ export default function Navbar() {
                       )}
                     </button>
                   </form>
+
+                  {/* Direct App Install & Share */}
+                  <div className="pt-3 border-t border-[#DCE9E3]">
+                    <CustomerAppMenuSection />
+                  </div>
                 </>
               )}
             </motion.div>
