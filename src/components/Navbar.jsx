@@ -543,7 +543,10 @@ export default function Navbar() {
       syncProfile();
     } catch (err) {
       console.error("Direct login error:", err);
-      const msg = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
+      let msg = err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
+      if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
+        msg = 'Server standby se connect ho raha hai. Kripya dubara click karein.';
+      }
       setLoginError(msg);
     } finally {
       setLoginLoading(false);

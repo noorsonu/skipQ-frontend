@@ -55,6 +55,11 @@ function LoginContent() {
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
+    // Keep backend warm / wake up if in standby mode on Render free tier
+    try {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://skipq-backend-vyd7.onrender.com'}/api/categories`, { method: 'GET' }).catch(() => {});
+    } catch (e) {}
+
     // If already logged in, redirect to returnUrl
     if (typeof window !== 'undefined') {
       const loggedIn = localStorage.getItem('ak_logged_in') === 'true';
@@ -248,7 +253,10 @@ function LoginContent() {
       setTimeout(() => router.push(returnUrl), 800);
     } catch (err) {
       console.error("Auth error:", err);
-      const msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your credentials.';
+      let msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your credentials.';
+      if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
+        msg = 'Server standby se connect ho raha hai. Kripya "Sign In & Continue" par dubara click karein.';
+      }
       setErrorMsg(msg);
     } finally {
       setLoading(false);

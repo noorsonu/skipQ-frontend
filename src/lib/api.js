@@ -7,7 +7,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 65000, // 65s allows cold-start wakeup on cloud backend (Render free tier)
 });
 
 // Attach JWT Bearer Token if customer is logged in
@@ -20,6 +20,17 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Normalize timeout and cold-start errors into clean user-friendly messages
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.toLowerCase().includes('timeout'))) {
+      error.message = 'Server response timed out while waking up from standby. Please click button again now.';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Auth APIs (Google, Direct Password, & Password Reset)
 export const authApi = {
