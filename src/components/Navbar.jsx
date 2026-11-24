@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Compass, Ticket, Store, Sparkles, User, UserCheck, 
   ChevronDown, LogOut, Edit2, Check, X, History, ShieldCheck, 
@@ -19,6 +19,7 @@ import OfficialBrandLogo from './OfficialBrandLogo';
 import { CustomerAppMenuSection, MerchantAppMenuSection } from './PwaInstallPrompt';
 
 export default function Navbar() {
+  const router = useRouter();
   const pathname = usePathname();
   const dropdownRef = useRef(null);
   const merchantDropdownRef = useRef(null);
@@ -362,25 +363,10 @@ export default function Navbar() {
     setIsEditingProfile(false);
   };
 
-  // Open Login Modal
+  // Open Login Page
   const handleOpenLogin = () => {
     setProfileOpen(false);
-    setLoginError('');
-    setLoginSuccessMsg('');
-    setOtpSent(false);
-    setLoginOtp('');
-    const curPhone = customerPhone || '';
-    setLoginPhone(curPhone);
-    const detected = detectExistingUser(curPhone);
-    setExistingUserDetected(detected);
-    if (detected) {
-      setLoginName(detected.name || '');
-      setLoginAge(detected.age || '');
-    } else {
-      setLoginName(customerName !== 'Guest' ? customerName : '');
-      setLoginAge(customerAge || '');
-    }
-    setLoginModalOpen(true);
+    router.push('/login');
   };
 
   // Handle Phone input change with real-time Cloud DB + Local detection
@@ -1034,9 +1020,8 @@ export default function Navbar() {
               </div>
 
               {/* Customer Sign In Button */}
-              <button
-                type="button"
-                onClick={() => handleOpenLogin()}
+              <Link
+                href="/login"
                 className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-98 bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]"
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-slate-200 text-slate-600">
@@ -1053,7 +1038,7 @@ export default function Navbar() {
                 <span className="text-[10px] font-bold bg-[#176B65] text-white px-2 py-0.5 rounded-lg hidden sm:inline-block ml-0.5">
                   Sign In
                 </span>
-              </button>
+              </Link>
             </div>
           )}
 
@@ -1365,392 +1350,6 @@ export default function Navbar() {
 
         </div>
       </motion.header>
-
-      {/* ========================================================= */}
-      {/* CUSTOMER SIGN IN MODAL (Name, Age & Mobile OTP)          */}
-      {/* ========================================================= */}
-      <AnimatePresence>
-        {loginModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#283B3D]/65 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white rounded-3xl max-w-md w-full p-4 sm:p-7 shadow-2xl border border-[#DCE9E3] space-y-4 text-[#283B3D] max-h-[92vh] overflow-y-auto no-scrollbar my-auto"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-lg text-[#283B3D]">Customer Sign In</h3>
-                    <p className="text-xs text-[#283B3D]/60 font-medium">Passwordless Fast Mobile Login</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setLoginModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {loginError && (
-                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <span>{loginError}</span>
-                </div>
-              )}
-
-              {loginSuccessMsg && (
-                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>{loginSuccessMsg}</span>
-                </div>
-              )}
-
-              {isForgotPasswordView ? (
-                /* ========================================================= */
-                /* FORGOT PASSWORD VIEW (Option A: Email & Option B: Google)  */
-                /* ========================================================= */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                    <span className="text-xs font-bold text-slate-500">Reset Account Password</span>
-                    <button
-                      type="button"
-                      onClick={() => { setIsForgotPasswordView(false); setLoginError(''); }}
-                      className="text-xs font-bold text-[#176B65] hover:underline cursor-pointer"
-                    >
-                      ← Back to Sign In
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Registered 10-Digit Mobile Number <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">+91</span>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        value={forgotRecoveryPhone}
-                        onChange={(e) => setForgotRecoveryPhone(e.target.value.replace(/\D/g, ''))}
-                        placeholder="9876543210"
-                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Set New Password <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input
-                        type={showNewPassword ? "text" : "password"}
-                        value={forgotNewPassword}
-                        onChange={(e) => setForgotNewPassword(e.target.value)}
-                        placeholder="e.g. Ramesh@123"
-                        className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
-                      >
-                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Option B: 1-Click Verification via Google */}
-                  <div className="space-y-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleResetPasswordGoogle}
-                      disabled={forgotLoading}
-                      className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
-                    >
-                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                      </svg>
-                      <span>Option B: Verify with Google (1-Click)</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-3 my-2">
-                    <div className="h-[1px] bg-slate-200 flex-1"></div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or Option A: Verify with Email</span>
-                    <div className="h-[1px] bg-slate-200 flex-1"></div>
-                  </div>
-
-                  {/* Option A: Verify with Registered Email */}
-                  <form onSubmit={handleResetPasswordEmail} className="space-y-3">
-                    <div>
-                      <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                        Registered Recovery Email <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                        <input
-                          type="email"
-                          required
-                          value={forgotRecoveryEmail}
-                          onChange={(e) => setForgotRecoveryEmail(e.target.value)}
-                          placeholder="e.g. yourname@gmail.com"
-                          className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={forgotLoading}
-                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                    >
-                      {forgotLoading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Verifying & Resetting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4 text-emerald-300" />
-                          <span>Verify Email & Set New Password</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                /* ========================================================= */
-                /* STANDARD SIGN IN & NEW REGISTRATION VIEW                  */
-                /* ========================================================= */
-                <>
-                  {/* 1-Click Google Sign-In (100% Free, Zero OTP, Instant) */}
-                  <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={handleGoogleSignIn}
-                      disabled={loginLoading}
-                      className="w-full py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-[#283B3D] font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-3 disabled:opacity-50 active:scale-98"
-                    >
-                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                      </svg>
-                      <span>Continue with Google (1-Click)</span>
-                    </button>
-
-                    <div className="flex items-center gap-3 my-2">
-                      <div className="h-[1px] bg-slate-200 flex-1"></div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">or sign in with password</span>
-                      <div className="h-[1px] bg-slate-200 flex-1"></div>
-                    </div>
-                  </div>
-
-                  {/* Instant Mobile Sign In Form */}
-                  <form onSubmit={handleDirectMobileLogin} className="space-y-4">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                          Enter 10-Digit Mobile Number <span className="text-rose-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#176B65]">
-                            +91
-                          </span>
-                          <input
-                            type="tel"
-                            required
-                            autoFocus
-                            maxLength={10}
-                            value={loginPhone}
-                            onChange={(e) => handlePhoneInputChange(e.target.value)}
-                            placeholder="9876543210"
-                            className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-12 pr-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                          />
-                        </div>
-                      </div>
-
-                      {existingUserDetected ? (
-                        <div className="space-y-3">
-                          <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                              <Check className="w-4 h-4 text-emerald-600" />
-                              <span>Registered Customer Account Found</span>
-                            </div>
-                            <p className="font-black text-sm text-[#283B3D]">
-                              {existingUserDetected.name} {existingUserDetected.age ? `(Age: ${existingUserDetected.age} yrs)` : ''}
-                            </p>
-                          </div>
-
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-xs font-bold text-[#283B3D]">
-                                Account Password <span className="text-rose-500">*</span>
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsForgotPasswordView(true);
-                                  setForgotRecoveryPhone(loginPhone);
-                                  setLoginError('');
-                                }}
-                                className="text-[11px] font-bold text-[#176B65] hover:underline cursor-pointer"
-                              >
-                                Forgot Password?
-                              </button>
-                            </div>
-                            <div className="relative">
-                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={loginPassword}
-                                onChange={(e) => setLoginPassword(e.target.value)}
-                                placeholder="Enter your password"
-                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
-                              >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 pt-1">
-                          <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
-                            <span className="font-bold block">✨ New Customer Profile</span>
-                            <span className="text-[11px] text-amber-800 block">Please provide your details and create a password.</span>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                              Your Full Name <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type="text"
-                                required
-                                value={loginName}
-                                onChange={(e) => setLoginName(e.target.value)}
-                                placeholder="e.g. Abhishek Sharma"
-                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                              Email Address (for password recovery) <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type="email"
-                                required
-                                value={loginEmail}
-                                onChange={(e) => setLoginEmail(e.target.value)}
-                                placeholder="e.g. yourname@gmail.com"
-                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                              Create Password <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={loginPassword}
-                                onChange={(e) => setLoginPassword(e.target.value)}
-                                placeholder="e.g. Ramesh@123"
-                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-10 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
-                              >
-                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                              Your Age (in years) <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                              <input
-                                type="number"
-                                min={5}
-                                max={115}
-                                required
-                                value={loginAge}
-                                onChange={(e) => setLoginAge(e.target.value)}
-                                placeholder="e.g. 25"
-                                className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loginLoading}
-                      className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98"
-                    >
-                      {loginLoading ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Signing In...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Sign In & Continue</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </form>
-
-                  {/* Direct App Install & Share */}
-                  <div className="pt-3 border-t border-[#DCE9E3]">
-                    <CustomerAppMenuSection />
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-
 
       {/* Global Turn Arrival Counter Ring Floating Banner */}
       <AnimatePresence>

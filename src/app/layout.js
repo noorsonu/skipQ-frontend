@@ -54,7 +54,7 @@ export default function RootLayout({ children }) {
 
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-slate-300 font-semibold text-xs">
               <a href="/#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-              <a href="/#shops" className="hover:text-white transition-colors">Explore Places</a>
+              <a href="/shops" className="hover:text-white transition-colors">Explore Places</a>
               <a href="/tokens" className="hover:text-white transition-colors">My Live Tokens</a>
               <PwaInstallBottomButton />
             </div>

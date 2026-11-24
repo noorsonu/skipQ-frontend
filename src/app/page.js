@@ -15,8 +15,6 @@ import { shopApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import FreshUrbanLogo from '@/components/FreshUrbanLogo';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
-import ShopQuickViewModal from '@/components/ShopQuickViewModal';
-import CategoryShopDirectoryModal from '@/components/CategoryShopDirectoryModal';
 
 function resolveShopImage(shop) {
   const name = (shop?.name || '').toLowerCase();
@@ -85,11 +83,6 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
-
-  // Shop Details & Category Directory Modals
-  const [selectedShopForModal, setSelectedShopForModal] = useState(null);
-  const [directoryModalOpen, setDirectoryModalOpen] = useState(false);
-  const [directoryCategory, setDirectoryCategory] = useState('all');
 
   // Live progress simulation for Section 4
   const [progressWidth, setProgressWidth] = useState(65);
@@ -488,17 +481,13 @@ export default function HomePage() {
             <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Category Directory</span>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore by Category</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setDirectoryCategory('all');
-                  setDirectoryModalOpen(true);
-                }}
+              <Link
+                href="/shops"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] bg-[#DCE9E3] hover:bg-[#cde0d7] px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
               >
                 <Store className="w-3.5 h-3.5" />
-                <span>+ Browse Directory (List View)</span>
-              </button>
+                <span>+ Browse All Shops Page</span>
+              </Link>
             </div>
             <p className="text-sm text-[#283B3D]/70 font-medium">Click on any category card below to see its shops list, customer reviews & photos, and take digital queue tokens.</p>
           </div>
@@ -518,25 +507,17 @@ export default function HomePage() {
         {/* Categories Bar */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
           {/* 1. All Categories (First Button) */}
-          <button
-            type="button"
-            onClick={() => {
-              setDirectoryCategory('all');
-              setDirectoryModalOpen(true);
-            }}
+          <Link
+            href="/shops"
             className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
           >
             <Store className="w-3.5 h-3.5 text-[#176B65]" />
             <span>All Categories</span>
-          </button>
+          </Link>
 
           {/* 2. Favorites Filter Tab (Shows only the user's saved places) */}
-          <button
-            type="button"
-            onClick={() => {
-              setDirectoryCategory('favorites');
-              setDirectoryModalOpen(true);
-            }}
+          <Link
+            href="/shops?category=favorites"
             className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-rose-300 hover:bg-rose-50 hover:border-rose-400 shadow-2xs"
           >
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
@@ -544,21 +525,17 @@ export default function HomePage() {
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700">
               {favoriteSlugs.length}
             </span>
-          </button>
+          </Link>
 
           {/* 3. The 6 Category Buttons */}
           {categories.slice(0, 6).map((c) => (
-            <button
+            <Link
               key={c.id}
-              type="button"
-              onClick={() => {
-                setDirectoryCategory(c.id);
-                setDirectoryModalOpen(true);
-              }}
+              href={`/shops?category=${c.id}`}
               className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
             >
               {c.name}
-            </button>
+            </Link>
           ))}
         </div>
 
@@ -590,16 +567,16 @@ export default function HomePage() {
                                cat.imageUrl || '/images/clinic.jpg';
 
               return (
-                <motion.div
+                <Link
                   key={cat.id}
-                  whileHover={{ y: -6 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => {
-                    setDirectoryCategory(cat.id);
-                    setDirectoryModalOpen(true);
-                  }}
-                  className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer group border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
+                  href={`/shops?category=${cat.id}`}
+                  className="block group"
                 >
+                  <motion.div
+                    whileHover={{ y: -6 }}
+                    transition={{ duration: 0.2 }}
+                    className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
+                  >
                   <div>
                     {/* Category Photo Header */}
                     <div className="relative h-48 w-full overflow-hidden bg-slate-900">
@@ -664,6 +641,7 @@ export default function HomePage() {
                     </button>
                   </div>
                 </motion.div>
+                </Link>
               );
             })}
         </div>
@@ -682,18 +660,14 @@ export default function HomePage() {
               Explore the complete directory of verified salons, medical stores, diagnostic labs, doctor clinics, chaat points, and auto repairs in Lucknow with live queue status, reviews, and instant tokens.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setDirectoryCategory('all');
-              setDirectoryModalOpen(true);
-            }}
+          <Link
+            href="/shops"
             className="px-6 py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shrink-0 flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
           >
             <Store className="w-4 h-4 text-[#F2A15A]" />
             <span>Open Full Directory (List View)</span>
             <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
-          </button>
+          </Link>
         </div>
 
       </section>
@@ -893,30 +867,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Shop Reviews & Full Photo Quick View Modal */}
-      <ShopQuickViewModal
-        shop={selectedShopForModal}
-        isOpen={Boolean(selectedShopForModal)}
-        onClose={() => setSelectedShopForModal(null)}
-        onBack={() => {
-          setSelectedShopForModal(null);
-          setDirectoryModalOpen(true);
-        }}
-      />
-
-      {/* Category-Wise Shop Directory Modal (List View with Reviews & Get Token) */}
-      <CategoryShopDirectoryModal
-        isOpen={directoryModalOpen && !selectedShopForModal}
-        onClose={() => setDirectoryModalOpen(false)}
-        shops={shops}
-        categories={categories}
-        initialCategory={directoryCategory}
-        onSelectShopForDetails={(shop) => {
-          setDirectoryModalOpen(false);
-          setSelectedShopForModal(shop);
-        }}
-      />
 
     </div>
   );
