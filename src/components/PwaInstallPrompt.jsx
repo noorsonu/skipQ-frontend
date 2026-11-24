@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Smartphone, Download, Share2, PlusSquare, X, CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -92,6 +93,8 @@ export function usePwaInstall() {
 
 // 1. TOP NAVBAR BUTTON
 export function PwaInstallTopButton() {
+  const pathname = usePathname();
+  const isMerchant = pathname?.startsWith('/merchant');
   const { isStandalone, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
 
   // Hide if already running in standalone app mode
@@ -102,25 +105,33 @@ export function PwaInstallTopButton() {
       <button
         type="button"
         onClick={triggerInstall}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] text-white text-xs font-black shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95 border border-emerald-400/30 shrink-0"
-        title="Install SkipQ App directly to your Mobile Home Screen"
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl text-white text-xs font-black shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95 border shrink-0 ${
+          isMerchant 
+            ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 border-amber-400/40 text-amber-50' 
+            : 'bg-gradient-to-r from-emerald-600 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400/30'
+        }`}
+        title={isMerchant ? "Install SkipQ Partner App for Workers & Counters" : "Install SkipQ App directly to your Mobile Home Screen"}
       >
-        <Smartphone className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-        <span className="hidden sm:inline">Install App</span>
-        <span className="sm:hidden">App</span>
-        <span className="text-[9px] uppercase font-bold bg-amber-400 text-slate-900 px-1 py-0.2 rounded-md">
-          Free
+        <Smartphone className={`w-3.5 h-3.5 animate-bounce ${isMerchant ? 'text-amber-200' : 'text-amber-300'}`} />
+        <span className="hidden sm:inline">{isMerchant ? 'Install Partner App' : 'Install App'}</span>
+        <span className="sm:hidden">{isMerchant ? 'Partner App' : 'App'}</span>
+        <span className={`text-[9px] uppercase font-bold px-1 py-0.2 rounded-md ${
+          isMerchant ? 'bg-amber-200 text-amber-950' : 'bg-amber-400 text-slate-900'
+        }`}>
+          {isMerchant ? 'Worker' : 'Free'}
         </span>
       </button>
 
       {/* Guide Modal */}
-      <InstallGuideModal isOpen={modalOpen} onClose={() => setModalOpen(false)} isIOS={isIOS} />
+      <InstallGuideModal isOpen={modalOpen} onClose={() => setModalOpen(false)} isIOS={isIOS} isMerchant={isMerchant} />
     </>
   );
 }
 
 // 2. BOTTOM FOOTER BUTTON
 export function PwaInstallBottomButton() {
+  const pathname = usePathname();
+  const isMerchant = pathname?.startsWith('/merchant');
   const { isStandalone, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
 
   if (isStandalone) return null;
@@ -133,16 +144,16 @@ export function PwaInstallBottomButton() {
         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] hover:text-white border border-white/20 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
       >
         <Smartphone className="w-4 h-4 text-emerald-400" />
-        <span>📲 Install SkipQ Mobile App</span>
+        <span>{isMerchant ? '📲 Install SkipQ Partner App' : '📲 Install SkipQ Mobile App'}</span>
       </button>
 
-      <InstallGuideModal isOpen={modalOpen} onClose={() => setModalOpen(false)} isIOS={isIOS} />
+      <InstallGuideModal isOpen={modalOpen} onClose={() => setModalOpen(false)} isIOS={isIOS} isMerchant={isMerchant} />
     </>
   );
 }
 
 // 3. VISUAL GUIDE MODAL (FOR IOS & MANUAL INSTALL)
-function InstallGuideModal({ isOpen, onClose, isIOS }) {
+function InstallGuideModal({ isOpen, onClose, isIOS, isMerchant }) {
   if (!isOpen) return null;
 
   return (
@@ -164,12 +175,18 @@ function InstallGuideModal({ isOpen, onClose, isIOS }) {
         >
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-[#176B65] flex items-center justify-center shadow-2xs">
+              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-2xs ${
+                isMerchant ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-[#176B65]'
+              }`}>
                 <Smartphone className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-sm text-[#283B3D]">Install SkipQ App</h3>
-                <span className="text-[10px] text-slate-500 font-semibold">1-Tap Fast Mobile Access</span>
+                <h3 className="font-black text-sm text-[#283B3D]">
+                  {isMerchant ? 'Install SkipQ Partner App' : 'Install SkipQ App'}
+                </h3>
+                <span className="text-[10px] text-slate-500 font-semibold">
+                  {isMerchant ? 'Worker & Counter Calling App' : '1-Tap Fast Mobile Access'}
+                </span>
               </div>
             </div>
             <button
@@ -220,7 +237,9 @@ function InstallGuideModal({ isOpen, onClose, isIOS }) {
               </div>
 
               <div className="text-[11px] text-slate-500 leading-relaxed">
-                App aapke phone ke home screen par save ho jayega aur bina browser ke direct khulega!
+                {isMerchant 
+                  ? 'SkipQ Partner App aapke phone screen par save ho jayega — direct Counter dashboard khulega!' 
+                  : 'SkipQ App aapke phone screen par save ho jayega aur bina browser ke direct khulega!'}
               </div>
             </div>
           )}
@@ -228,7 +247,9 @@ function InstallGuideModal({ isOpen, onClose, isIOS }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all cursor-pointer text-center"
+            className={`w-full py-3 rounded-2xl text-white font-black text-xs shadow-md transition-all cursor-pointer text-center ${
+              isMerchant ? 'bg-amber-700 hover:bg-amber-800' : 'bg-[#176B65] hover:bg-[#125550]'
+            }`}
           >
             Samajh Gaya (Close)
           </button>
