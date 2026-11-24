@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
 import { Smartphone, Download, Share2, PlusSquare, X, CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,11 +15,14 @@ export function usePwaInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isMerchant, setIsMerchant] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [installedSuccess, setInstalledSuccess] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    setIsMerchant(window.location.pathname.startsWith('/merchant'));
 
     // Check if already running as installed standalone app
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -84,6 +86,7 @@ export function usePwaInstall() {
   return {
     isStandalone,
     isIOS,
+    isMerchant,
     modalOpen,
     setModalOpen,
     installedSuccess,
@@ -93,9 +96,7 @@ export function usePwaInstall() {
 
 // 1. TOP NAVBAR BUTTON
 export function PwaInstallTopButton() {
-  const pathname = usePathname();
-  const isMerchant = pathname?.startsWith('/merchant');
-  const { isStandalone, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
+  const { isStandalone, isMerchant, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
 
   // Hide if already running in standalone app mode
   if (isStandalone) return null;
@@ -130,9 +131,7 @@ export function PwaInstallTopButton() {
 
 // 2. BOTTOM FOOTER BUTTON
 export function PwaInstallBottomButton() {
-  const pathname = usePathname();
-  const isMerchant = pathname?.startsWith('/merchant');
-  const { isStandalone, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
+  const { isStandalone, isMerchant, modalOpen, setModalOpen, isIOS, triggerInstall } = usePwaInstall();
 
   if (isStandalone) return null;
 
