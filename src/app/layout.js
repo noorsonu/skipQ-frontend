@@ -3,9 +3,25 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import OfficialBrandLogo from "@/components/OfficialBrandLogo";
 
+export const viewport = {
+  themeColor: "#176B65",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata = {
   title: "SkipQ | Skip the Wait. Own Your Time.",
   description: "Book your token online, track your turn live, and visit when it's your time. The modern hyperlocal queue management platform.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SkipQ",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({ children }) {
