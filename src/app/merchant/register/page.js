@@ -365,7 +365,10 @@ export default function MerchantRegisterPage() {
     localStorage.setItem('ak_role', 'MERCHANT');
     if (userPhone) localStorage.setItem('ak_phone', userPhone);
     if (shopExists.name) localStorage.setItem('ak_shop_name', shopExists.name);
-    if (shopExists.ownerName || userName) localStorage.setItem('ak_customer_name', shopExists.ownerName || userName);
+    const candidateOwner = shopExists.ownerName || userName || '';
+    const isOwnerDigits = /^\+?\d{6,}$/.test(candidateOwner.replace(/[\s\-\(\)]/g, ''));
+    const finalOwnerName = (!isOwnerDigits && candidateOwner) ? candidateOwner : (shopExists.name || 'Shop Owner');
+    localStorage.setItem('ak_customer_name', finalOwnerName);
     router.replace('/merchant/dashboard');
   };
 

@@ -218,7 +218,19 @@ function LoginContent() {
       }
       const returnedPhone = res?.data?.data?.phone || payload.phone || '';
       const returnedEmail = res?.data?.data?.email || payload.email || '';
-      const finalName = res?.data?.data?.name || (activeTab === 'register' ? fullName.trim() : (returnedPhone ? `Customer (${returnedPhone.slice(-4)})` : returnedEmail.split('@')[0]));
+      const rawResName = res?.data?.data?.name;
+      const isResNameDigits = /^\+?\d{6,}$/.test((rawResName || '').replace(/[\s\-\(\)]/g, ''));
+      let finalName = '';
+      if (rawResName && !isResNameDigits && !rawResName.toLowerCase().startsWith('customer (')) {
+        finalName = rawResName.trim();
+      } else if (activeTab === 'register' && fullName.trim()) {
+        finalName = fullName.trim();
+      } else if (returnedEmail && returnedEmail.includes('@')) {
+        const cleanEmailName = returnedEmail.split('@')[0].replace(/[0-9._-]+$/, '');
+        finalName = cleanEmailName ? (cleanEmailName.charAt(0).toUpperCase() + cleanEmailName.slice(1)) : 'Customer';
+      } else {
+        finalName = 'Customer';
+      }
       const finalAge = res?.data?.data?.age ? String(res.data.data.age) : age;
 
       if (typeof window !== 'undefined') {

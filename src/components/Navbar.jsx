@@ -35,13 +35,29 @@ export default function Navbar() {
   const [activeCount, setActiveCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
   const [turnRingAlert, setTurnRingAlert] = useState(null);
-  const customerFirstName = (customerName || 'Customer').trim().split(/\s+/)[0];
 
   // Merchant Profile State
   const [isShopkeeperLoggedIn, setIsShopkeeperLoggedIn] = useState(false);
   const [registeredMerchantShop, setRegisteredMerchantShop] = useState(null);
   const [merchantDropdownOpen, setMerchantDropdownOpen] = useState(false);
   const [guestMerchantDropdownOpen, setGuestMerchantDropdownOpen] = useState(false);
+
+  // Helper: Extract Clean First Name (handles names with spaces/gaps, strictly rejects phone numbers)
+  const extractFirstName = (rawName, fallback = 'User') => {
+    if (!rawName) return fallback;
+    const trimmed = String(rawName).trim();
+    const isDigits = /^\+?\d{6,}$/.test(trimmed.replace(/[\s\-\(\)]/g, '')) || trimmed.toLowerCase().startsWith('customer (');
+    if (isDigits) return fallback;
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const first = words[0] || fallback;
+    return first.charAt(0).toUpperCase() + first.slice(1);
+  };
+
+  const customerFirstName = extractFirstName(customerName, 'Customer');
+  const workerFirstName = extractFirstName(
+    registeredMerchantShop?.ownerName || (typeof window !== 'undefined' ? localStorage.getItem('ak_customer_name') : '') || registeredMerchantShop?.name,
+    'Worker'
+  );
 
   // Profile Dropdown & Inline Edit State
   const [profileOpen, setProfileOpen] = useState(false);
@@ -159,12 +175,12 @@ export default function Navbar() {
         setIsShopkeeperLoggedIn(false);
         setCustomerPhone(phone);
         setCustomerAge(age);
-        if (name && name !== 'Customer') {
+        const isNamePureDigits = /^\+?\d{6,}$/.test((name || '').replace(/[\s\-\(\)]/g, ''));
+        if (name && name !== 'Customer' && !isNamePureDigits && !name.toLowerCase().startsWith('customer (')) {
           setCustomerName(name);
-        } else if (email) {
-          setCustomerName(email.split('@')[0]);
-        } else if (phone) {
-          setCustomerName(`Customer (${phone.slice(-4)})`);
+        } else if (email && email.includes('@')) {
+          const cleanEmailUser = email.split('@')[0].replace(/[0-9._-]+$/, '');
+          setCustomerName(cleanEmailUser ? (cleanEmailUser.charAt(0).toUpperCase() + cleanEmailUser.slice(1)) : 'Customer');
         } else {
           setCustomerName('Customer');
         }
@@ -1000,15 +1016,15 @@ export default function Navbar() {
                   <Store className="w-4 h-4" />
                 </div>
 
-                <div className="text-left hidden sm:block pr-1">
+                <div className="text-left pr-1 max-w-[90px] sm:max-w-[140px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
-                      Shopkeeper
+                    <span className="text-[10px] uppercase font-bold text-[#176B65] hidden sm:block leading-none">
+                      Worker
                     </span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse hidden sm:block" />
                   </div>
-                  <span className="text-xs font-black text-[#283B3D] line-clamp-1 max-w-[130px] leading-tight mt-0.5">
-                    {registeredMerchantShop?.name || 'My Shop'}
+                  <span className="text-xs font-black text-[#283B3D] truncate block leading-tight">
+                    {workerFirstName}
                   </span>
                 </div>
 
@@ -1111,7 +1127,7 @@ export default function Navbar() {
                   <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
 
-                <div className="text-left pr-0.5 max-w-[70px] sm:max-w-[110px]">
+                <div className="text-left pr-0.5 max-w-[90px] sm:max-w-[140px]">
                   <span className="text-[9px] uppercase font-bold text-[#176B65] hidden sm:block leading-none">
                     Customer
                   </span>
