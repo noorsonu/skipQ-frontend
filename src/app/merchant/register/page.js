@@ -11,7 +11,6 @@ import {
   Lock, Mail, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { shopApi, authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
 import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';

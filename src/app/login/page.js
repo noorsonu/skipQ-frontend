@@ -4,12 +4,11 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  User, Lock, Mail, Phone, Calendar, ArrowRight, ArrowLeft,
+  User, Lock, Mail, Phone, Calendar, ArrowRight,
   CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff, ShieldCheck,
   LogIn, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
 
@@ -219,24 +218,13 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 flex flex-col justify-center items-center relative">
+    <div className="w-full max-w-lg mx-auto pt-2 sm:pt-5 pb-10 px-3 sm:px-6 flex flex-col items-center relative">
       {/* Background Ambience */}
       <div className="fixed top-10 left-1/4 w-[450px] h-[450px] bg-[#DCE9E3]/60 rounded-full blur-[130px] pointer-events-none -z-10" />
       <div className="fixed bottom-10 right-1/4 w-[400px] h-[400px] bg-[#176B65]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      {/* Top Brand & Back to Home */}
-      <div className="w-full max-w-md mb-6 flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] hover:text-[#125550] transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Home</span>
-        </Link>
-        <Link href="/" className="inline-block">
-          <OfficialBrandLogo height={36} animate={false} />
-        </Link>
-      </div>
-
-      {/* Main Auth Card */}
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#DCE9E3] space-y-6">
+      {/* Main Auth Page Card */}
+      <div className="w-full bg-white rounded-3xl p-5 sm:p-8 shadow-sm border border-[#DCE9E3] space-y-5">
         
         {/* Card Header */}
         <div className="text-center space-y-1 border-b border-[#DCE9E3] pb-4">
@@ -618,7 +606,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-sm font-semibold text-[#176B65]">Loading Sign In...</div>}>
+    <Suspense fallback={<div className="py-20 text-center text-sm font-semibold text-[#176B65]">Loading Sign In...</div>}>
       <LoginContent />
     </Suspense>
   );
