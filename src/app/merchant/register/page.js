@@ -600,23 +600,17 @@ export default function MerchantRegisterPage() {
     }
   };
 
-  // Handle Step 2 -> Step 3
-  const handleProceedToSettings = (e) => {
+  // Handle Final Submit directly from Step 2
+  const handleFinalSubmit = async (e) => {
     e.preventDefault();
     if (!shopName.trim()) {
-      alert('Please enter your shop display name.');
+      alert('Please enter your business / shop display name.');
       return;
     }
     if (!address.trim()) {
       alert('Please enter your complete shop street address.');
       return;
     }
-    setStep(3);
-  };
-
-  // Handle Final Submit
-  const handleFinalSubmit = async (e) => {
-    e.preventDefault();
 
     const selectedCategoryObj = categoriesList.find(c => c.id === category);
     const cleanPhone = ownerPhone.replace(/\D/g, '').slice(-10);
@@ -1208,7 +1202,7 @@ export default function MerchantRegisterPage() {
             </button>
           </div>
 
-          <form onSubmit={handleProceedToSettings} className="space-y-5">
+          <form onSubmit={handleFinalSubmit} className="space-y-5">
             
             {/* Business / Place Name */}
             <div>
@@ -1315,112 +1309,6 @@ export default function MerchantRegisterPage() {
               >
                 {detectingGps ? 'Detecting...' : 'Detect GPS Again'}
               </button>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-            >
-              <span>Continue to Queue Configuration</span>
-              <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
-            </button>
-          </form>
-        </motion.div>
-      )}
-
-      {/* ========================================================= */}
-      {/* STEP 3: QUEUE & TOKEN SETTINGS FORM                      */}
-      {/* ========================================================= */}
-      {step === 3 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-white rounded-3xl p-5 sm:p-8 border border-[#DCE9E3] shadow-sm space-y-5"
-        >
-          <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
-            <div>
-              <h2 className="text-xl font-black text-[#283B3D]">Step 3: Queue & Token Settings</h2>
-              <p className="text-xs text-[#283B3D]/70 font-medium">Configure how tokens are issued and wait times are estimated.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="text-xs font-bold text-slate-500 hover:text-[#176B65] flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </button>
-          </div>
-
-          <form onSubmit={handleFinalSubmit} className="space-y-6 max-w-lg">
-            
-            {/* Average Service Time */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-[#283B3D]">Average Service Time Per Customer</label>
-                <div className="flex items-center gap-1 bg-[#DCE9E3] px-2 py-0.5 rounded-lg border border-[#176B65]/20">
-                  <input
-                    type="number"
-                    min="1"
-                    max="300"
-                    value={avgWaitMin}
-                    onChange={(e) => setAvgWaitMin(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="w-12 text-xs font-black text-[#176B65] bg-transparent text-center focus:outline-none"
-                  />
-                  <span className="text-xs font-bold text-[#176B65]">Min</span>
-                </div>
-              </div>
-              <input
-                type="range"
-                min="5"
-                max="60"
-                step="5"
-                value={avgWaitMin}
-                onChange={(e) => setAvgWaitMin(Number(e.target.value))}
-                className="w-full accent-[#176B65] cursor-pointer"
-              />
-              <p className="text-[11px] text-[#283B3D]/60 mt-1">This calculates real-time estimated wait time for your customers.</p>
-            </div>
-
-            {/* Daily Token Cap */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Daily Token Limit</label>
-                <input
-                  type="number"
-                  min="10"
-                  max="500"
-                  value={dailyTokenCap}
-                  onChange={(e) => setDailyTokenCap(Number(e.target.value))}
-                  className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Token Prefix Code</label>
-                <input
-                  type="text"
-                  maxLength={4}
-                  placeholder="e.g. AK, RB"
-                  value={tokenPrefix}
-                  onChange={(e) => setTokenPrefix(e.target.value.toUpperCase())}
-                  className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-xs font-bold text-[#176B65] tracking-wider uppercase focus:outline-none focus:border-[#176B65]"
-                />
-              </div>
-            </div>
-
-            {/* Live WhatsApp / SMS Alerts */}
-            <div className="p-4 rounded-2xl bg-[#DCE9E3]/40 border border-[#176B65]/20 flex items-center justify-between gap-3">
-              <div>
-                <span className="text-xs font-bold text-[#283B3D] block">Automatic Turn Notifications</span>
-                <span className="text-[11px] text-[#283B3D]/70">Alerts customers automatically when 2 people are ahead of them.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={enableWhatsapp}
-                onChange={(e) => setEnableWhatsapp(e.target.checked)}
-                className="w-5 h-5 accent-[#176B65] rounded cursor-pointer"
-              />
             </div>
 
             <button
