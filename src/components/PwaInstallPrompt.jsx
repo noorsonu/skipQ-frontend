@@ -209,9 +209,6 @@ export function UniversalDualAppFooter() {
                 SkipQ Mobile App
               </h4>
             </div>
-            <p className="text-xs text-slate-300 font-medium mt-0.5">
-              Book live tokens, track queue waiting radar & manage shop counters — Zero wait.
-            </p>
           </div>
         </div>
 

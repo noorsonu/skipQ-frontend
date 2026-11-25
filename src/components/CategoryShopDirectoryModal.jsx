@@ -176,7 +176,7 @@ export default function CategoryShopDirectoryModal({
       ? 'Viewing only the shops you have saved. No other data is mixed here.'
       : currentCatObj
         ? `Showing verified ${currentCatObj.name.toLowerCase()} places with live digital queues.`
-        : 'Browse verified stores across India and worldwide, see reviews, and get instant queue passes.';
+        : 'Browse verified stores across India, see reviews, and get instant queue passes.';
 
   return (
     <AnimatePresence>

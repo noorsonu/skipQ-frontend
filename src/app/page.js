@@ -321,7 +321,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#DCE9E3] border border-[#176B65]/20 text-xs font-bold text-[#176B65] shadow-xs"
             >
               <span className="w-2.5 h-2.5 rounded-full bg-[#F2A15A] animate-ping"></span>
-              <span>Live Digital Queue System • Available Across India & Worldwide</span>
+              <span>Live Digital Queue System • Available Across India</span>
             </motion.div>
 
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-[#283B3D] leading-[1.1]">
@@ -659,7 +659,7 @@ export default function HomePage() {
 
           {/* 3. Service History Tab */}
           <Link
-            href="/tokens?tab=history"
+            href="/history"
             className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 shadow-2xs"
           >
             <History className="w-3.5 h-3.5 text-[#176B65]" />

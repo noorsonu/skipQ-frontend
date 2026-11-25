@@ -417,7 +417,7 @@ function ShopsDirectoryContent() {
             </button>
 
             <Link
-              href="/tokens?tab=history"
+              href="/history"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] shadow-2xs hover:border-[#176B65]"
             >
               <History className="w-3.5 h-3.5 text-[#176B65]" />
