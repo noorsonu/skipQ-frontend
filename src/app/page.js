@@ -56,6 +56,18 @@ export default function HomePage() {
   // Enforce clean platform slate if epoch changed
   useEffect(() => {
     enforceCleanSlate();
+    // Mobile phone back button scroll restoration to exact clicked card
+    if (typeof window !== 'undefined') {
+      const lastClicked = sessionStorage.getItem('ak_home_last_clicked');
+      if (lastClicked) {
+        setTimeout(() => {
+          const el = document.getElementById(lastClicked);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 200);
+      }
+    }
   }, []);
 
   const [shops, setShops] = useState([]);
@@ -646,7 +658,13 @@ export default function HomePage() {
           {categories.slice(0, 6).map((c) => (
             <Link
               key={c.id}
-              href="/shops"
+              id={`category-pill-${c.id}`}
+              href={`/shops?cat=${c.id}`}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('ak_home_last_clicked', `category-pill-${c.id}`);
+                }
+              }}
               className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
             >
               {c.name}
@@ -684,7 +702,13 @@ export default function HomePage() {
               return (
                 <Link
                   key={cat.id}
-                  href="/shops"
+                  id={`category-card-${cat.id}`}
+                  href={`/shops?cat=${cat.id}`}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      sessionStorage.setItem('ak_home_last_clicked', `category-card-${cat.id}`);
+                    }
+                  }}
                   className="block group"
                 >
                   <motion.div

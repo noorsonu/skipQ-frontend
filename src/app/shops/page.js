@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
-  Search, MapPin, Ticket, Star, ArrowRight, ArrowLeft,
+  Search, MapPin, Ticket, Star, ArrowRight,
   Store, ShieldCheck, Heart, Clock, Scissors, Activity, Utensils, Wrench, Pill, Stethoscope,
   ChevronRight, Sparkles, Building2
 } from 'lucide-react';
@@ -37,8 +37,10 @@ function getShopCategoryId(shop) {
 }
 
 function ShopsDirectoryContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeCategory, setActiveCategory] = useState(null); // null = Categories Overview, string = Dedicated Category View
+  const activeCategory = searchParams.get('cat') || null;
+
   const [search, setSearch] = useState('');
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +79,8 @@ function ShopsDirectoryContent() {
               !name.includes('gupta medical')
             );
           });
+
+          // Sort shops with highest ratings on top as requested
           loadedShops.sort((a, b) => {
             const rA = Number(a.rating || a.averageRating) || 0;
             const rB = Number(b.rating || b.averageRating) || 0;
@@ -94,11 +98,31 @@ function ShopsDirectoryContent() {
     fetchShops();
   }, []);
 
+  // Scroll restoration if returning from shop detail to category
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeCategory) {
+      const lastShop = sessionStorage.getItem('ak_shops_last_shop');
+      if (lastShop) {
+        setTimeout(() => {
+          const el = document.getElementById(`shop-card-${lastShop}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+      }
+    }
+  }, [activeCategory, shops]);
+
   const handleToggleFav = (slug, e) => {
     e.preventDefault();
     e.stopPropagation();
     toggleFavoriteShopSlug(slug);
     setFavoriteSlugs(getFavoriteShopSlugs());
+  };
+
+  const handleSelectCategory = (catId) => {
+    // Pushes category state into browser history so phone back button returns 1 step back to All Categories
+    router.push(`/shops?cat=${catId}`, { scroll: false });
   };
 
   // Group shops by category
@@ -134,19 +158,7 @@ function ShopsDirectoryContent() {
       {/* ============================================================== */}
       {activeCategory && currentCatObj ? (
         <div className="space-y-6">
-          {/* Back Button */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setActiveCategory(null)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#176B65] hover:text-[#125550] bg-white border border-[#DCE9E3] hover:border-[#176B65]/40 px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs active:scale-98"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to All Categories</span>
-            </button>
-          </div>
-
-          {/* Dedicated Category Header */}
+          {/* Dedicated Category Header - Clean, No On-screen Back Button */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#DCE9E3] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-[#DCE9E3]/80 text-[#176B65] flex items-center justify-center shrink-0 border border-[#176B65]/20 shadow-2xs">
@@ -190,13 +202,6 @@ function ShopsDirectoryContent() {
                   Currently there are no registered shops in {currentCatObj.name}. New shops will appear here once registered by shopkeepers.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveCategory(null)}
-                className="px-5 py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs transition-colors cursor-pointer"
-              >
-                Explore Other Categories
-              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -205,7 +210,13 @@ function ShopsDirectoryContent() {
                 return (
                   <Link
                     key={shop.id || shop.slug}
+                    id={`shop-card-${shop.slug}`}
                     href={`/book/${shop.slug}`}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('ak_shops_last_shop', shop.slug);
+                      }
+                    }}
                     className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-lg hover:border-[#176B65]/40 transition-all flex flex-col justify-between group cursor-pointer"
                   >
                     <div className="space-y-4">
@@ -287,12 +298,9 @@ function ShopsDirectoryContent() {
         /* SCENARIO B: CATEGORIES LIST VIEW (NO SHOPS, PURE CATEGORIES)   */
         /* ============================================================== */
         <div className="space-y-6">
-          {/* Header */}
+          {/* Header - Clean, No On-screen Back Button */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] hover:underline mb-2">
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
-              </Link>
               <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore Places & Queues</h1>
               <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                 Browse verified local business categories in Lucknow. Select a category to see its available shops.
@@ -351,8 +359,9 @@ function ShopsDirectoryContent() {
               return (
                 <button
                   key={cat.id}
+                  id={`shops-cat-card-${cat.id}`}
                   type="button"
-                  onClick={() => setActiveCategory(cat.id)}
+                  onClick={() => handleSelectCategory(cat.id)}
                   className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-xl hover:border-[#176B65] transition-all text-left flex flex-col justify-between group cursor-pointer"
                 >
                   <div className="space-y-4">

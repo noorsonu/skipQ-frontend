@@ -1136,16 +1136,8 @@ export default function ShopDetailClient() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
-      {/* Top Navigation & Favorite Heart Button */}
-      <div className="flex items-center justify-between">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-2 text-xs font-bold text-[#176B65] hover:text-[#125550] transition-colors bg-[#DCE9E3]/70 px-4 py-2 rounded-2xl"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to All Places</span>
-        </Link>
-
+      {/* Top Bar: Clean Save Place Button (No redundant on-screen back button) */}
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={handleToggleFavorite}
