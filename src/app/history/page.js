@@ -5,11 +5,76 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   History, Store, Calendar, Clock, Ticket, ArrowRight, RotateCw, 
-  MapPin, CheckCircle2, ChevronRight, X, Sparkles, Star
+  MapPin, CheckCircle2, ChevronRight, X, Sparkles, Star, AlertTriangle,
+  Receipt, CreditCard, Banknote, ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { queueApi } from '@/lib/api';
 import { enforceCleanSlate } from '@/lib/storageSync';
+
+function getPaymentInfo(item) {
+  const total = Number(item.amount || item.billAmount || item.totalAmount || 0);
+  const mode = String(item.paymentMode || item.billPaymentMode || '').toUpperCase();
+  
+  // Check if shop khata ledger has pending due for this customer
+  let khataDue = 0;
+  if (typeof window !== 'undefined') {
+    const slug = (item.shopSlug || (item.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')).toLowerCase();
+    const phone = (item.customerPhone || '').replace(/\D/g, '').slice(-10);
+    if (slug && phone) {
+      try {
+        const saved = localStorage.getItem(`ak_shop_khata_${slug}`);
+        if (saved) {
+          const list = JSON.parse(saved);
+          if (Array.isArray(list)) {
+            const match = list.find(c => c.customerPhone && c.customerPhone.replace(/\D/g, '').slice(-10) === phone);
+            if (match && match.totalPending > 0) {
+              khataDue = match.totalPending;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  let paid = total;
+  let due = 0;
+
+  if (mode === 'PENDING') {
+    paid = 0;
+    due = total;
+  } else if (mode === 'PARTIAL') {
+    paid = item.paidAmount !== undefined ? Number(item.paidAmount) : (total > 0 ? Math.round(total / 2) : 0);
+    due = Math.max(0, total - paid);
+  } else if (khataDue > 0 && due === 0) {
+    due = khataDue;
+    if (total > 0) {
+      paid = Math.max(0, total - due);
+    }
+  } else if (item.dueAmount !== undefined) {
+    due = Number(item.dueAmount);
+    paid = Math.max(0, total - due);
+  } else if (item.paidAmount !== undefined) {
+    paid = Number(item.paidAmount);
+    due = Math.max(0, total - paid);
+  }
+
+  let statusLabel = 'Fully Paid';
+  let statusBadge = 'FULL_PAID'; // 'FULL_PAID' | 'PARTIAL' | 'UDHAAR' | 'FREE'
+
+  if (due > 0 && paid > 0) {
+    statusLabel = 'Partially Paid (Udhaar)';
+    statusBadge = 'PARTIAL';
+  } else if (due > 0 && paid === 0) {
+    statusLabel = 'Full Udhaar (Unpaid)';
+    statusBadge = 'UDHAAR';
+  } else if (total === 0) {
+    statusLabel = 'Free / Included';
+    statusBadge = 'FREE';
+  }
+
+  return { total, paid, due, mode, statusLabel, statusBadge };
+}
 
 export default function ServiceHistoryPage() {
   const router = useRouter();
@@ -37,8 +102,22 @@ export default function ServiceHistoryPage() {
         console.warn('Backend history fetch error:', err);
       }
 
-      // 2. Also check LocalStorage history for guest/offline completed tokens
+      // 2. Also check LocalStorage history: ak_customer_history and ak_my_tokens
       if (typeof window !== 'undefined') {
+        try {
+          const rawCust = localStorage.getItem('ak_customer_history');
+          if (rawCust) {
+            const parsed = JSON.parse(rawCust);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(pt => {
+                if (!items.some(it => String(it.id) === String(pt.id) || (it.tokenNumber && it.tokenNumber === pt.tokenNumber && it.shopName === pt.shopName))) {
+                  items.push(pt);
+                }
+              });
+            }
+          }
+        } catch (e) {}
+
         try {
           const raw = localStorage.getItem('ak_my_tokens');
           if (raw) {
@@ -79,7 +158,7 @@ export default function ServiceHistoryPage() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Service History</h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Review your past shop visits, completed services, and re-book with 1 click.
+            Review your past shop visits, payments, udhaar ledger, and re-book with 1 click.
           </p>
         </div>
 
@@ -107,7 +186,7 @@ export default function ServiceHistoryPage() {
           <div className="space-y-1.5">
             <h3 className="text-lg font-black text-[#283B3D]">No Service History Found</h3>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              You haven't completed any visits yet. When you book a token and complete your visit at a salon, clinic, or store, your history will appear here.
+              You haven't completed any visits yet. When you book a token and complete your visit at a salon, clinic, or store, your history along with billing and payment status will appear here.
             </p>
           </div>
           <div className="pt-2">
@@ -123,7 +202,7 @@ export default function ServiceHistoryPage() {
         </div>
       ) : (
         /* History Items List */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {historyList.map((item, idx) => {
             const dateStr = item.completedAt || item.servedAt || item.createdAt
               ? new Date(item.completedAt || item.servedAt || item.createdAt).toLocaleDateString('en-IN', {
@@ -136,15 +215,16 @@ export default function ServiceHistoryPage() {
               : 'Recent Visit';
 
             const shopSlug = item.shopSlug || (item.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const payment = getPaymentInfo(item);
 
             return (
               <div
                 key={item.id || idx}
                 onClick={() => setSelectedVisit(item)}
-                className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs hover:shadow-md hover:border-[#176B65] transition-all flex flex-col justify-between group cursor-pointer"
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-[#DCE9E3] shadow-xs hover:shadow-md hover:border-[#176B65] transition-all flex flex-col justify-between group cursor-pointer space-y-4"
               >
-                <div className="space-y-3">
-                  {/* Top Bar: Token & Status */}
+                <div className="space-y-3.5">
+                  {/* Top Bar: Token & Service Completed */}
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-black text-sm text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-xl">
                       {item.tokenNumber || `TK-${item.tokenSequence || (idx + 1)}`}
@@ -162,7 +242,7 @@ export default function ServiceHistoryPage() {
                     </h3>
                     <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
                       <Store className="w-3 h-3 text-slate-400" />
-                      <span>{item.categoryName || 'General Service'}</span>
+                      <span>{item.serviceDetails || item.service || item.categoryName || 'General Service'}</span>
                     </p>
                   </div>
 
@@ -171,12 +251,48 @@ export default function ServiceHistoryPage() {
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>{dateStr}</span>
                   </div>
+
+                  {/* Payment & Udhaar Status Box */}
+                  <div className="p-3.5 rounded-2xl bg-[#F3F1E9]/70 border border-[#DCE9E3] space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-medium">Total Bill:</span>
+                      <span className="font-mono font-black text-sm text-[#283B3D]">
+                        ₹{payment.total.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-medium">Amount Paid:</span>
+                      <span className="font-mono font-bold text-emerald-700">
+                        ₹{payment.paid.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {payment.due > 0 ? (
+                      <div className="flex items-center justify-between text-xs font-bold pt-1.5 border-t border-rose-200 text-rose-800">
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Udhaar / Due Remaining:</span>
+                        </span>
+                        <span className="font-mono text-sm bg-rose-100 text-rose-900 px-2 py-0.5 rounded-lg border border-rose-200">
+                          ₹{payment.due.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between text-xs font-bold pt-1.5 border-t border-emerald-200/60 text-emerald-800">
+                        <span>Payment Status:</span>
+                        <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-lg text-[11px] font-black">
+                          ✓ Fully Paid
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="mt-5 pt-4 border-t border-[#DCE9E3]/60 flex items-center justify-between gap-3">
+                <div className="pt-2 border-t border-[#DCE9E3]/60 flex items-center justify-between gap-3">
                   <span className="text-xs font-bold text-[#176B65] group-hover:underline flex items-center gap-1">
-                    <span>View Details</span>
+                    <span>View Bill & Details</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>
 
@@ -220,21 +336,21 @@ export default function ServiceHistoryPage() {
               {/* Modal Header */}
               <div className="space-y-1">
                 <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Visit Details
+                  Service & Billing Details
                 </span>
                 <h2 className="text-2xl font-black text-[#283B3D]">
                   {selectedVisit.shopName || 'Registered Outlet'}
                 </h2>
                 <p className="text-xs text-slate-500 font-medium">
-                  {selectedVisit.categoryName || 'General Service'}
+                  {selectedVisit.serviceDetails || selectedVisit.service || selectedVisit.categoryName || 'General Service'}
                 </p>
               </div>
 
-              {/* Info Grid */}
+              {/* Token & Basic Info */}
               <div className="p-4 bg-[#F3F1E9]/60 rounded-2xl border border-[#DCE9E3] space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 font-medium">Token Number:</span>
-                  <span className="font-mono font-black text-[#176B65]">
+                  <span className="font-mono font-black text-sm text-[#176B65]">
                     {selectedVisit.tokenNumber || `TK-${selectedVisit.tokenSequence || 1}`}
                   </span>
                 </div>
@@ -247,7 +363,7 @@ export default function ServiceHistoryPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Date & Time:</span>
+                  <span className="text-slate-500 font-medium">Visit Date & Time:</span>
                   <span className="font-semibold text-[#283B3D]">
                     {selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt
                       ? new Date(selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt).toLocaleString('en-IN', {
@@ -258,15 +374,61 @@ export default function ServiceHistoryPage() {
                   </span>
                 </div>
 
-                {selectedVisit.address && (
-                  <div className="flex items-start justify-between gap-2 pt-1 border-t border-[#DCE9E3]">
-                    <span className="text-slate-500 font-medium shrink-0">Location:</span>
-                    <span className="font-semibold text-[#283B3D] text-right">
-                      {selectedVisit.address}
+                {selectedVisit.assignedStation && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">Counter Served At:</span>
+                    <span className="font-semibold text-[#283B3D]">
+                      {selectedVisit.assignedStation}
                     </span>
                   </div>
                 )}
               </div>
+
+              {/* Detailed Payment Breakdown Box */}
+              {(() => {
+                const pay = getPaymentInfo(selectedVisit);
+                return (
+                  <div className="p-4 rounded-2xl border border-[#DCE9E3] bg-[#F8FAF9] space-y-3 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-[#176B65] border-b border-[#DCE9E3] pb-2">
+                      <Receipt className="w-4 h-4" />
+                      <span>Payment & Udhaar Ledger Summary</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 font-medium">Total Bill Amount:</span>
+                      <span className="font-mono font-black text-base text-[#283B3D]">
+                        ₹{pay.total.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600 font-medium">Amount Paid:</span>
+                      <span className="font-mono font-bold text-emerald-700 text-sm">
+                        ₹{pay.paid.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    {pay.due > 0 ? (
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 space-y-1">
+                        <div className="flex items-center justify-between text-rose-900 font-black">
+                          <span>Pending Udhaar (Due Amount):</span>
+                          <span className="font-mono text-base">₹{pay.due.toLocaleString('en-IN')}</span>
+                        </div>
+                        <p className="text-[11px] text-rose-700 font-medium">
+                          ⚠️ This pending balance is recorded under your registered mobile in the shop's Khata ledger. You can settle it at the shop counter on your next visit.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold flex items-center justify-between">
+                        <span>Payment Status:</span>
+                        <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[11px]">
+                          ✓ Fully Paid (₹0 Due)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Action: Book Again */}
               <div className="pt-2">
