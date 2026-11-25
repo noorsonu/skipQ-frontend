@@ -242,7 +242,7 @@ function ShopsDirectoryContent() {
                         </h3>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
                           <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate">{shop.address || 'Lucknow, Uttar Pradesh'}</span>
+                          <span className="truncate">{shop.address || 'Verified Location'}</span>
                         </div>
                       </div>
 
@@ -303,7 +303,7 @@ function ShopsDirectoryContent() {
             <div>
               <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore Places & Queues</h1>
               <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                Browse verified local business categories in Lucknow. Select a category to see its available shops.
+                Browse verified local business categories. Select a category to see its available shops.
               </p>
             </div>
 

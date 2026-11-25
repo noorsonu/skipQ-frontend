@@ -321,7 +321,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#DCE9E3] border border-[#176B65]/20 text-xs font-bold text-[#176B65] shadow-xs"
             >
               <span className="w-2.5 h-2.5 rounded-full bg-[#F2A15A] animate-ping"></span>
-              <span>Hyperlocal Live Availability • Pilot in Lucknow</span>
+              <span>Live Digital Queue System • Available Across India & Worldwide</span>
             </motion.div>
 
             <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-[#283B3D] leading-[1.1]">
@@ -618,16 +618,7 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#DCE9E3] pb-6">
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-widest text-[#176B65]">Category Directory</span>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore by Category</h2>
-              <Link
-                href="/shops"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] bg-[#DCE9E3] hover:bg-[#cde0d7] px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>+ Browse All Shops Page</span>
-              </Link>
-            </div>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore by Category</h2>
             <p className="text-sm text-[#283B3D]/70 font-medium">Click on any category card below to see its shops list, customer reviews & photos, and take digital queue tokens.</p>
           </div>
 
@@ -729,27 +720,13 @@ export default function HomePage() {
                     className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
                   >
                     <div>
-                      {/* Category Photo Header */}
-                      <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                      {/* Pure Category Photo (Clean, Unobstructed Full View) */}
+                      <div className="relative h-52 sm:h-56 w-full overflow-hidden bg-slate-100">
                         <img
                           src={catPhoto}
                           alt={cat.name}
-                          className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"></div>
-
-                        {/* Top Badges */}
-                        <span className="absolute top-3 left-3 bg-[#176B65] text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
-                          {cat.name}
-                        </span>
-
-                        <span className="absolute top-3 right-3 bg-white/95 backdrop-blur-md text-[#283B3D] text-[10px] font-black px-2.5 py-1 rounded-full shadow-xs">
-                          {matchingShops.length} {matchingShops.length === 1 ? 'Place' : 'Places'} Connected
-                        </span>
-                        {/* Bottom Category Name on Photo */}
-                        <div className="absolute bottom-3 left-4 right-4 text-white">
-                          <h3 className="text-2xl font-black drop-shadow-md">{cat.name}</h3>
-                        </div>
                       </div>
 
                       {/* Content Body */}
@@ -766,20 +743,6 @@ export default function HomePage() {
                         <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2">
                           {cat.description}
                         </p>
-
-                        <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5 text-[#283B3D]/80">
-                            <Clock className="w-3.5 h-3.5 text-[#176B65]" />
-                            <span className="font-semibold text-[11px]">Avg. Wait:</span>
-                            <span className="font-bold text-[#176B65] text-[11px]">
-                              {matchingShops.length > 0 ? (cat.avgWait || '~10-15 min') : 'Queue Closed'}
-                            </span>
-                          </div>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${matchingShops.length > 0 ? 'text-emerald-800 bg-emerald-100' : 'text-slate-600 bg-slate-200'
-                            }`}>
-                            {matchingShops.length > 0 ? 'Zero Physical Line' : 'No Active Line'}
-                          </span>
-                        </div>
                       </div>
                     </div>
 
@@ -810,7 +773,7 @@ export default function HomePage() {
               Looking for other shops or want to see all in a list?
             </h3>
             <p className="text-xs sm:text-sm text-[#283B3D]/70 font-medium max-w-2xl">
-              Explore the complete directory of verified salons, medical stores, diagnostic labs, doctor clinics, chaat points, and auto repairs in Lucknow with live queue status, reviews, and instant tokens.
+              Explore the complete directory of verified salons, medical stores, diagnostic labs, doctor clinics, chaat points, and auto repairs across India and worldwide with live queue status, reviews, and instant tokens.
             </p>
           </div>
           <Link
@@ -1016,7 +979,7 @@ export default function HomePage() {
               Why Wait in Line When You Can Book Online?
             </h2>
             <p className="text-sm sm:text-base text-[#283B3D]/80 font-medium">
-              Join the Lucknow pilot today. Check your nearby store availability and experience hassle-free queuing.
+              Join thousands of smart users today. Check your nearby store availability and experience hassle-free queuing.
             </p>
           </div>
 
