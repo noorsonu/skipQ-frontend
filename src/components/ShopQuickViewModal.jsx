@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { 
-  X, MapPin, Clock, Phone, Ticket, Star, ShieldCheck, 
+import {
+  X, MapPin, Clock, Phone, Ticket, Star, ShieldCheck,
   ArrowUpRight, Users, CheckCircle2, Navigation,
   MessageSquare, Store, User, Reply, Send, Edit3,
   ChevronLeft, ChevronRight, Image as ImageIcon,
@@ -15,7 +15,7 @@ import { reviewApi } from '@/lib/api';
 export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
   const [userRole, setUserRole] = useState('GUEST');
   const [customerName, setCustomerName] = useState('');
-  
+
   // Real reviews & Pagination state
   const [reviewsList, setReviewsList] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,7 +76,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
           ];
           setShopServices(defaultItems);
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // 2. Load Photos uploaded by shopkeeper
       try {
@@ -96,7 +96,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
         } else {
           setShopPhotos(initialPhotos);
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // 3. Load Real Reviews & Comments
       const loadAllReviews = async () => {
@@ -107,7 +107,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
             if (res?.data?.data?.reviews) {
               cloudReviews = res.data.data.reviews;
             }
-          } catch (e) {}
+          } catch (e) { }
         }
 
         let localReviews = [];
@@ -140,7 +140,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
               });
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         const map = new Map();
         cloudReviews.forEach(r => map.set(r.id || `${r.customerName}_${r.stars}_${r.text}`, { ...r }));
@@ -225,15 +225,15 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
       try {
         localStorage.setItem(`ak_merchant_reviews_${slug}`, JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
 
       return updated;
     });
 
     if (isMerch && shop.id && rev.id && String(rev.id).length > 20) {
       try {
-        await reviewApi.replyToReview(shop.id, rev.id, replyText.trim()).catch(() => {});
-      } catch (e) {}
+        await reviewApi.replyToReview(shop.id, rev.id, replyText.trim()).catch(() => { });
+      } catch (e) { }
     }
 
     setReplyText('');
@@ -265,7 +265,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
       try {
         localStorage.setItem(`ak_merchant_reviews_${slug}`, JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
 
@@ -278,9 +278,9 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-        
+
         {/* Backdrop click to close */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -308,9 +308,9 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
 
           {/* Shop Photo Header with Badges */}
           <div className="relative h-56 sm:h-64 w-full overflow-hidden bg-slate-900">
-            <img 
-              src={shop.imageUrl || '/images/clinic.jpg'} 
-              alt={shop.name} 
+            <img
+              src={shop.imageUrl || '/images/clinic.jpg'}
+              alt={shop.name}
               className="w-full h-full object-cover opacity-90"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
@@ -320,9 +320,8 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
               <span className="bg-[#176B65] text-white text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">
                 {shop.categoryName}
               </span>
-              <span className={`text-[11px] font-black uppercase px-3 py-1 rounded-full shadow-sm ${
-                isOpenNow ? 'bg-emerald-600 text-white' : isBusy ? 'bg-amber-600 text-white' : 'bg-rose-600 text-white'
-              }`}>
+              <span className={`text-[11px] font-black uppercase px-3 py-1 rounded-full shadow-sm ${isOpenNow ? 'bg-emerald-600 text-white' : isBusy ? 'bg-amber-600 text-white' : 'bg-rose-600 text-white'
+                }`}>
                 {isOpenNow ? '● Open' : isBusy ? '● Heavy Crowd' : '● Closed'}
               </span>
             </div>
@@ -342,7 +341,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
 
           {/* Modal Body */}
           <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-            
+
             {/* Live Queue Highlights Bar */}
             <div className="grid grid-cols-3 gap-3 p-4 rounded-2xl bg-[#F3F1E9] border border-[#DCE9E3] text-center">
               <div>
@@ -376,7 +375,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                   </div>
                 </div>
 
-                <a 
+                <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent((shop.address || '') + ' ' + (shop.name || ''))}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -412,9 +411,9 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                     onClick={() => setPreviewImage(photo)}
                     className="group relative aspect-square rounded-2xl overflow-hidden border border-[#DCE9E3] bg-slate-100 cursor-pointer shadow-2xs hover:shadow-md transition-all active:scale-95"
                   >
-                    <img 
-                      src={photo.url || photo.dataUrl} 
-                      alt={photo.caption || 'Shop photo'} 
+                    <img
+                      src={photo.url || photo.dataUrl}
+                      alt={photo.caption || 'Shop photo'}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
@@ -503,10 +502,10 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
               {/* Rendered Services: Top 3 if collapsed, filtered scrollable list if expanded */}
               {(() => {
                 const listToDisplay = rateCardExpanded
-                  ? shopServices.filter(s => 
-                      !rateCardSearchQuery.trim() || 
-                      (s.name || '').toLowerCase().includes(rateCardSearchQuery.toLowerCase())
-                    )
+                  ? shopServices.filter(s =>
+                    !rateCardSearchQuery.trim() ||
+                    (s.name || '').toLowerCase().includes(rateCardSearchQuery.toLowerCase())
+                  )
                   : shopServices.slice(0, 3);
 
                 if (rateCardExpanded && listToDisplay.length === 0) {
@@ -520,7 +519,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                 return (
                   <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${rateCardExpanded ? 'max-h-60 overflow-y-auto pr-1' : ''}`}>
                     {listToDisplay.map((srv, sIdx) => (
-                      <div 
+                      <div
                         key={srv.id || sIdx}
                         className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 flex items-center justify-between text-xs transition-colors"
                       >
@@ -597,12 +596,12 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                   const threadReplies = Array.isArray(rev.replies) && rev.replies.length > 0
                     ? rev.replies
                     : (rev.reply || rev.merchantReply ? [{
-                        id: 'rep-init',
-                        authorName: shop.name || 'Shopkeeper',
-                        role: 'MERCHANT',
-                        text: rev.reply || rev.merchantReply,
-                        date: rev.merchantReplyDate || 'Recent'
-                      }] : []);
+                      id: 'rep-init',
+                      authorName: shop.name || 'Shopkeeper',
+                      role: 'MERCHANT',
+                      text: rev.reply || rev.merchantReply,
+                      date: rev.merchantReplyDate || 'Recent'
+                    }] : []);
 
                   return (
                     <div key={revKey} className="p-3.5 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] space-y-2 text-xs shadow-2xs">
@@ -615,9 +614,9 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                         </div>
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map(s => (
-                            <Star 
-                              key={s} 
-                              className={`w-3 h-3 ${s <= (Number(rev.stars) || 5) ? 'fill-amber-400 text-amber-500' : 'text-slate-300'}`} 
+                            <Star
+                              key={s}
+                              className={`w-3 h-3 ${s <= (Number(rev.stars) || 5) ? 'fill-amber-400 text-amber-500' : 'text-slate-300'}`}
                             />
                           ))}
                         </div>
@@ -647,11 +646,10 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                             return (
                               <div
                                 key={rep.id || rIdx}
-                                className={`pl-2.5 py-1.5 px-2.5 rounded-xl text-xs space-y-0.5 ${
-                                  isMerch 
-                                    ? 'bg-[#176B65]/10 border-l-3 border-[#176B65]' 
-                                    : 'bg-amber-50 border-l-3 border-amber-400'
-                                }`}
+                                className={`pl-2.5 py-1.5 px-2.5 rounded-xl text-xs space-y-0.5 ${isMerch
+                                  ? 'bg-[#176B65]/10 border-l-3 border-[#176B65]'
+                                  : 'bg-amber-50 border-l-3 border-amber-400'
+                                  }`}
                               >
                                 <div className="flex items-center justify-between text-[10px]">
                                   <span className={`font-bold flex items-center gap-1 ${isMerch ? 'text-[#176B65]' : 'text-amber-900'}`}>
@@ -708,18 +706,16 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                               <button
                                 type="button"
                                 onClick={() => setReplyRole('CUSTOMER')}
-                                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                                  replyRole === 'CUSTOMER' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-slate-400'
-                                }`}
+                                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${replyRole === 'CUSTOMER' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'text-slate-400'
+                                  }`}
                               >
                                 Customer
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setReplyRole('MERCHANT')}
-                                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${
-                                  replyRole === 'MERCHANT' ? 'bg-[#176B65] text-white' : 'text-slate-400'
-                                }`}
+                                className={`px-2 py-0.5 rounded font-bold cursor-pointer ${replyRole === 'MERCHANT' ? 'bg-[#176B65] text-white' : 'text-slate-400'
+                                  }`}
                               >
                                 Shopkeeper
                               </button>
@@ -783,11 +779,10 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                           key={pageNum}
                           type="button"
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                            isActive
-                              ? 'bg-[#176B65] text-white shadow-xs'
-                              : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
-                          }`}
+                          className={`w-7 h-7 rounded-xl text-xs font-bold transition-all cursor-pointer ${isActive
+                            ? 'bg-[#176B65] text-white shadow-xs'
+                            : 'bg-white border border-[#DCE9E3] text-[#283B3D] hover:bg-slate-50'
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -846,7 +841,7 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
 
       {/* Full-Screen Image Preview Modal */}
       {previewImage && (
-        <div 
+        <div
           onClick={() => setPreviewImage(null)}
           className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer"
         >
@@ -861,9 +856,9 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
                 ✕
               </button>
             </div>
-            <img 
-              src={previewImage.url || previewImage.dataUrl} 
-              alt="Full preview" 
+            <img
+              src={previewImage.url || previewImage.dataUrl}
+              alt="Full preview"
               className="w-full max-h-[75vh] object-contain rounded-2xl border border-white/20"
             />
           </div>

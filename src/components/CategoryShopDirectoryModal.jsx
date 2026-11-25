@@ -3,20 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { 
+import {
   X, Search, MapPin, Ticket, Star, ArrowUpRight, ArrowRight,
   Store, ShieldCheck, ChevronRight, Eye, Heart, Clock,
   ChevronDown, Check, Scissors, Activity, Utensils, Wrench
 } from 'lucide-react';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 
-export default function CategoryShopDirectoryModal({ 
-  isOpen, 
-  onClose, 
-  shops = [], 
-  categories = [], 
+export default function CategoryShopDirectoryModal({
+  isOpen,
+  onClose,
+  shops = [],
+  categories = [],
   initialCategory = 'all',
-  onSelectShopForDetails 
+  onSelectShopForDetails
 }) {
   const [selectedCat, setSelectedCat] = useState(initialCategory || 'all');
   const [search, setSearch] = useState('');
@@ -164,26 +164,26 @@ export default function CategoryShopDirectoryModal({
 
   const headerTitle = isAllPlaces
     ? 'All Categories & Neighborhood Stores'
-    : isFavorites 
-      ? 'Saved Places (Your Favorites)' 
-      : currentCatObj 
-        ? `${currentCatObj.name} Stores` 
+    : isFavorites
+      ? 'Saved Places (Your Favorites)'
+      : currentCatObj
+        ? `${currentCatObj.name} Stores`
         : 'Neighborhood Stores';
 
   const headerSubtitle = isAllPlaces
     ? 'Select any category below to view verified local shops, customer reviews, and live queue passes.'
     : isFavorites
       ? 'Viewing only the shops you have saved. No other data is mixed here.'
-      : currentCatObj 
-        ? `Showing verified ${currentCatObj.name.toLowerCase()} places with live digital queues in Lucknow.` 
+      : currentCatObj
+        ? `Showing verified ${currentCatObj.name.toLowerCase()} places with live digital queues in Lucknow.`
         : 'Browse verified stores across Lucknow, see reviews, and get instant queue passes.';
 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-xs">
-        
+
         {/* Backdrop click to close */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -202,11 +202,10 @@ export default function CategoryShopDirectoryModal({
           {/* Header */}
           <div className="p-5 sm:p-6 border-b border-[#DCE9E3] bg-[#F3F1E9]/60 flex items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0 ${
-                isFavorites 
-                  ? 'bg-rose-100 text-rose-600 border-rose-300' 
-                  : 'bg-[#DCE9E3] text-[#176B65] border-[#176B65]/20'
-              }`}>
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shrink-0 ${isFavorites
+                ? 'bg-rose-100 text-rose-600 border-rose-300'
+                : 'bg-[#DCE9E3] text-[#176B65] border-[#176B65]/20'
+                }`}>
                 {isFavorites ? <Heart className="w-5 h-5 fill-rose-500" /> : <Store className="w-5 h-5" />}
               </div>
               <div>
@@ -230,7 +229,7 @@ export default function CategoryShopDirectoryModal({
               {/* Search Box */}
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input 
+                <input
                   type="text"
                   placeholder={isAllPlaces ? "Search category (Salon, Medical, Clinic)..." : "Search store name or address..."}
                   value={search}
@@ -244,18 +243,16 @@ export default function CategoryShopDirectoryModal({
                 <button
                   type="button"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className={`w-full bg-[#F3F1E9]/80 hover:bg-[#F3F1E9] border rounded-2xl px-3.5 py-2 text-left flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${
-                    dropdownOpen ? 'border-[#176B65] ring-2 ring-[#176B65]/10' : 'border-[#DCE9E3]'
-                  }`}
+                  className={`w-full bg-[#F3F1E9]/80 hover:bg-[#F3F1E9] border rounded-2xl px-3.5 py-2 text-left flex items-center justify-between gap-2 transition-all cursor-pointer shadow-2xs ${dropdownOpen ? 'border-[#176B65] ring-2 ring-[#176B65]/10' : 'border-[#DCE9E3]'
+                    }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                      isFavorites 
-                        ? 'bg-rose-100 text-rose-600' 
-                        : isAllPlaces 
-                          ? 'bg-[#176B65] text-white' 
-                          : 'bg-[#DCE9E3] text-[#176B65]'
-                    }`}>
+                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${isFavorites
+                      ? 'bg-rose-100 text-rose-600'
+                      : isAllPlaces
+                        ? 'bg-[#176B65] text-white'
+                        : 'bg-[#DCE9E3] text-[#176B65]'
+                      }`}>
                       <ActiveIcon className={`w-3.5 h-3.5 ${isFavorites ? 'fill-rose-500' : ''}`} />
                     </div>
                     <div className="min-w-0">
@@ -277,9 +274,9 @@ export default function CategoryShopDirectoryModal({
                 <AnimatePresence>
                   {dropdownOpen && (
                     <>
-                      <div 
-                        className="fixed inset-0 z-40" 
-                        onClick={() => setDropdownOpen(false)} 
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setDropdownOpen(false)}
                       />
                       <motion.div
                         initial={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -295,14 +292,12 @@ export default function CategoryShopDirectoryModal({
                             setSelectedCat('all');
                             setDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                            isAllPlaces ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
-                          }`}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${isAllPlaces ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
+                            }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                              isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
-                            }`}>
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
+                              }`}>
                               <Store className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
@@ -313,9 +308,8 @@ export default function CategoryShopDirectoryModal({
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isAllPlaces ? 'bg-white/20 text-white' : 'bg-[#DCE9E3] text-[#176B65]'
+                              }`}>
                               {standardCategories.length} Categories
                             </span>
                             {isAllPlaces && <Check className="w-4 h-4 text-white" />}
@@ -329,14 +323,12 @@ export default function CategoryShopDirectoryModal({
                             setSelectedCat('favorites');
                             setDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
-                            isFavorites ? 'bg-rose-600 text-white shadow-xs' : 'hover:bg-rose-50/70 text-[#283B3D]'
-                          }`}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${isFavorites ? 'bg-rose-600 text-white shadow-xs' : 'hover:bg-rose-50/70 text-[#283B3D]'
+                            }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                              isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
-                            }`}>
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
+                              }`}>
                               <Heart className={`w-4 h-4 ${isFavorites ? 'fill-white' : 'fill-rose-500'}`} />
                             </div>
                             <div className="min-w-0">
@@ -347,9 +339,8 @@ export default function CategoryShopDirectoryModal({
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFavorites ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700'
+                              }`}>
                               {favoriteSlugs.length} Saved
                             </span>
                             {isFavorites && <Check className="w-4 h-4 text-white" />}
@@ -375,14 +366,12 @@ export default function CategoryShopDirectoryModal({
                                 setSelectedCat(c.id);
                                 setDropdownOpen(false);
                               }}
-                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${
-                                isSelected ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
-                              }`}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${isSelected ? 'bg-[#176B65] text-white shadow-xs' : 'hover:bg-[#F3F1E9] text-[#283B3D]'
+                                }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#DCE9E3]/70 text-[#176B65]'
-                                }`}>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-[#DCE9E3]/70 text-[#176B65]'
+                                  }`}>
                                   <CatIcon className="w-3.5 h-3.5" />
                                 </div>
                                 <div className="min-w-0">
@@ -394,9 +383,8 @@ export default function CategoryShopDirectoryModal({
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  isSelected ? 'bg-white/20 text-white' : 'bg-[#F3F1E9] text-[#176B65]'
-                                }`}>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-[#F3F1E9] text-[#176B65]'
+                                  }`}>
                                   {count} {count === 1 ? 'Shop' : 'Shops'}
                                 </span>
                                 {isSelected && <Check className="w-4 h-4 text-white" />}
@@ -431,12 +419,12 @@ export default function CategoryShopDirectoryModal({
                     .map((cat) => {
                       const matchingShops = getCategoryShops(cat.id);
                       const catPhoto = cat.id === 'salon' ? '/images/barber.jpg' :
-                                       cat.id === 'pharmacy' ? '/images/pharmacy.jpg' :
-                                       cat.id === 'clinic' ? '/images/clinic.jpg' :
-                                       cat.id === 'food' ? '/images/food.jpg' :
-                                       cat.id === 'diagnostic' ? '/images/diagnostic.jpg' :
-                                       cat.id === 'auto' ? '/images/auto.jpg' :
-                                       cat.imageUrl || '/images/clinic.jpg';
+                        cat.id === 'pharmacy' ? '/images/pharmacy.jpg' :
+                          cat.id === 'clinic' ? '/images/clinic.jpg' :
+                            cat.id === 'food' ? '/images/food.jpg' :
+                              cat.id === 'diagnostic' ? '/images/diagnostic.jpg' :
+                                cat.id === 'auto' ? '/images/auto.jpg' :
+                                  cat.imageUrl || '/images/clinic.jpg';
 
                       return (
                         <div
@@ -447,9 +435,9 @@ export default function CategoryShopDirectoryModal({
                           {/* Category Thumbnail & Details */}
                           <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
                             <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-900 shrink-0 border border-[#DCE9E3]">
-                              <img 
-                                src={catPhoto} 
-                                alt={cat.name} 
+                              <img
+                                src={catPhoto}
+                                alt={cat.name}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                               <div className="absolute inset-0 bg-black/20"></div>
@@ -513,18 +501,18 @@ export default function CategoryShopDirectoryModal({
                   const isFav = favoriteSlugs.includes(shop.slug);
 
                   return (
-                    <div 
+                    <div
                       key={shop.id}
                       className="pt-3.5 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 rounded-2xl hover:bg-[#F3F1E9]/60 transition-colors"
                     >
                       {/* Shop Info with Photo Thumbnail */}
                       <div className="flex items-start sm:items-center gap-3.5 flex-1 min-w-0">
-                        <div 
+                        <div
                           onClick={() => onSelectShopForDetails && onSelectShopForDetails(shop)}
                           className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-[#DCE9E3] cursor-pointer group"
                         >
-                          <img 
-                            src={shop.imageUrl || '/images/clinic.jpg'} 
+                          <img
+                            src={shop.imageUrl || '/images/clinic.jpg'}
                             alt={shop.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           />
@@ -535,7 +523,7 @@ export default function CategoryShopDirectoryModal({
 
                         <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 
+                            <h3
                               onClick={() => onSelectShopForDetails && onSelectShopForDetails(shop)}
                               className="font-black text-sm sm:text-base text-[#283B3D] truncate hover:text-[#176B65] cursor-pointer"
                             >
@@ -544,9 +532,8 @@ export default function CategoryShopDirectoryModal({
                             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-[#DCE9E3] text-[#176B65]">
                               {shop.categoryName}
                             </span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              isOpen ? 'bg-emerald-100 text-emerald-800' : isBusy ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isOpen ? 'bg-emerald-100 text-emerald-800' : isBusy ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
                               {isOpen ? '● Open' : isBusy ? '● Busy' : '● Closed'}
                             </span>
                           </div>
@@ -579,11 +566,10 @@ export default function CategoryShopDirectoryModal({
                           type="button"
                           onClick={(e) => handleToggleFav(shop.slug, e)}
                           title={isFav ? "Remove from saved places" : "Save this place"}
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
-                            isFav 
-                              ? 'bg-rose-50 border-rose-300 text-rose-600' 
-                              : 'bg-white border-[#DCE9E3] text-slate-400 hover:text-rose-500 hover:border-rose-300'
-                          }`}
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${isFav
+                            ? 'bg-rose-50 border-rose-300 text-rose-600'
+                            : 'bg-white border-[#DCE9E3] text-slate-400 hover:text-rose-500 hover:border-rose-300'
+                            }`}
                         >
                           <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
                         </button>
@@ -627,13 +613,13 @@ export default function CategoryShopDirectoryModal({
                       {isFavorites ? <Heart className="w-6 h-6 text-rose-500 fill-rose-500" /> : <Store className="w-6 h-6 text-[#176B65]" />}
                     </div>
                     <h4 className="font-bold text-[#283B3D] text-base">
-                      {isFavorites 
-                        ? "You have not saved any shops yet" 
+                      {isFavorites
+                        ? "You have not saved any shops yet"
                         : "No shops found in this category"}
                     </h4>
                     <p className="text-xs text-[#283B3D]/70 max-w-sm mx-auto font-medium">
-                      {isFavorites 
-                        ? "Click the ❤️ heart icon on any shop to save it here for quick access." 
+                      {isFavorites
+                        ? "Click the ❤️ heart icon on any shop to save it here for quick access."
                         : "Try selecting another category or clear search keywords."}
                     </p>
                     {isFavorites && (
