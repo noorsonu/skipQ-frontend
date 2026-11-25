@@ -16,7 +16,8 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'register' ? 'register' : 'login';
-  const returnUrl = searchParams.get('returnUrl') || '/tokens';
+  const rawReturnUrl = searchParams.get('returnUrl');
+  const returnUrl = (rawReturnUrl && rawReturnUrl !== '/tokens') ? rawReturnUrl : '/';
 
   // Mode: 'login' | 'register'
   const [activeTab, setActiveTab] = useState(initialTab);
