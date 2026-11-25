@@ -434,7 +434,7 @@ function LoginContent() {
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>
               <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                Registered 10-Digit Mobile Number <span className="text-rose-500">*</span>
+                Registered 10-Digit Mobile Number
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
@@ -452,7 +452,7 @@ function LoginContent() {
 
             <div>
               <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                Registered Email Address <span className="text-rose-500">*</span>
+                Registered Email Address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -469,7 +469,7 @@ function LoginContent() {
 
             <div>
               <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                Create New Password <span className="text-rose-500">*</span>
+                Create New Password
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -550,7 +550,7 @@ function LoginContent() {
               {activeTab === 'login' ? (
                 <div>
                   <label className="text-xs font-bold text-[#283B3D] block mb-1.5">
-                    Sign In Using <span className="text-rose-500">*</span>
+                    Sign In Using
                   </label>
                   <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold gap-1 mb-2">
                     <button
@@ -609,7 +609,7 @@ function LoginContent() {
                 <>
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Your Full Name <span className="text-rose-500">*</span>
+                      Your Full Name
                     </label>
                     <div className="relative">
                       <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -626,7 +626,7 @@ function LoginContent() {
 
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Email Address <span className="text-rose-500">*</span>
+                      Email Address
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -643,7 +643,7 @@ function LoginContent() {
 
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      10-Digit Mobile Number <span className="text-rose-500">*</span>
+                      10-Digit Mobile Number
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-3 text-xs font-bold text-[#176B65]">+91</span>
@@ -683,7 +683,7 @@ function LoginContent() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-bold text-[#283B3D]">
-                    {activeTab === 'register' ? 'Create Password' : 'Password'} <span className="text-rose-500">*</span>
+                    {activeTab === 'register' ? 'Create Password' : 'Password'}
                   </label>
                   {activeTab === 'login' && (
                     <button
