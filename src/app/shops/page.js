@@ -192,6 +192,39 @@ function ShopsDirectoryContent() {
     }
   }, [activeCategory, shops]);
 
+  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (activeCategory || showFavoritesOnly) {
+      window.history.pushState({ page: 'category_view' }, '');
+
+      const handlePopState = () => {
+        if (showFavoritesOnly) {
+          setShowFavoritesOnly(false);
+        }
+        router.replace('/shops');
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    } else {
+      // User is on All Categories root (/shops)
+      window.history.pushState({ page: 'all_categories' }, '');
+
+      const handlePopState = () => {
+        router.replace('/');
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [activeCategory, showFavoritesOnly, router]);
+
   const handleToggleFav = (slug, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -294,6 +327,7 @@ function ShopsDirectoryContent() {
                     href={`/book/${shop.slug}`}
                     onClick={() => {
                       if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('ak_shops_last_cat', currentCatObj?.id || getShopCategoryId(shop));
                         sessionStorage.setItem('ak_shops_last_shop', shop.slug);
                       }
                     }}
@@ -486,6 +520,12 @@ function ShopsDirectoryContent() {
                         key={shop.id || shop.slug}
                         id={`fav-shop-card-${shop.slug}`}
                         href={`/book/${shop.slug}`}
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('ak_shops_last_cat', 'favorites');
+                            sessionStorage.setItem('ak_shops_last_shop', shop.slug);
+                          }
+                        }}
                         className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-lg hover:border-[#176B65]/40 transition-all flex flex-col justify-between group cursor-pointer"
                       >
                         <div className="space-y-4">

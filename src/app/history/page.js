@@ -82,6 +82,27 @@ export default function ServiceHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVisit, setSelectedVisit] = useState(null);
 
+  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.history.pushState({ page: 'history_page' }, '');
+
+    const handlePopState = () => {
+      if (selectedVisit) {
+        setSelectedVisit(null);
+        window.history.pushState({ page: 'history_page' }, '');
+      } else {
+        router.replace('/shops');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [selectedVisit, router]);
+
   useEffect(() => {
     enforceCleanSlate();
 

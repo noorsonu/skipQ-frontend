@@ -68,6 +68,23 @@ const getCategoryServices = (catName = '') => {
   return ['General Consultation', 'Quick Service', 'Product Purchase', 'Inquiry'];
 };
 
+const getCategoryKey = (shop) => {
+  if (typeof window !== 'undefined') {
+    const saved = sessionStorage.getItem('ak_shops_last_cat');
+    if (saved && saved !== 'favorites') return saved;
+  }
+  const cat = (shop?.categoryName || '').toLowerCase();
+  const slug = (shop?.slug || '').toLowerCase();
+  const name = (shop?.name || '').toLowerCase();
+  if (cat.includes('barber') || cat.includes('salon') || name.includes('barber') || slug.includes('barber') || slug.includes('salon')) return 'salon';
+  if (cat.includes('clinic') || cat.includes('doctor') || cat.includes('dental') || name.includes('doctor') || slug.includes('clinic')) return 'clinic';
+  if (cat.includes('pharmacy') || cat.includes('medical') || name.includes('medical') || slug.includes('medical') || slug.includes('pharmacy')) return 'pharmacy';
+  if (cat.includes('food') || cat.includes('chaat') || cat.includes('restaurant') || name.includes('food')) return 'food';
+  if (cat.includes('diagnostic') || cat.includes('lab') || cat.includes('pathology') || name.includes('lab')) return 'diagnostic';
+  if (cat.includes('auto') || cat.includes('bike') || cat.includes('repair') || name.includes('repair')) return 'auto';
+  return 'salon';
+};
+
 export default function ShopDetailClient() {
   const params = useParams();
   const router = useRouter();
@@ -99,6 +116,41 @@ export default function ShopDetailClient() {
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [shopBroadcast, setShopBroadcast] = useState(null);
+
+  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    window.history.pushState({ page: 'shop_detail' }, '');
+
+    const handlePopState = () => {
+      if (showOtpModal) {
+        setShowOtpModal(false);
+        window.history.pushState({ page: 'shop_detail' }, '');
+        return;
+      }
+      if (showAllReviews) {
+        setShowAllReviews(false);
+        window.history.pushState({ page: 'shop_detail' }, '');
+        return;
+      }
+
+      const lastCat = sessionStorage.getItem('ak_shops_last_cat');
+      if (lastCat === 'favorites') {
+        router.replace('/shops?category=favorites');
+      } else if (lastCat) {
+        router.replace(`/shops?cat=${encodeURIComponent(lastCat)}`);
+      } else {
+        const targetCat = getCategoryKey(shop);
+        router.replace(`/shops?cat=${targetCat}`);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [shop, router, showOtpModal, showAllReviews]);
 
   // BRD FR-1103: Multi-reply and follow-up comment thread states
   const [activeReplyReviewId, setActiveReplyReviewId] = useState(null);
