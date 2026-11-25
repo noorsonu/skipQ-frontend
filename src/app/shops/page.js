@@ -64,41 +64,18 @@ function ShopsDirectoryContent() {
               !name.includes('gupta medical')
             );
           });
+
+          // If database is clean/empty, purge stale local cache as well
+          if (loadedShops.length === 0 && typeof window !== 'undefined') {
+            localStorage.removeItem('ak_merchant_shops');
+            localStorage.removeItem('ak_active_merchant_shop');
+          }
         }
       } catch (err) {
         console.warn('API shops fetch error:', err);
       }
 
-      // 2. Fetch locally registered merchant shops from worker session
-      try {
-        const localStr = localStorage.getItem('ak_merchant_shops');
-        if (localStr) {
-          const local = JSON.parse(localStr);
-          if (Array.isArray(local)) {
-            const DUMMY_SLUGS = [
-              'royal-barber-indira-nagar', 'gupta-medical-indira-nagar', 'suresh-sweets-590',
-              'city-style-salon', 'dr-verma-clinic', 'speedy-auto-bike-care',
-              'apollo-pharmacy-lucknow', 'royal-hair-studio', 'shukla-chaat-bhandar'
-            ];
-            const validLocal = local.filter(s => {
-              const slug = (s.slug || '').toLowerCase();
-              const name = (s.name || '').toLowerCase();
-              return (
-                !DUMMY_SLUGS.includes(slug) &&
-                !slug.includes('royal-barber') &&
-                !slug.includes('gupta-medical') &&
-                !name.includes('royal barber') &&
-                !name.includes('gupta medical')
-              );
-            });
-            const existingSlugs = new Set(loadedShops.map(s => s.slug));
-            const uniqueLocal = validLocal.filter(s => !existingSlugs.has(s.slug));
-            loadedShops = [...loadedShops, ...uniqueLocal];
-          }
-        }
-      } catch (e) {}
-
-      // ONLY set genuine registered shops. NO mock shops fallback!
+      // ONLY set genuine registered shops from backend. NO mock shops fallback!
       setShops(loadedShops);
       setLoading(false);
     };
