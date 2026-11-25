@@ -46,7 +46,7 @@ function resolveShopImage(shop) {
 const DEMO_OUTLETS = [
   { name: 'Dr. City Care Clinic', tag: 'Doctor / Clinic', token: 'DR - 014' },
   { name: 'SpeedFix Auto Repair', tag: 'Repair Center', token: 'RP - 028' },
-  { name: 'Daily Mart & Retail', tag: 'Store / Shopkeeper', token: 'ST - 042' },
+  { name: 'Daily Mart & Retail', tag: 'Store', token: 'ST - 042' },
   { name: 'City Style Salon', tag: 'Salon & Spa', token: 'SL - 024' },
 ];
 
