@@ -13,15 +13,71 @@ import { shopApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import { enforceCleanSlate } from '@/lib/storageSync';
 
-// Standard 6 business categories
+// Standard business categories with full aliases so home page & query params match perfectly
 const CATEGORIES = [
-  { id: 'salon', name: 'Salons & Parlours', icon: Scissors, desc: 'Haircut, styling, grooming & spa', keywords: ['salon', 'barber', 'parlour', 'hair', 'beauty', 'spa'] },
-  { id: 'clinic', name: 'Doctor Clinics', icon: Stethoscope, desc: 'Consultations, dental & checkups', keywords: ['doctor', 'clinic', 'consultation', 'dental', 'health'] },
-  { id: 'medical', name: 'Medical & Pharmacy', icon: Pill, desc: 'Medicines, chemist & health supplies', keywords: ['medical', 'pharmacy', 'chemist', 'drug', 'medicine'] },
-  { id: 'auto-repair', name: 'Auto Repair & Garage', icon: Wrench, desc: 'Bike & car service, puncture repair', keywords: ['auto', 'repair', 'garage', 'mechanic', 'bike', 'car', 'puncture'] },
-  { id: 'food', name: 'Food & Chaat Points', icon: Utensils, desc: 'Snacks, chaat, cafe & takeaways', keywords: ['food', 'chaat', 'sweets', 'restaurant', 'cafe', 'tea', 'bites'] },
-  { id: 'retail', name: 'General Retail & Stores', icon: Store, desc: 'Kirana, apparel & essentials', keywords: ['store', 'retail', 'grocery', 'market', 'shop', 'kirana'] }
+  { 
+    id: 'salon', 
+    name: 'Salon & Barber', 
+    icon: Scissors, 
+    desc: 'Haircut, styling, grooming & spa', 
+    aliases: ['salon', 'barber', 'parlour', 'parlours'],
+    keywords: ['salon', 'barber', 'parlour', 'hair', 'beauty', 'spa'] 
+  },
+  { 
+    id: 'pharmacy', 
+    name: 'Medical & Pharmacy', 
+    icon: Pill, 
+    desc: 'Medicines, chemist & health supplies', 
+    aliases: ['pharmacy', 'medical', 'chemist', 'medicine', 'health'],
+    keywords: ['medical', 'pharmacy', 'chemist', 'drug', 'medicine'] 
+  },
+  { 
+    id: 'clinic', 
+    name: 'Doctor & Clinic', 
+    icon: Stethoscope, 
+    desc: 'Consultations, dental & checkups', 
+    aliases: ['clinic', 'doctor', 'dental', 'hospital'],
+    keywords: ['doctor', 'clinic', 'consultation', 'dental', 'health'] 
+  },
+  { 
+    id: 'food', 
+    name: 'Food & Chaat Points', 
+    icon: Utensils, 
+    desc: 'Snacks, chaat, cafe & takeaways', 
+    aliases: ['food', 'chaat', 'restaurant', 'cafe', 'sweets'],
+    keywords: ['food', 'chaat', 'sweets', 'restaurant', 'cafe', 'tea', 'bites'] 
+  },
+  { 
+    id: 'diagnostic', 
+    name: 'Diagnostic & Lab', 
+    icon: Activity, 
+    desc: 'Blood tests, pathology & scans', 
+    aliases: ['diagnostic', 'lab', 'pathology', 'scans'],
+    keywords: ['diagnostic', 'lab', 'blood', 'pathology', 'scan', 'test'] 
+  },
+  { 
+    id: 'auto', 
+    name: 'Auto & Repair Service', 
+    icon: Wrench, 
+    desc: 'Bike & car service, puncture repair', 
+    aliases: ['auto', 'auto-repair', 'repair', 'garage', 'bike', 'car'],
+    keywords: ['auto', 'repair', 'garage', 'mechanic', 'bike', 'car', 'puncture'] 
+  },
+  { 
+    id: 'retail', 
+    name: 'General Retail & Stores', 
+    icon: Store, 
+    desc: 'Kirana, apparel & essentials', 
+    aliases: ['retail', 'store', 'shop', 'kirana'],
+    keywords: ['store', 'retail', 'grocery', 'market', 'shop', 'kirana'] 
+  }
 ];
+
+function findCategory(catParam) {
+  if (!catParam) return null;
+  const p = catParam.toLowerCase().trim();
+  return CATEGORIES.find(c => c.id === p || (c.aliases && c.aliases.includes(p))) || null;
+}
 
 function getShopCategoryId(shop) {
   const catName = (shop?.categoryName || '').toLowerCase();
@@ -148,15 +204,15 @@ function ShopsDirectoryContent() {
   });
 
   // Current category details if activeCategory is selected
-  const currentCatObj = CATEGORIES.find(c => c.id === activeCategory);
-  const currentCategoryShops = activeCategory ? (shopsByCategory[activeCategory] || []) : [];
+  const currentCatObj = findCategory(activeCategory);
+  const currentCategoryShops = currentCatObj ? (shopsByCategory[currentCatObj.id] || []) : [];
 
   return (
     <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* ============================================================== */}
       {/* SCENARIO A: DEDICATED CATEGORY VIEW (NO OTHER CATEGORIES BELOW) */}
       {/* ============================================================== */}
-      {activeCategory && currentCatObj ? (
+      {currentCatObj ? (
         <div className="space-y-6">
           {/* Dedicated Category Header - Clean, No On-screen Back Button */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#DCE9E3] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
