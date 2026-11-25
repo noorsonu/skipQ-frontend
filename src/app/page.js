@@ -56,16 +56,28 @@ export default function HomePage() {
   // Enforce clean platform slate if epoch changed
   useEffect(() => {
     enforceCleanSlate();
-    // Mobile phone back button scroll restoration to exact clicked card
+
+    // Check if user refreshed the page (reload)
     if (typeof window !== 'undefined') {
+      const navEntries = performance.getEntriesByType('navigation');
+      const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
+      if (isReload) {
+        sessionStorage.removeItem('ak_home_last_clicked');
+        window.scrollTo(0, 0);
+        return;
+      }
+
+      // Mobile phone back button scroll restoration to exact clicked card (One-time only)
       const lastClicked = sessionStorage.getItem('ak_home_last_clicked');
       if (lastClicked) {
+        // Immediately remove it so subsequent refreshes stay at the top (Hero)
+        sessionStorage.removeItem('ak_home_last_clicked');
         setTimeout(() => {
           const el = document.getElementById(lastClicked);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 200);
+        }, 150);
       }
     }
   }, []);

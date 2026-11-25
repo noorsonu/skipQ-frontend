@@ -902,6 +902,17 @@ export default function Navbar() {
           {/* Brand Logo - Links to Dashboard if Merchant, else Home */}
           <Link 
             href={userRole === 'MERCHANT' ? "/merchant/dashboard" : "/"} 
+            onClick={(e) => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('ak_home_last_clicked');
+                if (pathname === '/') {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  window.scrollTo(0, 0);
+                }
+              }
+            }}
             className="flex items-center gap-2 group cursor-pointer"
           >
             <OfficialBrandLogo height={46} animate={true} />
