@@ -405,8 +405,8 @@ function ShopsDirectoryContent() {
             </button>
           </div>
 
-          {/* Clean Category Cards Grid (NO IMAGES) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Clean Single-Line Category Cards (Small Logo, Name & 0 Places in One Line) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
             {CATEGORIES.map(cat => {
               const Icon = cat.icon;
               const count = (shopsByCategory[cat.id] || []).length;
@@ -418,46 +418,30 @@ function ShopsDirectoryContent() {
                   id={`shops-cat-card-${cat.id}`}
                   type="button"
                   onClick={() => handleSelectCategory(cat.id)}
-                  className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-xl hover:border-[#176B65] transition-all text-left flex flex-col justify-between group cursor-pointer"
+                  className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-[#DCE9E3] shadow-xs hover:shadow-md hover:border-[#176B65] transition-all text-left flex items-center justify-between group cursor-pointer active:scale-98"
                 >
-                  <div className="space-y-4">
-                    {/* Top Row: Icon & Availability Badge */}
-                    <div className="flex items-center justify-between">
-                      <div className="w-13 h-13 rounded-2xl bg-[#DCE9E3]/80 group-hover:bg-[#176B65] text-[#176B65] group-hover:text-white flex items-center justify-center shrink-0 border border-[#176B65]/20 transition-colors shadow-2xs">
-                        <Icon className="w-6 h-6" />
-                      </div>
-
-                      {hasShops ? (
-                        <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
-                          {count} Available
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold">
-                          0 Places
-                        </span>
-                      )}
+                  {/* Left: Small Logo & Name in One Single Line */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#DCE9E3]/80 group-hover:bg-[#176B65] text-[#176B65] group-hover:text-white flex items-center justify-center shrink-0 border border-[#176B65]/20 transition-colors shadow-2xs">
+                      <Icon className="w-5 h-5" />
                     </div>
-
-                    {/* Category Title & Desc */}
-                    <div>
-                      <h2 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors flex items-center gap-2">
-                        <span>{cat.name}</span>
-                        {hasShops && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                        )}
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium mt-1">
-                        {cat.desc}
-                      </p>
-                    </div>
+                    <span className="text-base sm:text-lg font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors truncate">
+                      {cat.name}
+                    </span>
                   </div>
 
-                  {/* Bottom Link indicator */}
-                  <div className="mt-6 pt-4 border-t border-[#DCE9E3]/60 flex items-center justify-between text-xs font-bold text-[#176B65]">
-                    <span>{hasShops ? `View ${count} ${count === 1 ? 'Shop' : 'Shops'}` : 'Browse Category'}</span>
-                    <div className="w-7 h-7 rounded-xl bg-[#F8FAF9] group-hover:bg-[#176B65] group-hover:text-white flex items-center justify-center transition-colors">
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
+                  {/* Right: 0 Places Badge & Arrow */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {hasShops ? (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                        {count} {count === 1 ? 'Place' : 'Places'}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
+                        0 Places
+                      </span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#176B65] group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </button>
               );
