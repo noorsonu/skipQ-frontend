@@ -256,9 +256,17 @@ function LoginContent() {
       setTimeout(() => router.push(returnUrl), 800);
     } catch (err) {
       console.error("Auth error:", err);
-      let msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your credentials.';
-      if (err.code === 'ECONNABORTED' || (typeof msg === 'string' && msg.toLowerCase().includes('timeout'))) {
-        msg = 'Server standby se connect ho raha hai. Kripya "Sign In & Continue" par dubara click karein.';
+      let rawMsg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your credentials.';
+      let msg = rawMsg;
+      const lower = String(rawMsg).toLowerCase();
+      if (lower.includes('not found') || lower.includes('no account') || lower.includes('user not found')) {
+        msg = 'Account not found with this mobile number or email.';
+      } else if (lower.includes('bad credentials') || lower.includes('invalid password') || lower.includes('wrong password') || lower.includes('unauthorized')) {
+        msg = 'Incorrect password. Please try again.';
+      } else if (lower.includes('already exists') || lower.includes('already registered')) {
+        msg = 'An account is already registered with this mobile number.';
+      } else if (err.code === 'ECONNABORTED' || lower.includes('timeout')) {
+        msg = 'Connection timed out. Please try again.';
       }
       setErrorMsg(msg);
     } finally {
@@ -385,36 +393,10 @@ function LoginContent() {
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl font-semibold flex items-start gap-2.5"
+            className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl font-medium flex items-center gap-2.5 shadow-2xs"
           >
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-            <div className="flex-1 space-y-1">
-              <p>{errorMsg}</p>
-              {activeTab === 'login' && (errorMsg.toLowerCase().includes('not found') || errorMsg.toLowerCase().includes('register')) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('register');
-                    setErrorMsg('');
-                  }}
-                  className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer"
-                >
-                  👉 Click here to Register your Account now
-                </button>
-              )}
-              {activeTab === 'register' && errorMsg.toLowerCase().includes('already registered') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('login');
-                    setErrorMsg('');
-                  }}
-                  className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer"
-                >
-                  👉 Click here to Log In instead
-                </button>
-              )}
-            </div>
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <p className="flex-1 leading-snug">{errorMsg}</p>
           </motion.div>
         )}
 

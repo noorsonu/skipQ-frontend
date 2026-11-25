@@ -237,7 +237,7 @@ export default function MerchantRegisterPage() {
 
     if (match) {
       setExistingShopDetectedOnPhone(match);
-      setAuthError(`❌ Mobile number is already registered (+91 ${clean}). A shop named "${match.name || 'Shop'}" is already registered. Please switch to the "Quick Login" tab.`);
+      setAuthError('This mobile number is already registered.');
       return;
     } else {
       setExistingShopDetectedOnPhone(null);
@@ -326,7 +326,14 @@ export default function MerchantRegisterPage() {
       }
     } catch (authErr) {
       setLoginLoading(false);
-      const msg = authErr.response?.data?.message || authErr.message || 'Worker account not found with this mobile number/email. Please register your shop first.';
+      const rawMsg = authErr.response?.data?.message || authErr.message || '';
+      let msg = 'Account not found with this mobile number or email.';
+      const lower = String(rawMsg).toLowerCase();
+      if (lower.includes('bad credentials') || lower.includes('invalid password') || lower.includes('wrong password') || lower.includes('unauthorized')) {
+        msg = 'Incorrect password. Please try again.';
+      } else if (lower.includes('not found') || lower.includes('no account') || lower.includes('user not found')) {
+        msg = 'Account not found with this mobile number or email.';
+      }
       setLoginError(msg);
       return;
     }
@@ -349,7 +356,7 @@ export default function MerchantRegisterPage() {
     setLoginLoading(false);
 
     if (!shopExists) {
-      setLoginError('❌ Account authenticated, but no shop profile was found yet. Please register your shop under the "New Registration" tab.');
+      setLoginError('No business profile found with this account.');
       return;
     }
 
@@ -515,7 +522,7 @@ export default function MerchantRegisterPage() {
     }
 
     // Strictly block access if shop does not exist - DO NOT advance to Step 2
-    setLoginError('❌ Mobile number not found. No shop is registered with this mobile number. Please register your shop first under the "New Registration" tab.');
+    setLoginError('Account not found with this mobile number.');
   };
 
   // Direct login with already detected shop
@@ -842,8 +849,9 @@ export default function MerchantRegisterPage() {
               </div>
 
               {loginError && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
-                  {loginError}
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700 flex items-center gap-2 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span className="leading-snug">{loginError}</span>
                 </div>
               )}
 
@@ -942,9 +950,9 @@ export default function MerchantRegisterPage() {
             /* Quick Login View */
             <div className="space-y-4 max-w-lg">
               {loginError && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-center gap-2 shadow-2xs">
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700 flex items-center gap-2 shadow-2xs">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  <span>{loginError.toLowerCase().includes('not found') ? 'Account not found. Please register first.' : loginError}</span>
+                  <span className="leading-snug">{loginError}</span>
                 </div>
               )}
 
@@ -1068,23 +1076,9 @@ export default function MerchantRegisterPage() {
             /* New Registration Step 1 Form */
             <div className="space-y-4 max-w-lg">
               {authError && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 space-y-2.5">
-                  <p>{authError}</p>
-                  {existingShopDetectedOnPhone && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsLoginTab(true);
-                        setLoginPhone(ownerPhone.replace(/\D/g, '').slice(-10));
-                        setAuthError('');
-                        setLoginError('');
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#176B65] text-white text-xs font-bold shadow-xs hover:bg-[#125550] cursor-pointer"
-                    >
-                      <LogIn className="w-3.5 h-3.5 text-[#F2A15A]" />
-                      <span>⚡ Go to Quick Login →</span>
-                    </button>
-                  )}
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700 flex items-center gap-2 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span className="leading-snug">{authError}</span>
                 </div>
               )}
 
