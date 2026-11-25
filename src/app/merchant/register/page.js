@@ -691,11 +691,6 @@ export default function MerchantRegisterPage() {
       
       {/* Top Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-bold shadow-2xs">
-          <Store className="w-3.5 h-3.5" />
-          <span>SkipQ For Merchants • Partner Registration</span>
-        </div>
-
         <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
           Register Your Shop on SkipQ
         </h1>
@@ -987,7 +982,7 @@ export default function MerchantRegisterPage() {
                     <input
                       type="email"
                       required
-                      placeholder="e.g. owner@gmail.com"
+                      placeholder="e.g. noor786@gmail.com"
                       value={merchantForgotEmail}
                       onChange={(e) => setMerchantForgotEmail(e.target.value)}
                       className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
@@ -1075,7 +1070,7 @@ export default function MerchantRegisterPage() {
                     </span>
                     <input
                       type="email"
-                      placeholder="owner@gmail.com"
+                      placeholder="noor786@gmail.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"

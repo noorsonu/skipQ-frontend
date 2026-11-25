@@ -175,8 +175,8 @@ export default function CategoryShopDirectoryModal({
     : isFavorites
       ? 'Viewing only the shops you have saved. No other data is mixed here.'
       : currentCatObj
-        ? `Showing verified ${currentCatObj.name.toLowerCase()} places with live digital queues in Lucknow.`
-        : 'Browse verified stores across Lucknow, see reviews, and get instant queue passes.';
+        ? `Showing verified ${currentCatObj.name.toLowerCase()} places with live digital queues.`
+        : 'Browse verified stores across India and worldwide, see reviews, and get instant queue passes.';
 
   return (
     <AnimatePresence>
@@ -640,7 +640,7 @@ export default function CategoryShopDirectoryModal({
 
           {/* Footer note */}
           <div className="p-3 bg-slate-50 border-t border-[#DCE9E3] text-center text-[11px] text-[#283B3D]/70 shrink-0 font-medium">
-            Pilot Directory in Lucknow • All shops feature live digital queuing with zero waiting in heat.
+            Live Queue Directory • All shops feature live digital queuing with zero waiting in heat.
           </div>
 
         </motion.div>

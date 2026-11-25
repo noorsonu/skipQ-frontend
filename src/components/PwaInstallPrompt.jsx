@@ -208,9 +208,6 @@ export function UniversalDualAppFooter() {
               <h4 className="text-base sm:text-lg font-black text-white">
                 SkipQ Mobile App
               </h4>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-950 text-emerald-300 border border-emerald-700/50 px-2.5 py-0.5 rounded-full">
-                Official PWA
-              </span>
             </div>
             <p className="text-xs text-slate-300 font-medium mt-0.5">
               Book live tokens, track queue waiting radar & manage shop counters — Zero wait.

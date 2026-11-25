@@ -75,7 +75,7 @@ export default function RootLayout({ children }) {
               </div>
 
               <p className="text-slate-400 font-medium">
-                © 2026 SkipQ Platform. Lucknow Pilot Live.
+                © 2026 SkipQ Platform. Available Across India & Worldwide.
               </p>
             </div>
           </div>
