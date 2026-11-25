@@ -461,7 +461,7 @@ function LoginContent() {
                   required
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="noor123@gmail.com"
+                  placeholder="noor786@gmail.com"
                   className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                 />
               </div>
@@ -598,7 +598,7 @@ function LoginContent() {
                         required
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        placeholder="noor123@gmail.com"
+                        placeholder="noor786@gmail.com"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
@@ -635,7 +635,7 @@ function LoginContent() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="e.g. noor123@gmail.com"
+                        placeholder="e.g. noor786@gmail.com"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
