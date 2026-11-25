@@ -216,7 +216,7 @@ export default function MerchantRegisterPage() {
       return;
     }
     if (!ownerEmail.trim() || !ownerEmail.includes('@')) {
-      setAuthError('A valid recovery email address is required.');
+      setAuthError('A valid email address is required.');
       return;
     }
     if (!ownerPassword || ownerPassword.length < 4) {
@@ -377,7 +377,7 @@ export default function MerchantRegisterPage() {
       return;
     }
     if (!merchantForgotEmail.trim() || !merchantForgotEmail.includes('@')) {
-      setLoginError("Please enter your registered recovery email.");
+      setLoginError("Please enter your registered email address.");
       return;
     }
     if (!merchantForgotNewPassword || merchantForgotNewPassword.length < 4) {
@@ -976,7 +976,7 @@ export default function MerchantRegisterPage() {
               {/* Option A: Verify with Registered Email */}
               <form onSubmit={handleMerchantResetPasswordEmail} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Registered Recovery Email</label>
+                  <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Registered Email Address</label>
                   <div className="relative">
                     <span className="absolute left-4 top-3 text-slate-400">
                       <Mail className="w-4 h-4" />
@@ -1179,7 +1179,7 @@ export default function MerchantRegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Recovery Email Address</label>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Email Address</label>
                 <div className="relative">
                   <span className="absolute left-4 top-3 text-slate-400">
                     <Mail className="w-4 h-4" />
