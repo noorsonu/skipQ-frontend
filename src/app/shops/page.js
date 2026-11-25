@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Search, MapPin, Ticket, Star, ArrowRight,
   Store, ShieldCheck, Heart, Clock, Scissors, Activity, Utensils, Wrench, Pill, Stethoscope,
-  ChevronRight, Sparkles, Building2
+  ChevronRight, Sparkles, Building2, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { shopApi } from '@/lib/api';
@@ -102,12 +102,24 @@ function ShopsDirectoryContent() {
   const [loading, setLoading] = useState(true);
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
 
   useEffect(() => {
     enforceCleanSlate();
     setFavoriteSlugs(getFavoriteShopSlugs());
     const onFavUpdate = () => setFavoriteSlugs(getFavoriteShopSlugs());
     window.addEventListener('ak_favorites_updated', onFavUpdate);
+
+    try {
+      const raw = localStorage.getItem('ak_my_tokens');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          setHistoryCount(arr.filter(t => ['COMPLETED', 'SERVED', 'CANCELLED', 'EXPIRED'].includes(t.status)).length);
+        }
+      }
+    } catch (e) {}
+
     return () => window.removeEventListener('ak_favorites_updated', onFavUpdate);
   }, []);
 
@@ -376,12 +388,12 @@ function ShopsDirectoryContent() {
             </div>
           </div>
 
-          {/* Favorites Pill Filter */}
-          <div className="flex items-center gap-2">
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
             <button
               type="button"
               onClick={() => setShowFavoritesOnly(false)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                 !showFavoritesOnly 
                   ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
                   : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
@@ -394,15 +406,28 @@ function ShopsDirectoryContent() {
             <button
               type="button"
               onClick={() => setShowFavoritesOnly(true)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                 showFavoritesOnly 
                   ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
                   : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
               }`}
             >
-              <Heart className="w-3.5 h-3.5" />
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
               <span>My Favorites ({favoriteSlugs.length})</span>
             </button>
+
+            <Link
+              href="/tokens?tab=history"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] shadow-2xs hover:border-[#176B65]"
+            >
+              <History className="w-3.5 h-3.5 text-[#176B65]" />
+              <span>Service History</span>
+              {historyCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-[#DCE9E3] text-[#176B65]">
+                  {historyCount}
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* Clean Single-Line Category Cards (Small Logo, Name & 0 Places in One Line) */}

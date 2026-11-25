@@ -7,7 +7,7 @@ import {
   MapPin, Search, Clock, Users, ShieldCheck, Sparkles, Store,
   ArrowUpRight, ArrowRight, Ticket, CheckCircle2, UserCheck,
   ChevronRight, Smartphone, TrendingUp, BarChart3, BellRing, Hourglass, Power, Play, Compass, Heart, Coffee, XCircle,
-  Star, Eye
+  Star, Eye, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS, MOCK_CATEGORIES } from '@/lib/mockData';
@@ -655,6 +655,15 @@ export default function HomePage() {
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700">
               {favoriteSlugs.length}
             </span>
+          </Link>
+
+          {/* 3. Service History Tab */}
+          <Link
+            href="/tokens?tab=history"
+            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 shadow-2xs"
+          >
+            <History className="w-3.5 h-3.5 text-[#176B65]" />
+            <span>Service History</span>
           </Link>
 
           {/* 3. The 6 Category Buttons */}
