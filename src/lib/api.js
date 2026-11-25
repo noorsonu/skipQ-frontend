@@ -98,8 +98,14 @@ export const userApi = {
   deleteAccount: (reason) => apiClient.post('/api/users/me/delete-account', { reason }),
 };
 
-// Admin System Governance & Purge APIs
+// Admin System Governance, Metrics & User Management APIs (BRD Section 19, FR-801 to FR-808)
 export const adminApi = {
+  getUsers: (secret = 'SKIPQ_PURGE_2026') => 
+    apiClient.get('/api/admin/users', { headers: { 'X-Admin-Secret': secret } }),
+  deleteUser: (userId, secret = 'SKIPQ_PURGE_2026') => 
+    apiClient.delete(`/api/admin/users/${userId}`, { headers: { 'X-Admin-Secret': secret } }),
+  getMetrics: (secret = 'SKIPQ_PURGE_2026') => 
+    apiClient.get('/api/admin/metrics', { headers: { 'X-Admin-Secret': secret } }),
   purgeAllData: (secret = 'SKIPQ_PURGE_2026') => 
     apiClient.post('/api/admin/system/purge-all-data', {}, { headers: { 'X-Admin-Secret': secret } }),
 };
