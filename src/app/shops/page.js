@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Search, MapPin, Ticket, Star, ArrowRight,
   Store, ShieldCheck, Heart, Clock, Scissors, Activity, Utensils, Wrench, Pill, Stethoscope,
-  ChevronRight, Sparkles, Building2, History
+  ChevronRight, ChevronLeft, Sparkles, Building2, History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { shopApi } from '@/lib/api';
@@ -103,6 +103,11 @@ function ShopsDirectoryContent() {
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
+  const [catPage, setCatPage] = useState(1);
+
+  useEffect(() => {
+    setCatPage(1);
+  }, [search]);
 
   useEffect(() => {
     enforceCleanSlate();
@@ -263,6 +268,23 @@ function ShopsDirectoryContent() {
   const currentCatObj = showFavoritesOnly ? null : findCategory(activeCategory);
   const currentCategoryShops = currentCatObj ? (shopsByCategory[currentCatObj.id] || []) : [];
   const favoriteShops = shops.filter(s => favoriteSlugs.includes(s.slug));
+
+  // Pagination for Categories (Exactly 5 categories per page as requested)
+  const CATS_PER_PAGE = 5;
+  const filteredCategories = CATEGORIES.filter(cat => {
+    if (!query) return true;
+    return (
+      cat.name.toLowerCase().includes(query) ||
+      (cat.keywords && cat.keywords.some(k => k.includes(query))) ||
+      (cat.desc && cat.desc.toLowerCase().includes(query))
+    );
+  });
+  const totalCatPages = Math.ceil(filteredCategories.length / CATS_PER_PAGE) || 1;
+  const currentCatPage = Math.min(catPage, totalCatPages);
+  const paginatedCategories = filteredCategories.slice(
+    (currentCatPage - 1) * CATS_PER_PAGE,
+    currentCatPage * CATS_PER_PAGE
+  );
 
   return (
     <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -596,47 +618,94 @@ function ShopsDirectoryContent() {
               </div>
             )
           ) : (
-            /* Clean Single-Line Category Cards (Small Logo, Name & 0 Places in One Line) */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
-              {CATEGORIES.map(cat => {
-                const Icon = cat.icon;
-                const count = (shopsByCategory[cat.id] || []).length;
-                const hasShops = count > 0;
+            /* Clean Single-Line Category Cards (5 Categories Per Page + Clean Pagination) */
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+                {paginatedCategories.map(cat => {
+                  const Icon = cat.icon;
+                  const count = (shopsByCategory[cat.id] || []).length;
+                  const hasShops = count > 0;
 
-                return (
-                  <button
-                    key={cat.id}
-                    id={`shops-cat-card-${cat.id}`}
-                    type="button"
-                    onClick={() => handleSelectCategory(cat.id)}
-                    className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-[#DCE9E3] shadow-xs hover:shadow-md hover:border-[#176B65] transition-all text-left flex items-center justify-between group cursor-pointer active:scale-98"
-                  >
-                    {/* Left: Small Logo & Name in One Single Line */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#DCE9E3]/80 group-hover:bg-[#176B65] text-[#176B65] group-hover:text-white flex items-center justify-center shrink-0 border border-[#176B65]/20 transition-colors shadow-2xs">
-                        <Icon className="w-5 h-5" />
+                  return (
+                    <button
+                      key={cat.id}
+                      id={`shops-cat-card-${cat.id}`}
+                      type="button"
+                      onClick={() => handleSelectCategory(cat.id)}
+                      className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-[#DCE9E3] shadow-xs hover:shadow-md hover:border-[#176B65] transition-all text-left flex items-center justify-between group cursor-pointer active:scale-98"
+                    >
+                      {/* Left: Small Logo & Name in One Single Line */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-[#DCE9E3]/80 group-hover:bg-[#176B65] text-[#176B65] group-hover:text-white flex items-center justify-center shrink-0 border border-[#176B65]/20 transition-colors shadow-2xs">
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <span className="text-base sm:text-lg font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors truncate">
+                          {cat.name}
+                        </span>
                       </div>
-                      <span className="text-base sm:text-lg font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors truncate">
-                        {cat.name}
-                      </span>
-                    </div>
 
-                    {/* Right: 0 Places Badge & Arrow */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {hasShops ? (
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                          {count} {count === 1 ? 'Place' : 'Places'}
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
-                          0 Places
-                        </span>
-                      )}
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#176B65] group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </button>
-                );
-              })}
+                      {/* Right: 0 Places Badge & Arrow */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {hasShops ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                            {count} {count === 1 ? 'Place' : 'Places'}
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-semibold">
+                            0 Places
+                          </span>
+                        )}
+                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#176B65] group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Clean SkipQ Pagination Controls */}
+              {totalCatPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#DCE9E3]/70">
+                  <p className="text-xs text-slate-500 font-medium">
+                    Showing <span className="font-bold text-[#283B3D]">{(currentCatPage - 1) * CATS_PER_PAGE + 1}–{Math.min(currentCatPage * CATS_PER_PAGE, filteredCategories.length)}</span> of <span className="font-bold text-[#283B3D]">{filteredCategories.length}</span> categories
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentCatPage === 1}
+                      onClick={() => setCatPage(p => Math.max(1, p - 1))}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold border border-[#DCE9E3] bg-white text-[#283B3D] hover:bg-[#DCE9E3]/30 disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Previous</span>
+                    </button>
+
+                    {Array.from({ length: totalCatPages }, (_, i) => i + 1).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setCatPage(p)}
+                        className={`w-9 h-9 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                          currentCatPage === p
+                            ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
+                            : 'bg-white text-[#283B3D] hover:bg-[#DCE9E3]/40 border-[#DCE9E3]'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      disabled={currentCatPage >= totalCatPages}
+                      onClick={() => setCatPage(p => Math.min(totalCatPages, p + 1))}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold border border-[#DCE9E3] bg-white text-[#283B3D] hover:bg-[#DCE9E3]/30 disabled:opacity-40 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

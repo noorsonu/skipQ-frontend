@@ -3,19 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  History, Store, Calendar, Clock, Ticket, ArrowRight, RotateCw, 
+import {
+  History, Store, Calendar, Clock, Ticket, ArrowRight, RotateCw,
   MapPin, CheckCircle2, ChevronRight, X, Sparkles, Star, AlertTriangle,
-  Receipt, CreditCard, Banknote, ShieldAlert
+  Receipt, CreditCard, Banknote, ShieldAlert, Search, Heart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { queueApi } from '@/lib/api';
 import { enforceCleanSlate } from '@/lib/storageSync';
+import { getFavoriteShopSlugs } from '@/lib/favorites';
 
 function getPaymentInfo(item) {
   const total = Number(item.amount || item.billAmount || item.totalAmount || 0);
   const mode = String(item.paymentMode || item.billPaymentMode || '').toUpperCase();
-  
+
   // Check if shop khata ledger has pending due for this customer
   let khataDue = 0;
   if (typeof window !== 'undefined') {
@@ -33,7 +34,7 @@ function getPaymentInfo(item) {
             }
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -81,6 +82,8 @@ export default function ServiceHistoryPage() {
   const [historyList, setHistoryList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [search, setSearch] = useState('');
+  const [favoriteSlugs, setFavoriteSlugs] = useState([]);
 
   // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
   useEffect(() => {
@@ -105,6 +108,9 @@ export default function ServiceHistoryPage() {
 
   useEffect(() => {
     enforceCleanSlate();
+    setFavoriteSlugs(getFavoriteShopSlugs());
+    const onFavUpdate = () => setFavoriteSlugs(getFavoriteShopSlugs());
+    window.addEventListener('ak_favorites_updated', onFavUpdate);
 
     const loadHistory = async () => {
       setLoading(true);
@@ -137,7 +143,7 @@ export default function ServiceHistoryPage() {
               });
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           const raw = localStorage.getItem('ak_my_tokens');
@@ -151,7 +157,7 @@ export default function ServiceHistoryPage() {
               });
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Sort newest first
@@ -166,30 +172,71 @@ export default function ServiceHistoryPage() {
     };
 
     loadHistory();
+    return () => window.removeEventListener('ak_favorites_updated', onFavUpdate);
   }, []);
 
+  const filteredHistory = historyList.filter(item => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase().trim();
+    const sName = (item.shopName || '').toLowerCase();
+    const tokenNo = (item.tokenNumber || '').toLowerCase();
+    const services = Array.isArray(item.servicesOpted)
+      ? item.servicesOpted.join(' ').toLowerCase()
+      : String(item.servicesOpted || '').toLowerCase();
+    return sName.includes(q) || tokenNo.includes(q) || services.includes(q);
+  });
+
   return (
-    <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCE9E3] pb-6">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-bold">
-            <History className="w-3.5 h-3.5" />
-            <span>Customer Service Log</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Service History</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+    <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+      {/* Header - Clean, Identical to Favorites */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
+            My Service History
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Review your past shop visits, payments, udhaar ledger, and re-book with 1 click.
           </p>
         </div>
 
+        {/* Search Input */}
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search in history..."
+            className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-xs"
+          />
+        </div>
+      </div>
+
+      {/* Filter Pills: Exactly 3 Compact Buttons in 1 Line (No Scroll) */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full py-1">
         <Link
           href="/shops"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+          className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate"
         >
-          <Store className="w-3.5 h-3.5" />
-          <span>Browse Places & Queues</span>
+          <Store className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">All Categories</span>
         </Link>
+
+        <Link
+          href="/shops?category=favorites"
+          className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate"
+        >
+          <Heart className="w-3.5 h-3.5 shrink-0 text-rose-500 fill-rose-500" />
+          <span className="truncate">Favorites ({favoriteSlugs.length})</span>
+        </Link>
+
+        <button
+          type="button"
+          className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border bg-[#176B65] text-white border-[#176B65] shadow-sm flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate"
+        >
+          <History className="w-3.5 h-3.5 shrink-0 text-white" />
+          <span className="truncate">History</span>
+        </button>
       </div>
 
       {/* Main Content */}
@@ -199,40 +246,56 @@ export default function ServiceHistoryPage() {
           <p className="text-xs font-bold text-slate-400">Loading your service history...</p>
         </div>
       ) : historyList.length === 0 ? (
-        /* Empty State: No Service History Found */
-        <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[#DCE9E3] space-y-4 max-w-md mx-auto shadow-sm">
-          <div className="w-16 h-16 rounded-3xl bg-[#DCE9E3]/70 text-[#176B65] flex items-center justify-center mx-auto border border-[#176B65]/20 shadow-2xs">
+        /* Empty State: Matching Favorite View Card Exactly */
+        <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[#DCE9E3] space-y-4 max-w-lg mx-auto shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-[#DCE9E3]/60 text-[#176B65] flex items-center justify-center mx-auto border border-[#176B65]/20 shadow-2xs">
             <History className="w-8 h-8" />
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-lg font-black text-[#283B3D]">No Service History Found</h3>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              You haven't completed any visits yet. When you book a token and complete your visit at a salon, clinic, or store, your history along with billing and payment status will appear here.
+            <h3 className="text-xl font-black text-[#283B3D]">No Service History Yet</h3>
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+              Aapne abhi tak koi service visit complete nahi ki hai. Jab aap kisi shop ya clinic par token complete karwayenge to unki history yahan dikhegi.
             </p>
           </div>
           <div className="pt-2">
             <Link
               href="/shops"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all shadow-md active:scale-98 cursor-pointer"
             >
               <Store className="w-4 h-4 text-[#F2A15A]" />
-              <span>Explore Places & Book Token</span>
-              <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
+              <span>Browse All Categories →</span>
             </Link>
+          </div>
+        </div>
+      ) : filteredHistory.length === 0 ? (
+        <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[#DCE9E3] space-y-3 max-w-md mx-auto shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Search className="w-7 h-7" />
+          </div>
+          <h3 className="text-lg font-black text-[#283B3D]">No Matching Visits</h3>
+          <p className="text-xs text-slate-500 font-medium">No past visits found matching &ldquo;{search}&rdquo;</p>
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="px-4 py-2 rounded-xl bg-[#DCE9E3] hover:bg-[#176B65] hover:text-white text-[#176B65] font-bold text-xs transition-colors cursor-pointer"
+            >
+              Clear Search
+            </button>
           </div>
         </div>
       ) : (
         /* History Items List */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {historyList.map((item, idx) => {
+          {filteredHistory.map((item, idx) => {
             const dateStr = item.completedAt || item.servedAt || item.createdAt
               ? new Date(item.completedAt || item.servedAt || item.createdAt).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
               : 'Recent Visit';
 
             const shopSlug = item.shopSlug || (item.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -388,9 +451,9 @@ export default function ServiceHistoryPage() {
                   <span className="font-semibold text-[#283B3D]">
                     {selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt
                       ? new Date(selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt).toLocaleString('en-IN', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short'
-                        })
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                      })
                       : 'Recent Visit'}
                   </span>
                 </div>
