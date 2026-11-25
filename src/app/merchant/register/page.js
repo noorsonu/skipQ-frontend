@@ -692,13 +692,13 @@ export default function MerchantRegisterPage() {
       {/* Top Header */}
       <div className="text-center space-y-3">
         <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
-          {isLoginTab ? 'Store Counter Log In' : 'Register Your Shop on SkipQ'}
+          {isLoginTab ? 'Counter Desk Log In' : 'Register Your Business & Counter on SkipQ'}
         </h1>
 
         <p className="text-xs sm:text-sm text-[#283B3D]/70 max-w-xl mx-auto font-medium">
           {isLoginTab 
-            ? 'Log in to manage your store counter, call tokens, and track queue live.' 
-            : 'Say goodbye to crowded waiting rooms and lost customers. Give your customers instant digital queue passes and track your counter smoothly.'}
+            ? 'Log in to manage your counter desk, call tokens, and track queue live.' 
+            : 'Say goodbye to crowded waiting rooms and waiting lines. Give your visitors instant digital queue passes and track your counter smoothly.'}
         </p>
       </div>
 
@@ -713,7 +713,7 @@ export default function MerchantRegisterPage() {
         >
           <div className="absolute top-0 right-0 bg-[#176B65] text-[#F3F1E9] text-[10px] font-black uppercase tracking-wider px-3.5 py-1 rounded-bl-2xl flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#34D399]" />
-            <span>Active Shop Found</span>
+            <span>Active Profile Found</span>
           </div>
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pt-2">
@@ -802,7 +802,7 @@ export default function MerchantRegisterPage() {
               }`}>
                 {step > 2 ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : '2'}
               </span>
-              <span className={step >= 2 ? 'text-[#283B3D]' : 'text-slate-400'}>Shop Info</span>
+              <span className={step >= 2 ? 'text-[#283B3D]' : 'text-slate-400'}>Business Info</span>
             </div>
 
             <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${step > 2 ? 'bg-emerald-600' : 'bg-slate-200'}`}></div>
@@ -834,10 +834,10 @@ export default function MerchantRegisterPage() {
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4 flex-wrap gap-3">
             <div>
               <h2 className="text-xl font-black text-[#283B3D]">
-                {isLoginTab ? 'Store Log In' : 'Step 1: Register New Shop'}
+                {isLoginTab ? 'Counter Desk Log In' : 'Step 1: Register Business / Service'}
               </h2>
               <p className="text-xs text-[#283B3D]/70 font-medium">
-                {isLoginTab ? 'Log in to manage your store counter and digital queue live.' : 'Verify your mobile number to register your shop and start issuing tokens.'}
+                {isLoginTab ? 'Log in to manage your counter desk and digital queue live.' : 'Verify your mobile number to register and start issuing tokens.'}
               </p>
             </div>
 
@@ -860,7 +860,7 @@ export default function MerchantRegisterPage() {
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Register Shop</span>
+                <span>Register</span>
               </button>
             </div>
           </div>
@@ -1117,13 +1117,13 @@ export default function MerchantRegisterPage() {
 
               <div className="text-center pt-1">
                 <p className="text-xs text-slate-500 font-medium">
-                  New store on SkipQ?{' '}
+                  New to SkipQ?{' '}
                   <button
                     type="button"
                     onClick={() => { setIsLoginTab(false); setAuthError(''); }}
                     className="font-bold text-[#176B65] hover:underline cursor-pointer"
                   >
-                    Register your store here
+                    Register your business or counter here
                   </button>
                 </p>
               </div>
@@ -1153,7 +1153,7 @@ export default function MerchantRegisterPage() {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Shop Owner / Manager Name</label>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Owner / Manager Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Noor Mohammad"
@@ -1222,13 +1222,13 @@ export default function MerchantRegisterPage() {
                 onClick={handleSendOtp}
                 className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <span>Continue to Shop Profile →</span>
+                <span>Continue to Profile Setup →</span>
                 <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
               </button>
 
               <div className="text-center pt-1">
                 <p className="text-xs text-slate-500 font-medium">
-                  Already have a registered shop?{' '}
+                  Already registered on SkipQ?{' '}
                   <button
                     type="button"
                     onClick={() => { setIsLoginTab(true); setLoginError(''); }}
@@ -1265,8 +1265,8 @@ export default function MerchantRegisterPage() {
         >
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4">
             <div>
-              <h2 className="text-xl font-black text-[#283B3D]">Step 2: Shop Details & Location</h2>
-              <p className="text-xs text-[#283B3D]/70 font-medium">This information helps nearby customers find and book with you.</p>
+              <h2 className="text-xl font-black text-[#283B3D]">Step 2: Place & Location Details</h2>
+              <p className="text-xs text-[#283B3D]/70 font-medium">This information helps nearby customers and visitors find and book with you.</p>
             </div>
             <button
               type="button"
@@ -1280,12 +1280,12 @@ export default function MerchantRegisterPage() {
 
           <form onSubmit={handleProceedToSettings} className="space-y-5">
             
-            {/* Shop Name */}
+            {/* Business / Place Name */}
             <div>
-              <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Shop Display Name *</label>
+              <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Business / Place Display Name *</label>
               <input
                 type="text"
-                placeholder="e.g. Royal Barber & Hair Studio / Gupta Care Chemist"
+                placeholder="e.g. LifeCare Clinic / Looks Salon / Gupta Medicos"
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
                 required
@@ -1295,7 +1295,7 @@ export default function MerchantRegisterPage() {
 
             {/* Category Selector Grid */}
             <div>
-              <label className="block text-xs font-bold text-[#283B3D] mb-2">Select Shop Category *</label>
+              <label className="block text-xs font-bold text-[#283B3D] mb-2">Select Category *</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {categoriesList.map((c) => {
                   const Icon = c.icon;
@@ -1339,7 +1339,7 @@ export default function MerchantRegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Store Timings *</label>
+                <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Counter / Operating Timings *</label>
                 <input
                   type="text"
                   placeholder="e.g. 09:00 AM – 09:30 PM"
