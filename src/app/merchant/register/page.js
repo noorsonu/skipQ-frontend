@@ -937,7 +937,7 @@ export default function MerchantRegisterPage() {
                   </span>
                   <input
                     type={showMerchantNewPassword ? "text" : "password"}
-                    placeholder="e.g. Ramesh@123"
+                    placeholder="e.g. Noor@123"
                     value={merchantForgotNewPassword}
                     onChange={(e) => setMerchantForgotNewPassword(e.target.value)}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
@@ -1171,7 +1171,7 @@ export default function MerchantRegisterPage() {
                 <label className="block text-xs font-bold text-[#283B3D] mb-1.5">Shop Owner / Manager Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Ramesh Verma"
+                  placeholder="e.g. Noor Mohammad"
                   value={ownerName}
                   onChange={(e) => setOwnerName(e.target.value)}
                   className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl px-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
@@ -1201,7 +1201,7 @@ export default function MerchantRegisterPage() {
                   </span>
                   <input
                     type="email"
-                    placeholder="e.g. ramesh.verma@gmail.com"
+                    placeholder="e.g. noor786@gmail.com"
                     value={ownerEmail}
                     onChange={(e) => setOwnerEmail(e.target.value)}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
@@ -1217,7 +1217,7 @@ export default function MerchantRegisterPage() {
                   </span>
                   <input
                     type={showOwnerPassword ? "text" : "password"}
-                    placeholder="e.g. Ramesh@123 (min 4 characters)"
+                    placeholder="e.g. Noor@123 (min 4 characters)"
                     value={ownerPassword}
                     onChange={(e) => setOwnerPassword(e.target.value)}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"

@@ -2416,7 +2416,7 @@ export default function ShopDetailClient() {
                     type="text"
                     value={newReviewName}
                     onChange={(e) => setNewReviewName(e.target.value)}
-                    placeholder="e.g. Ramesh Kumar"
+                    placeholder="e.g. Noor Mohammad"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE9E3] bg-slate-50 text-xs font-semibold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                   />
                 </div>

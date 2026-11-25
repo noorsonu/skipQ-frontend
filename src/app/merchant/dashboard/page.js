@@ -6639,7 +6639,7 @@ export default function MerchantDashboardPage() {
                         type="text"
                         value={editOwnerName}
                         onChange={(e) => setEditOwnerName(e.target.value)}
-                        placeholder="e.g. Ramesh Verma"
+                        placeholder="e.g. Noor Mohammad"
                         className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-2xl px-4 py-2.5 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
