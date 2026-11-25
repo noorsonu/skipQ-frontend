@@ -361,6 +361,7 @@ export default function ShopDetailClient() {
   const handleToggleServiceSelection = (srv) => {
     const sName = typeof srv === 'string' ? srv : srv.name;
     const sPrice = typeof srv === 'object' && srv.price ? Number(srv.price) : 0;
+    const sDuration = typeof srv === 'object' && (srv.duration || srv.durationMin) ? Number(srv.duration || srv.durationMin) : 15;
 
     setSelectedServicesList(prev => {
       const exists = prev.find(item => item.name.toLowerCase() === sName.toLowerCase());
@@ -368,13 +369,14 @@ export default function ShopDetailClient() {
       if (exists) {
         next = prev.filter(item => item.name.toLowerCase() !== sName.toLowerCase());
       } else {
-        next = [...prev, { id: 'srv-' + Date.now() + Math.random(), name: sName, price: sPrice }];
+        next = [...prev, { id: 'srv-' + Date.now() + Math.random(), name: sName, price: sPrice, duration: sDuration }];
       }
 
-      // Update customerPurpose text
+      // Update customerPurpose text with items, total price and total duration
       const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
       const total = next.reduce((s, u) => s + (u.price || 0), 0);
-      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      const totalTime = next.reduce((s, u) => s + (u.duration || 15), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Total: ₹${total}` : ''} • ~${totalTime}m` : '');
       return next;
     });
   };
@@ -384,10 +386,11 @@ export default function ShopDetailClient() {
     if (!customServiceInput.trim()) return;
     const name = customServiceInput.trim();
     setSelectedServicesList(prev => {
-      const next = [...prev, { id: 'custom-' + Date.now(), name, price: 0 }];
+      const next = [...prev, { id: 'custom-' + Date.now(), name, price: 0, duration: 15 }];
       const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
       const total = next.reduce((s, u) => s + (u.price || 0), 0);
-      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      const totalTime = next.reduce((s, u) => s + (u.duration || 15), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Total: ₹${total}` : ''} • ~${totalTime}m` : '');
       return next;
     });
     setCustomServiceInput('');
@@ -398,7 +401,8 @@ export default function ShopDetailClient() {
       const next = prev.filter(item => item.id !== id);
       const namesStr = next.map(u => u.price > 0 ? `${u.name} (₹${u.price})` : u.name).join(', ');
       const total = next.reduce((s, u) => s + (u.price || 0), 0);
-      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Est. Total: ₹${total}` : ''}` : '');
+      const totalTime = next.reduce((s, u) => s + (u.duration || 15), 0);
+      setCustomerPurpose(namesStr ? `${namesStr}${total > 0 ? ` • Total: ₹${total}` : ''} • ~${totalTime}m` : '');
       return next;
     });
   };
@@ -773,11 +777,16 @@ export default function ShopDetailClient() {
       // Backend shop UUID
       const validShopId = shop?.id;
 
+      const selectedNames = selectedServicesList.map(s => s.name);
+      const totalServiceTime = selectedServicesList.reduce((acc, s) => acc + (s.duration || s.durationMin || 15), 0) || (shop?.avgWaitMin || 15);
+
       const payload = {
         customerName: mainName,
         customerPhone: cleanPhone,
         groupSize: Math.min(effectiveGroupSize, 4), // Cap at 4 for legacy backend DTO limit
         memberNames: memberEntries,
+        selectedServices: selectedNames.length > 0 ? selectedNames : (customerPurpose ? [customerPurpose] : ['General Service']),
+        serviceDurationMin: totalServiceTime,
         source: 'APP',
       };
 
@@ -2065,7 +2074,7 @@ export default function ShopDetailClient() {
                   </label>
                   {selectedServicesList.length > 0 && (
                     <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3]/50 px-2.5 py-0.5 rounded-lg border border-[#176B65]/20">
-                      {selectedServicesList.length} Selected • ₹{selectedServicesList.reduce((s, i) => s + (i.price || 0), 0)}
+                      {selectedServicesList.length} Selected • ~{selectedServicesList.reduce((s, i) => s + (i.duration || 15), 0)}m • ₹{selectedServicesList.reduce((s, i) => s + (i.price || 0), 0)}
                     </span>
                   )}
                 </div>
@@ -2077,12 +2086,13 @@ export default function ShopDetailClient() {
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {(customServices.length > 0 ? customServices : [
-                      { id: 'def-1', name: 'Standard Haircut', price: 150 },
-                      { id: 'def-2', name: 'Beard Styling', price: 80 },
-                      { id: 'def-3', name: 'Head Massage', price: 120 },
-                      { id: 'def-4', name: 'Facial / Clean-up', price: 250 }
+                      { id: 'def-1', name: 'Standard Haircut', price: 150, duration: 15 },
+                      { id: 'def-2', name: 'Beard Styling', price: 80, duration: 10 },
+                      { id: 'def-3', name: 'Head Massage', price: 120, duration: 15 },
+                      { id: 'def-4', name: 'Facial / Clean-up', price: 250, duration: 35 }
                     ]).map((srv, idx) => {
                       const isSelected = selectedServicesList.some(item => item.name.toLowerCase() === srv.name.toLowerCase());
+                      const dur = srv.duration || srv.durationMin || 15;
                       return (
                         <button
                           key={srv.id || idx}
@@ -2096,6 +2106,9 @@ export default function ShopDetailClient() {
                         >
                           <span className="font-bold">{isSelected ? '✓' : '+'}</span>
                           <span>{srv.name}</span>
+                          <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                            ~{dur}m
+                          </span>
                           {srv.price > 0 && (
                             <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
                               isSelected ? 'bg-white/20 text-white' : 'bg-[#F3F1E9] text-[#176B65] font-bold'

@@ -1015,8 +1015,9 @@ export default function MerchantDashboardPage() {
         customerName: t.customerName || 'Customer',
         customerPhone: t.customerPhone || 'Online',
         groupSize: t.groupSize || 1,
-        service: t.customerPurpose || t.service || 'General Service',
-        estWaitMin: (index + 1) * (shop.avgWaitMin || 12),
+        service: t.selectedServices || t.customerPurpose || t.service || 'General Service',
+        serviceDurationMin: t.serviceDurationMin || (shop.avgWaitMin || 15),
+        estWaitMin: t.estimatedWaitMin !== undefined ? t.estimatedWaitMin : ((index + 1) * (shop.avgWaitMin || 12)),
         waitAhead: index
       }));
 
@@ -5037,7 +5038,13 @@ export default function MerchantDashboardPage() {
                         <div className="flex items-center gap-2 flex-wrap text-[11px] text-[#283B3D]/70">
                           <span className="truncate">{item.service}</span>
                           <span>•</span>
-                          <span>~{item.estWaitMin}m</span>
+                          <span>~{item.estWaitMin}m wait</span>
+                          {item.serviceDurationMin > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-[#176B65] font-semibold">Service: ~{item.serviceDurationMin}m</span>
+                            </>
+                          )}
                           {sentTime && (
                             <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                               ✓ WA Sent {sentTime}
