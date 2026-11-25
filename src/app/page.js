@@ -675,11 +675,11 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Category Cards Grid (Strictly 6 Authentic Category Cards - No "All Places" card!) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Category Cards Grid (Strictly 4 Cards on Homepage) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories
             .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()))
-            .slice(0, 6)
+            .slice(0, 4)
             .map((cat) => {
               const matchingShops = shops.filter(shop => {
                 const catKey = cat.id.toLowerCase();
@@ -762,29 +762,7 @@ export default function HomePage() {
             })}
         </div>
 
-        {/* More Options / All Directory Banner */}
-        <div className="bg-white border border-[#DCE9E3] rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xs">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DCE9E3] text-[#176B65] text-xs font-bold">
-              <Store className="w-3.5 h-3.5" />
-              <span>More Options & Full City Directory</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-[#283B3D]">
-              Looking for other shops or want to see all in a list?
-            </h3>
-            <p className="text-xs sm:text-sm text-[#283B3D]/70 font-medium max-w-2xl">
-              Explore the complete directory of verified salons, medical stores, diagnostic labs, doctor clinics, chaat points, and auto repairs across India and worldwide with live queue status, reviews, and instant tokens.
-            </p>
-          </div>
-          <Link
-            href="/shops"
-            className="px-6 py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs shrink-0 flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
-          >
-            <Store className="w-4 h-4 text-[#F2A15A]" />
-            <span>Open Full Directory (List View)</span>
-            <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
-          </Link>
-        </div>
+
 
       </section>
 
