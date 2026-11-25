@@ -6,22 +6,21 @@ import { useSearchParams } from 'next/navigation';
 import { 
   Search, MapPin, Ticket, Star, ArrowRight, ArrowLeft,
   Store, ShieldCheck, Heart, Clock, Scissors, Activity, Utensils, Wrench, Pill, Stethoscope,
-  ChevronDown, ChevronUp, Sparkles
+  ChevronRight, Sparkles, Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { shopApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import { enforceCleanSlate } from '@/lib/storageSync';
 
 // Standard 6 business categories
 const CATEGORIES = [
-  { id: 'salon', name: 'Salons & Parlours', icon: Scissors, keywords: ['salon', 'barber', 'parlour', 'hair', 'beauty', 'spa'] },
-  { id: 'clinic', name: 'Doctor Clinics', icon: Stethoscope, keywords: ['doctor', 'clinic', 'consultation', 'dental', 'health'] },
-  { id: 'medical', name: 'Medical & Pharmacy', icon: Pill, keywords: ['medical', 'pharmacy', 'chemist', 'drug', 'medicine'] },
-  { id: 'auto-repair', name: 'Auto Repair & Garage', icon: Wrench, keywords: ['auto', 'repair', 'garage', 'mechanic', 'bike', 'car', 'puncture'] },
-  { id: 'food', name: 'Food & Chaat Points', icon: Utensils, keywords: ['food', 'chaat', 'sweets', 'restaurant', 'cafe', 'tea', 'bites'] },
-  { id: 'retail', name: 'General Retail & Stores', icon: Store, keywords: ['store', 'retail', 'grocery', 'market', 'shop', 'kirana'] }
+  { id: 'salon', name: 'Salons & Parlours', icon: Scissors, desc: 'Haircut, styling, grooming & spa', keywords: ['salon', 'barber', 'parlour', 'hair', 'beauty', 'spa'] },
+  { id: 'clinic', name: 'Doctor Clinics', icon: Stethoscope, desc: 'Consultations, dental & checkups', keywords: ['doctor', 'clinic', 'consultation', 'dental', 'health'] },
+  { id: 'medical', name: 'Medical & Pharmacy', icon: Pill, desc: 'Medicines, chemist & health supplies', keywords: ['medical', 'pharmacy', 'chemist', 'drug', 'medicine'] },
+  { id: 'auto-repair', name: 'Auto Repair & Garage', icon: Wrench, desc: 'Bike & car service, puncture repair', keywords: ['auto', 'repair', 'garage', 'mechanic', 'bike', 'car', 'puncture'] },
+  { id: 'food', name: 'Food & Chaat Points', icon: Utensils, desc: 'Snacks, chaat, cafe & takeaways', keywords: ['food', 'chaat', 'sweets', 'restaurant', 'cafe', 'tea', 'bites'] },
+  { id: 'retail', name: 'General Retail & Stores', icon: Store, desc: 'Kirana, apparel & essentials', keywords: ['store', 'retail', 'grocery', 'market', 'shop', 'kirana'] }
 ];
 
 function getShopCategoryId(shop) {
@@ -39,12 +38,12 @@ function getShopCategoryId(shop) {
 
 function ShopsDirectoryContent() {
   const searchParams = useSearchParams();
-  const [selectedCat, setSelectedCat] = useState('all');
+  const [activeCategory, setActiveCategory] = useState(null); // null = Categories Overview, string = Dedicated Category View
   const [search, setSearch] = useState('');
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
-  const [openCategories, setOpenCategories] = useState({});
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
     enforceCleanSlate();
@@ -97,13 +96,6 @@ function ShopsDirectoryContent() {
     setFavoriteSlugs(getFavoriteShopSlugs());
   };
 
-  const toggleCategoryDropdown = (catId) => {
-    setOpenCategories(prev => ({
-      ...prev,
-      [catId]: !prev[catId]
-    }));
-  };
-
   // Group shops by category
   const shopsByCategory = {};
   CATEGORIES.forEach(c => {
@@ -119,302 +111,288 @@ function ShopsDirectoryContent() {
     const matchesSearch = !query || sName.includes(query) || sCat.includes(query) || sAddr.includes(query);
 
     if (!matchesSearch) return;
-
-    if (selectedCat === 'favorites' && !favoriteSlugs.includes(shop.slug)) return;
+    if (showFavoritesOnly && !favoriteSlugs.includes(shop.slug)) return;
 
     const catId = getShopCategoryId(shop);
     if (!shopsByCategory[catId]) shopsByCategory[catId] = [];
     shopsByCategory[catId].push(shop);
   });
 
-  // Filter categories to display
-  const categoriesToDisplay = CATEGORIES.filter(cat => {
-    if (selectedCat === 'all') return true;
-    if (selectedCat === 'favorites') return (shopsByCategory[cat.id] || []).length > 0;
-    return cat.id === selectedCat;
-  });
-
-  const totalMatchingShops = Object.values(shopsByCategory).reduce((acc, curr) => acc + curr.length, 0);
+  // Current category details if activeCategory is selected
+  const currentCatObj = CATEGORIES.find(c => c.id === activeCategory);
+  const currentCategoryShops = activeCategory ? (shopsByCategory[activeCategory] || []) : [];
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      {/* Header Breadcrumb */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] hover:underline mb-2">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
-          </Link>
-          <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore Places & Queues</h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            Browse verified local business categories in Lucknow. Click any category to view its live shops.
-          </p>
-        </div>
-
-        {/* Search Input */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search shops or services..."
-            className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-xs"
-          />
-        </div>
-      </div>
-
-      {/* Category Filter Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setSelectedCat('all')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
-            selectedCat === 'all' 
-              ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
-              : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
-          }`}
-        >
-          <Store className="w-3.5 h-3.5" />
-          <span>All Places</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSelectedCat('favorites')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
-            selectedCat === 'favorites' 
-              ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
-              : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
-          }`}
-        >
-          <Heart className="w-3.5 h-3.5" />
-          <span>My Favorites ({favoriteSlugs.length})</span>
-        </button>
-
-        {CATEGORIES.map(cat => {
-          const Icon = cat.icon;
-          const isActive = selectedCat === cat.id;
-          const shopCount = (shopsByCategory[cat.id] || []).length;
-          return (
+    <div className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      {/* ============================================================== */}
+      {/* SCENARIO A: DEDICATED CATEGORY VIEW (NO OTHER CATEGORIES BELOW) */}
+      {/* ============================================================== */}
+      {activeCategory && currentCatObj ? (
+        <div className="space-y-6">
+          {/* Back Button */}
+          <div>
             <button
-              key={cat.id}
               type="button"
-              onClick={() => {
-                setSelectedCat(cat.id);
-                setOpenCategories(prev => ({ ...prev, [cat.id]: true }));
-              }}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
-                isActive 
+              onClick={() => setActiveCategory(null)}
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#176B65] hover:text-[#125550] bg-white border border-[#DCE9E3] hover:border-[#176B65]/40 px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs active:scale-98"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to All Categories</span>
+            </button>
+          </div>
+
+          {/* Dedicated Category Header */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#DCE9E3] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#DCE9E3]/80 text-[#176B65] flex items-center justify-center shrink-0 border border-[#176B65]/20 shadow-2xs">
+                {React.createElement(currentCatObj.icon, { className: "w-7 h-7" })}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#283B3D]">{currentCatObj.name}</h1>
+                  {currentCategoryShops.length > 0 && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                  {currentCategoryShops.length} {currentCategoryShops.length === 1 ? 'place' : 'places'} available in this category
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Search in this Category */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`Search in ${currentCatObj.name}...`}
+                className="w-full bg-[#F8FAF9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-2xs"
+              />
+            </div>
+          </div>
+
+          {/* Shops List (NO IMAGES AS REQUESTED - CLEAN LIGHTWEIGHT CARDS) */}
+          {currentCategoryShops.length === 0 ? (
+            <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[#DCE9E3] space-y-4 max-w-lg mx-auto shadow-sm">
+              <div className="w-16 h-16 rounded-3xl bg-[#DCE9E3]/60 text-[#176B65] flex items-center justify-center mx-auto border border-[#176B65]/20">
+                {React.createElement(currentCatObj.icon, { className: "w-8 h-8" })}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-[#283B3D]">No Shops Registered Yet</h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Currently there are no registered shops in {currentCatObj.name}. New shops will appear here once registered by shopkeepers.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveCategory(null)}
+                className="px-5 py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs transition-colors cursor-pointer"
+              >
+                Explore Other Categories
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {currentCategoryShops.map(shop => {
+                const isFav = favoriteSlugs.includes(shop.slug);
+                return (
+                  <Link
+                    key={shop.id || shop.slug}
+                    href={`/book/${shop.slug}`}
+                    className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-lg hover:border-[#176B65]/40 transition-all flex flex-col justify-between group cursor-pointer"
+                  >
+                    <div className="space-y-4">
+                      {/* Top Row: Category tag & Favorite Button */}
+                      <div className="flex items-center justify-between">
+                        <span className="px-3 py-1 rounded-xl bg-[#DCE9E3]/70 text-[#176B65] font-black text-[10px] uppercase tracking-wider">
+                          {currentCatObj.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleFav(shop.slug, e)}
+                          className="p-2 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Save to favorites"
+                        >
+                          <Heart className={`w-4 h-4 ${isFav ? 'text-rose-500 fill-rose-500' : ''}`} />
+                        </button>
+                      </div>
+
+                      {/* Shop Name & Location (NO IMAGE) */}
+                      <div>
+                        <h3 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors truncate">
+                          {shop.name}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate">{shop.address || 'Lucknow, Uttar Pradesh'}</span>
+                        </div>
+                      </div>
+
+                      {/* Verification & Rating Badges */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                          <span>{shop.rating ? Number(shop.rating).toFixed(1) : 'New'}</span>
+                          <span className="text-[10px] text-slate-400 font-normal">({shop.reviewCount || 0})</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Verified Store</span>
+                        </div>
+                      </div>
+
+                      {/* Live Queue Radar Box */}
+                      <div className="p-3.5 bg-[#F8FAF9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Current Wait</span>
+                          <div className="flex items-center gap-1 font-black text-[#176B65] text-sm">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>~{shop.avgWaitMin !== undefined ? shop.avgWaitMin : (shop.estimatedMinutesPerTurn || 0)} Mins</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right space-y-0.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">In Line Now</span>
+                          <span className="font-token font-black text-sm text-[#283B3D]">
+                            {shop.activeQueueCount !== undefined ? shop.activeQueueCount : (shop.queueLength || 0)} People
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="mt-5 pt-3 border-t border-[#DCE9E3]/70">
+                      <div className="w-full py-2.5 rounded-xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all">
+                        <Ticket className="w-4 h-4 text-amber-300" />
+                        <span>View Shop & Get Token</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ============================================================== */
+        /* SCENARIO B: CATEGORIES LIST VIEW (NO SHOPS, PURE CATEGORIES)   */
+        /* ============================================================== */
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#176B65] hover:underline mb-2">
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+              </Link>
+              <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">Explore Places & Queues</h1>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                Browse verified local business categories in Lucknow. Select a category to see its available shops.
+              </p>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search shops or services..."
+                className="w-full bg-white border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65] shadow-xs"
+              />
+            </div>
+          </div>
+
+          {/* Favorites Pill Filter */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFavoritesOnly(false)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                !showFavoritesOnly 
                   ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
                   : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{cat.name}</span>
-              {shopCount > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isActive ? 'bg-white/30 text-white' : 'bg-[#DCE9E3] text-[#176B65]'}`}>
-                  {shopCount}
-                </span>
-              )}
+              <Store className="w-3.5 h-3.5" />
+              <span>All Categories</span>
             </button>
-          );
-        })}
-      </div>
 
-      {/* Main Categories Accordion / Dropdown Directory */}
-      {totalMatchingShops === 0 && query ? (
-        <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-[#DCE9E3] space-y-4 max-w-md mx-auto shadow-sm my-6">
-          <div className="w-14 h-14 rounded-2xl bg-[#DCE9E3]/70 text-[#176B65] flex items-center justify-center mx-auto border border-[#176B65]/20">
-            <Store className="w-7 h-7" />
+            <button
+              type="button"
+              onClick={() => setShowFavoritesOnly(true)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+                showFavoritesOnly 
+                  ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
+                  : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5" />
+              <span>My Favorites ({favoriteSlugs.length})</span>
+            </button>
           </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-black text-[#283B3D]">No Shops Found</h3>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              No places matched &quot;{query}&quot;. Try a different name or browse categories below.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSearch('')}
-            className="px-5 py-2.5 rounded-xl bg-[#176B65] text-white font-bold text-xs"
-          >
-            Clear Search
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {categoriesToDisplay.map(cat => {
-            const Icon = cat.icon;
-            const categoryShops = shopsByCategory[cat.id] || [];
-            const hasShops = categoryShops.length > 0;
-            // Open if explicitly toggled OR if filtered directly to this category OR if searching and has matches
-            const isOpen = openCategories[cat.id] !== undefined
-              ? openCategories[cat.id]
-              : (selectedCat === cat.id || (query && hasShops));
 
-            return (
-              <div
-                key={cat.id}
-                className="bg-white rounded-3xl border border-[#DCE9E3] shadow-xs overflow-hidden transition-all"
-              >
-                {/* Category Header Bar (CLEAN, NO IMAGE) */}
+          {/* Clean Category Cards Grid (NO IMAGES) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const count = (shopsByCategory[cat.id] || []).length;
+              const hasShops = count > 0;
+
+              return (
                 <button
+                  key={cat.id}
                   type="button"
-                  onClick={() => toggleCategoryDropdown(cat.id)}
-                  className="w-full p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-[#F3F1E9]/40 transition-colors text-left cursor-pointer"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className="bg-white rounded-3xl p-6 border border-[#DCE9E3] shadow-xs hover:shadow-xl hover:border-[#176B65] transition-all text-left flex flex-col justify-between group cursor-pointer"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-11 h-11 rounded-2xl bg-[#DCE9E3]/80 text-[#176B65] flex items-center justify-center shrink-0 border border-[#176B65]/20 shadow-2xs">
-                      <Icon className="w-5 h-5" />
+                  <div className="space-y-4">
+                    {/* Top Row: Icon & Availability Badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="w-13 h-13 rounded-2xl bg-[#DCE9E3]/80 group-hover:bg-[#176B65] text-[#176B65] group-hover:text-white flex items-center justify-center shrink-0 border border-[#176B65]/20 transition-colors shadow-2xs">
+                        <Icon className="w-6 h-6" />
+                      </div>
+
+                      {hasShops ? (
+                        <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                          {count} Available
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold">
+                          0 Places
+                        </span>
+                      )}
                     </div>
+
+                    {/* Category Title & Desc */}
                     <div>
-                      <h2 className="text-base sm:text-lg font-black text-[#283B3D] truncate flex items-center gap-2">
+                      <h2 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors flex items-center gap-2">
                         <span>{cat.name}</span>
                         {hasShops && (
-                          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
                         )}
                       </h2>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        {hasShops
-                          ? `${categoryShops.length} ${categoryShops.length === 1 ? 'place' : 'places'} registered • Tap to view details`
-                          : 'No shops currently registered in this category'}
+                      <p className="text-xs text-slate-500 font-medium mt-1">
+                        {cat.desc}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    {hasShops ? (
-                      <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
-                        {categoryShops.length} Available
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold">
-                        0 Places
-                      </span>
-                    )}
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-transform duration-200 ${
-                      isOpen ? 'bg-[#176B65] text-white border-[#176B65]' : 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}>
-                      {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {/* Bottom Link indicator */}
+                  <div className="mt-6 pt-4 border-t border-[#DCE9E3]/60 flex items-center justify-between text-xs font-bold text-[#176B65]">
+                    <span>{hasShops ? `View ${count} ${count === 1 ? 'Shop' : 'Shops'}` : 'Browse Category'}</span>
+                    <div className="w-7 h-7 rounded-xl bg-[#F8FAF9] group-hover:bg-[#176B65] group-hover:text-white flex items-center justify-center transition-colors">
+                      <ChevronRight className="w-4 h-4" />
                     </div>
                   </div>
                 </button>
-
-                {/* Dropdown Content with Shop Details */}
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="border-t border-[#DCE9E3] bg-[#F8FAF9]/50 p-4 sm:p-6"
-                    >
-                      {categoryShops.length === 0 ? (
-                        <div className="py-8 text-center text-slate-400 space-y-1">
-                          <p className="text-xs font-semibold">No registered shops in {cat.name} right now.</p>
-                          <p className="text-[11px] text-slate-400">Are you a business owner? Register your store on SkipQ to receive customer tokens.</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {categoryShops.map(shop => {
-                            const isFav = favoriteSlugs.includes(shop.slug);
-                            return (
-                              <div
-                                key={shop.id || shop.slug}
-                                className="bg-white rounded-3xl overflow-hidden border border-[#DCE9E3] shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group"
-                              >
-                                <div>
-                                  {/* Shop Image Cover */}
-                                  <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                                    <img
-                                      src={shop.photo || shop.imageUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80'}
-                                      alt={shop.name}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                    
-                                    {/* Category Badge */}
-                                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-xl bg-white/90 backdrop-blur-xs text-[#176B65] font-black text-[10px] uppercase shadow-xs">
-                                      {shop.categoryName || cat.name}
-                                    </span>
-
-                                    {/* Favorite Button */}
-                                    <button
-                                      type="button"
-                                      onClick={(e) => handleToggleFav(shop.slug, e)}
-                                      className="absolute top-3 right-3 p-2 rounded-xl bg-white/90 backdrop-blur-xs text-slate-700 hover:text-rose-600 transition-colors cursor-pointer shadow-xs"
-                                    >
-                                      <Heart className={`w-4 h-4 ${isFav ? 'text-rose-500 fill-rose-500' : ''}`} />
-                                    </button>
-
-                                    {/* Shop Name on Cover */}
-                                    <div className="absolute bottom-3 left-4 right-4 text-white">
-                                      <h3 className="text-xl font-black drop-shadow-md truncate">{shop.name}</h3>
-                                      <div className="flex items-center gap-1.5 text-xs text-slate-200 mt-0.5">
-                                        <MapPin className="w-3.5 h-3.5 shrink-0 text-amber-300" />
-                                        <span className="truncate">{shop.address || 'Lucknow'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Body Info */}
-                                  <div className="p-5 space-y-3">
-                                    <div className="flex items-center justify-between text-xs">
-                                      <div className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                                        <span>{shop.rating ? Number(shop.rating).toFixed(1) : 'New'}</span>
-                                        <span className="text-[10px] text-slate-400 font-normal">({shop.reviewCount || 0})</span>
-                                      </div>
-
-                                      <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                        <span>Verified Store</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Queue Status Box */}
-                                    <div className="p-3 bg-[#F3F1E9] rounded-2xl border border-[#DCE9E3] flex items-center justify-between text-xs">
-                                      <div className="space-y-0.5">
-                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Wait</span>
-                                        <div className="flex items-center gap-1 font-black text-[#176B65] text-sm">
-                                          <Clock className="w-3.5 h-3.5" />
-                                          <span>~{shop.avgWaitMin !== undefined ? shop.avgWaitMin : (shop.estimatedMinutesPerTurn || 0)} Mins</span>
-                                        </div>
-                                      </div>
-
-                                      <div className="text-right space-y-0.5">
-                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">In Line Now</span>
-                                        <span className="font-token font-bold text-sm text-[#283B3D]">
-                                          {shop.activeQueueCount !== undefined ? shop.activeQueueCount : (shop.queueLength || 0)} People
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Footer Action */}
-                                <div className="p-5 pt-0">
-                                  <Link
-                                    href={`/book/${shop.slug}`}
-                                    className="w-full py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
-                                  >
-                                    <Ticket className="w-4 h-4 text-amber-300" />
-                                    <span>Get Token & View Queue</span>
-                                    <ArrowRight className="w-3.5 h-3.5" />
-                                  </Link>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
