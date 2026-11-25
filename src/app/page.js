@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_SHOPS, MOCK_CATEGORIES } from '@/lib/mockData';
 import { shopApi, queueApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
+import { enforceCleanSlate } from '@/lib/storageSync';
 import FreshUrbanLogo from '@/components/FreshUrbanLogo';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 
@@ -52,47 +53,12 @@ const DEMO_OUTLETS = [
 export default function HomePage() {
   const router = useRouter();
 
-  const loadRegisteredLocalShops = () => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const resetKey = 'ak_reset_v30_strict_db_login_purge';
-      if (!localStorage.getItem(resetKey)) {
-        localStorage.removeItem('ak_active_merchant_shop');
-        localStorage.removeItem('ak_merchant_shops');
-        localStorage.removeItem('ak_customer_tokens');
-        localStorage.removeItem('ak_customer_history');
-        localStorage.removeItem('ak_token');
-        localStorage.removeItem('ak_phone');
-        localStorage.removeItem('ak_role');
-        localStorage.removeItem('ak_email');
-        localStorage.removeItem('ak_logged_in');
-        localStorage.removeItem('ak_customer_name');
-        localStorage.removeItem('ak_customer_age');
-        localStorage.removeItem('ak_customer_profiles');
-        localStorage.removeItem('ak_favorites');
-        // Clear any old caches
-        if (typeof caches !== 'undefined') {
-          caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-        }
-        localStorage.setItem(resetKey, 'true');
-        return [];
-      }
-      const activeStr = localStorage.getItem('ak_active_merchant_shop');
-      const allStr = localStorage.getItem('ak_merchant_shops');
-      const all = allStr ? JSON.parse(allStr) : [];
-      if (activeStr) {
-        const active = JSON.parse(activeStr);
-        if (active && !all.some(s => s.slug === active.slug || s.id === active.id)) {
-          all.unshift(active);
-        }
-      }
-      return all.map(s => ({ ...s, imageUrl: resolveShopImage(s) }));
-    } catch (e) {
-      return [];
-    }
-  };
+  // Enforce clean platform slate if epoch changed
+  useEffect(() => {
+    enforceCleanSlate();
+  }, []);
 
-  const [shops, setShops] = useState(() => loadRegisteredLocalShops());
+  const [shops, setShops] = useState([]);
   const [categories, setCategories] = useState(MOCK_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -235,16 +201,9 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchLiveShops() {
-      const localShops = loadRegisteredLocalShops().filter(s => {
-        const slug = (s.slug || '').toLowerCase();
-        const name = (s.name || '').toLowerCase();
-        return !slug.includes('royal-barber') && !slug.includes('gupta-medical') && !name.includes('royal barber') && !name.includes('gupta medical');
-      });
-
       try {
         const res = await shopApi.getShops({ lat: 26.8861, lng: 80.9951 });
-        if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          // Strictly reject legacy mock seed shops from cloud backend
+        if (res?.data?.data && Array.isArray(res.data.data)) {
           const DUMMY_SLUGS = ['royal-barber-indira-nagar', 'gupta-medical-indira-nagar', 'suresh-sweets-590'];
           const validBackendShops = res.data.data.filter(sh => {
             const slug = (sh.slug || '').toLowerCase();
@@ -262,13 +221,13 @@ export default function HomePage() {
             ...sh,
             imageUrl: resolveShopImage(sh)
           }));
-          const liveSlugs = new Set(liveList.map(s => s.slug));
-          const uniqueLocal = localShops.filter(s => !liveSlugs.has(s.slug));
-          setShops([...liveList, ...uniqueLocal]);
-          return;
+          setShops(liveList);
+        } else {
+          setShops([]);
         }
-      } catch (e) { }
-      setShops(localShops);
+      } catch (e) {
+        setShops([]);
+      }
     }
     fetchLiveShops();
   }, []);

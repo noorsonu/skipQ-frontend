@@ -16,6 +16,7 @@ import { authApi, queueApi, shopApi, reviewApi } from '@/lib/api';
 import { shareTokenPass } from '@/lib/shareToken';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
 import { signInWithGoogle } from '@/lib/googleAuth';
+import { enforceCleanSlate } from '@/lib/storageSync';
 
 const resolveShopImage = (shop) => {
   if (shop?.imageUrl) return shop.imageUrl;
@@ -72,28 +73,8 @@ export default function ShopDetailClient() {
   const router = useRouter();
   const slug = params?.slug;
 
-  const loadShopBySlug = (targetSlug) => {
-    if (!targetSlug || typeof window === 'undefined') return null;
-    const cleanSlug = targetSlug.toLowerCase();
-    try {
-      const activeStr = localStorage.getItem('ak_active_merchant_shop');
-      if (activeStr) {
-        const active = JSON.parse(activeStr);
-        if (active && (active.slug || '').toLowerCase() === cleanSlug) return active;
-      }
-      const allShopsStr = localStorage.getItem('ak_merchant_shops');
-      if (allShopsStr) {
-        const allShops = JSON.parse(allShopsStr);
-        const match = allShops.find(s => (s.slug || '').toLowerCase() === cleanSlug);
-        if (match) return match;
-      }
-    } catch (e) {}
-    return null;
-  };
-
-  const initialShop = loadShopBySlug(slug);
-  const [shop, setShop] = useState(() => initialShop);
-  const [loadingShop, setLoadingShop] = useState(() => !initialShop);
+  const [shop, setShop] = useState(null);
+  const [loadingShop, setLoadingShop] = useState(true);
 
   // Group Token State (1, 2, or Custom Count)
   const [selectedGroupMode, setSelectedGroupMode] = useState('1'); // '1', '2', 'custom'
@@ -134,6 +115,7 @@ export default function ShopDetailClient() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      enforceCleanSlate();
       const role = localStorage.getItem('ak_role');
       const cName = localStorage.getItem('ak_customer_name');
       if (role === 'MERCHANT') {
@@ -458,6 +440,7 @@ export default function ShopDetailClient() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      enforceCleanSlate();
       const role = localStorage.getItem('ak_role');
       const token = localStorage.getItem('ak_token');
       const loggedIn = localStorage.getItem('ak_logged_in') === 'true';
@@ -553,29 +536,23 @@ export default function ShopDetailClient() {
     }
   };
 
-  // Fetch shop by slug from localStorage registered shops or backend API
+  // Fetch genuine shop by slug strictly from backend API
   useEffect(() => {
     if (slug) {
-      const local = loadShopBySlug(slug);
-      if (local) {
-        setShop(local);
-        setLoadingShop(false);
-      }
+      setLoadingShop(true);
       shopApi.getShopBySlug(slug)
         .then((res) => {
           if (res?.data?.data) {
-            setShop(prev => {
-              const updated = {
-                ...(prev || {}),
-                ...res.data.data,
-                id: res.data.data.id || prev?.id,
-              };
-              updated.imageUrl = updated.imageUrl || resolveShopImage(updated);
-              return updated;
-            });
+            const data = res.data.data;
+            data.imageUrl = data.imageUrl || resolveShopImage(data);
+            setShop(data);
+          } else {
+            setShop(null);
           }
         })
-        .catch(() => {})
+        .catch(() => {
+          setShop(null);
+        })
         .finally(() => {
           setLoadingShop(false);
         });
@@ -1461,10 +1438,10 @@ export default function ShopDetailClient() {
 
               <div className="text-right">
                 <span className="font-token text-xl font-bold text-[#176B65]">
-                  {ratingSummary?.averageRating ? `${ratingSummary.averageRating} ★` : '4.8 ★'}
+                  {ratingSummary?.averageRating ? `${ratingSummary.averageRating} ★` : 'New'}
                 </span>
                 <span className="block text-[9px] font-bold text-slate-400 uppercase">
-                  {ratingSummary?.reviewCount ? `${ratingSummary.reviewCount} Reviews` : 'Verified Score'}
+                  {ratingSummary?.reviewCount ? `${ratingSummary.reviewCount} Reviews` : '0 Reviews'}
                 </span>
               </div>
             </div>
@@ -1474,13 +1451,13 @@ export default function ShopDetailClient() {
               <div className="bg-[#F3F1E9] p-2 rounded-xl border border-[#DCE9E3]">
                 <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 block">Wait Accuracy</span>
                 <span className="font-bold text-[#176B65] text-xs">
-                  {ratingSummary?.etaAccuracyScore || '96% Accurate'}
+                  {ratingSummary?.etaAccuracyScore || 'Live ETA'}
                 </span>
               </div>
               <div className="bg-[#F3F1E9] p-2 rounded-xl border border-[#DCE9E3]">
                 <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 block">Customer Rating</span>
                 <span className="font-bold text-[#176B65] text-xs">
-                  ★★★★★ (4.8/5)
+                  {ratingSummary?.averageRating ? `★ ${ratingSummary.averageRating}/5` : 'New Shop'}
                 </span>
               </div>
             </div>
@@ -1490,7 +1467,7 @@ export default function ShopDetailClient() {
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#283B3D]/70 block flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5 text-[#176B65]" />
-                  <span>Public Reviews & Thread ({ratingSummary?.reviews?.length || 2}):</span>
+                  <span>Public Reviews & Thread ({ratingSummary?.reviews?.length || 0}):</span>
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">

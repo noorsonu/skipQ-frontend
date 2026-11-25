@@ -21,6 +21,7 @@ import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import QRCode from 'qrcode';
 import { queueApi, reviewApi, shopApi } from '@/lib/api';
 import { playChime } from '@/lib/audioChime';
+import { enforceCleanSlate } from '@/lib/storageSync';
 
 export default function MerchantDashboardPage() {
   // Authorization Gate State
@@ -1089,21 +1090,11 @@ export default function MerchantDashboardPage() {
   // Initial Load & Strict Role Authorization Check
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const resetKey = 'ak_reset_v25_full_db_purge';
-      if (!localStorage.getItem(resetKey)) {
-        localStorage.removeItem('ak_active_merchant_shop');
-        localStorage.removeItem('ak_merchant_shops');
-        localStorage.removeItem('ak_tokens');
-        localStorage.removeItem('ak_customer_tokens');
-        localStorage.removeItem('ak_customer_history');
-        localStorage.removeItem('ak_token');
-        localStorage.removeItem('ak_phone');
-        localStorage.removeItem('ak_role');
-        localStorage.removeItem('ak_customer_name');
-        localStorage.removeItem('ak_customer_age');
-        localStorage.removeItem('ak_customer_profiles');
-        localStorage.setItem(resetKey, 'true');
+      const didPurge = enforceCleanSlate();
+      if (didPurge) {
         setIsAuthorized(false);
+        setActiveShop(null);
+        window.location.href = '/merchant/register';
         return;
       }
 
@@ -1123,6 +1114,21 @@ export default function MerchantDashboardPage() {
           localStorage.setItem('ak_role', 'MERCHANT');
           setShopStatus(parsed.status || 'OPEN');
           setIsAuthorized(true);
+
+          // Verify with database that shop still exists in backend
+          const cleanPhone = (parsed.phone || localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
+          if (cleanPhone) {
+            shopApi.getShopsByPhone(cleanPhone).then(res => {
+              if (!res?.data?.data || res.data.data.length === 0) {
+                // Shop was purged/deleted from backend database
+                localStorage.removeItem('ak_active_merchant_shop');
+                localStorage.removeItem('ak_role');
+                setActiveShop(null);
+                setIsAuthorized(false);
+                window.location.href = '/merchant/register';
+              }
+            }).catch(() => {});
+          }
 
           syncCustomerQueueForShop(parsed);
           const recs = loadShopRecords(parsed);

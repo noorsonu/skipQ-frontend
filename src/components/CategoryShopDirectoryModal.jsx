@@ -508,8 +508,8 @@ export default function CategoryShopDirectoryModal({
                 {filteredShops.map((shop) => {
                   const isOpen = shop.status === 'OPEN';
                   const isBusy = shop.status === 'BUSY';
-                  const rating = shop.rating || 4.8;
-                  const count = shop.reviewCount || 24;
+                  const rating = shop.rating ? Number(shop.rating).toFixed(1) : 'New';
+                  const count = shop.reviewCount || 0;
                   const isFav = favoriteSlugs.includes(shop.slug);
 
                   return (

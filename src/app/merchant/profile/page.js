@@ -29,6 +29,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { shopApi } from '@/lib/api';
+import { enforceCleanSlate } from '@/lib/storageSync';
 
 export default function MerchantProfilePage() {
   const router = useRouter();
@@ -71,6 +72,11 @@ export default function MerchantProfilePage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const didPurge = enforceCleanSlate();
+    if (didPurge) {
+      router.replace('/merchant/register');
+      return;
+    }
 
     const storedPhone = localStorage.getItem('ak_phone') || '';
     const storedName = localStorage.getItem('ak_customer_name') || '';

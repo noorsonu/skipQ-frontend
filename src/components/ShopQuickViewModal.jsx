@@ -159,36 +159,6 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
           }
         });
 
-        // Add default sample reviews if empty
-        if (map.size === 0) {
-          map.set('mock-1', {
-            id: 'mock-1',
-            customerName: "Verified Customer",
-            stars: 5,
-            text: "Bina physical line me khade hue counter par direct service mili. Bahut hi aacha experience tha!",
-            tags: ["⏱️ On-Time Call", "🤝 Polite Staff"],
-            date: "Recent",
-            reply: "Dhanyawad ji! Khushi hui ki aapko line me wait nahi karna pada.",
-            merchantReply: "Dhanyawad ji! Khushi hui ki aapko line me wait nahi karna pada."
-          });
-          map.set('mock-2', {
-            id: 'mock-2',
-            customerName: "Local Resident",
-            stars: 5,
-            text: "Token display bilkul accurate tha. 10 min pehle nikle aur counter par turn mil gaya.",
-            tags: ["⏱️ On-Time Call"],
-            date: "Recent"
-          });
-          map.set('mock-3', {
-            id: 'mock-3',
-            customerName: "Amit Verma",
-            stars: 5,
-            text: "Staff was polite and pricing is completely transparent. Highly recommend!",
-            tags: ["✨ Clean & Fair", "🤝 Polite Staff"],
-            date: "Yesterday"
-          });
-        }
-
         setReviewsList(Array.from(map.values()));
       };
 
@@ -201,8 +171,8 @@ export default function ShopQuickViewModal({ shop, isOpen, onClose, onBack }) {
 
   const isOpenNow = shop.status === 'OPEN';
   const isBusy = shop.status === 'BUSY';
-  const ratingScore = shop.rating || 4.8;
-  const reviewCount = reviewsList.length > 0 ? reviewsList.length : 24;
+  const ratingScore = shop.rating ? Number(shop.rating).toFixed(1) : 'New';
+  const reviewCount = reviewsList.length > 0 ? reviewsList.length : (shop.reviewCount || 0);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(reviewsList.length / reviewsPerPage));

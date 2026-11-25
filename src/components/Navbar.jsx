@@ -14,6 +14,7 @@ import { authApi, queueApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
 import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
 import { playCounterRing, stopCounterRing } from '@/lib/audioChime';
+import { enforceCleanSlate } from '@/lib/storageSync';
 import FreshUrbanLogo from './FreshUrbanLogo';
 import OfficialBrandLogo from './OfficialBrandLogo';
 
@@ -305,21 +306,17 @@ export default function Navbar() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const resetKey = 'ak_reset_v30_strict_db_login_purge';
-      if (!localStorage.getItem(resetKey)) {
-        localStorage.removeItem('ak_logged_in');
-        localStorage.removeItem('ak_active_merchant_shop');
-        localStorage.removeItem('ak_merchant_shops');
-        localStorage.removeItem('ak_customer_tokens');
-        localStorage.removeItem('ak_customer_history');
-        localStorage.removeItem('ak_token');
-        localStorage.removeItem('ak_phone');
-        localStorage.removeItem('ak_email');
-        localStorage.removeItem('ak_role');
-        localStorage.removeItem('ak_customer_name');
-        localStorage.removeItem('ak_customer_age');
-        localStorage.removeItem('ak_customer_profiles');
-        localStorage.setItem(resetKey, 'true');
+      const didPurge = enforceCleanSlate();
+      if (didPurge) {
+        setIsCustomerLoggedIn(false);
+        setIsShopkeeperLoggedIn(false);
+        setCustomerName('Guest');
+        setCustomerPhone('');
+        setCustomerAge('');
+        setUserRole('GUEST');
+        setRegisteredMerchantShop(null);
+        setActiveCount(0);
+        setHistoryCount(0);
       }
 
       // If token exists, verify with server. If server wiped user (401/404), clean up local session

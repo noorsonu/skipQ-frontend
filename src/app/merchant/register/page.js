@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { shopApi, authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
 import { sendFirebasePhoneOtp, verifyFirebasePhoneOtp } from '@/lib/phoneAuth';
+import { enforceCleanSlate } from '@/lib/storageSync';
 
 export default function MerchantRegisterPage() {
   const router = useRouter();
@@ -81,6 +82,7 @@ export default function MerchantRegisterPage() {
     async function checkExisting() {
       if (typeof window !== 'undefined') {
         try {
+          enforceCleanSlate();
           const activeStr = localStorage.getItem('ak_active_merchant_shop');
           const role = localStorage.getItem('ak_role');
           const phone = (localStorage.getItem('ak_phone') || '').replace(/\D/g, '').slice(-10);
@@ -89,10 +91,25 @@ export default function MerchantRegisterPage() {
           if (activeStr && role === 'MERCHANT' && params.get('new') !== 'true') {
             try {
               const parsed = JSON.parse(activeStr);
-              setExistingShop(parsed);
+              // Verify that this shop genuinely exists in backend database
+              let shopValid = false;
+              if (phone) {
+                const vRes = await shopApi.getShopsByPhone(phone).catch(() => null);
+                if (vRes?.data?.data && vRes.data.data.length > 0) {
+                  shopValid = true;
+                  setExistingShop(vRes.data.data[0]);
+                }
+              }
+              if (shopValid) {
+                router.replace('/merchant/dashboard');
+                return;
+              } else {
+                // Stale or deleted shop - clean it up
+                localStorage.removeItem('ak_active_merchant_shop');
+                localStorage.removeItem('ak_role');
+                setExistingShop(null);
+              }
             } catch (e) {}
-            router.replace('/merchant/dashboard');
-            return;
           } else if (phone) {
             // Also check database by phone
             try {
@@ -101,6 +118,9 @@ export default function MerchantRegisterPage() {
                 const found = res.data.data[0];
                 setExistingShop(found);
                 setExistingShopDetectedOnPhone(found);
+              } else {
+                setExistingShop(null);
+                setExistingShopDetectedOnPhone(null);
               }
             } catch (err) {}
           }
@@ -206,7 +226,7 @@ export default function MerchantRegisterPage() {
 
     setAuthError('');
 
-    // Check if an existing shop is already registered with this phone in database OR localStorage
+    // Check if an existing shop is already registered with this phone in database
     let match = null;
     try {
       const res = await shopApi.getShopsByPhone(clean);
@@ -214,19 +234,6 @@ export default function MerchantRegisterPage() {
         match = res.data.data[0];
       }
     } catch (e) {}
-
-    if (!match) {
-      try {
-        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        match = allShops.find(s => (s.phone || '').slice(-10) === clean);
-        if (!match) {
-          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-          if (active && (active.phone || '').slice(-10) === clean) {
-            match = active;
-          }
-        }
-      } catch (e) {}
-    }
 
     if (match) {
       setExistingShopDetectedOnPhone(match);
@@ -337,20 +344,6 @@ export default function MerchantRegisterPage() {
       } catch (err) {
         console.warn("Backend phone lookup error:", err?.message);
       }
-    }
-
-    // Fallback to localStorage if offline
-    if (!shopExists && !backendChecked && userPhone) {
-      try {
-        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        shopExists = allShops.find(s => (s.phone || '').slice(-10) === userPhone);
-        if (!shopExists) {
-          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-          if (active && (active.phone || '').slice(-10) === userPhone) {
-            shopExists = active;
-          }
-        }
-      } catch (err) {}
     }
 
     setLoginLoading(false);
@@ -508,20 +501,6 @@ export default function MerchantRegisterPage() {
       }
     } catch (e) {
       console.warn("Backend verify lookup error:", e?.message);
-    }
-
-    // 2. Check localStorage fallback only if backend was unreachable
-    if (!matchedShop && !backendChecked) {
-      try {
-        const allShops = JSON.parse(localStorage.getItem('ak_merchant_shops') || '[]');
-        matchedShop = allShops.find(s => (s.phone || '').slice(-10) === clean);
-        if (!matchedShop) {
-          const active = JSON.parse(localStorage.getItem('ak_active_merchant_shop') || 'null');
-          if (active && (active.phone || '').slice(-10) === clean) {
-            matchedShop = active;
-          }
-        }
-      } catch (e) {}
     }
 
     setLoginLoading(false);

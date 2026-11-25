@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { shopApi } from '@/lib/api';
 import { getFavoriteShopSlugs, toggleFavoriteShopSlug } from '@/lib/favorites';
+import { enforceCleanSlate } from '@/lib/storageSync';
 
 // Standard 6 categories
 const CATEGORIES = [
@@ -33,6 +34,7 @@ function ShopsDirectoryContent() {
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
 
   useEffect(() => {
+    enforceCleanSlate();
     setFavoriteSlugs(getFavoriteShopSlugs());
     const onFavUpdate = () => setFavoriteSlugs(getFavoriteShopSlugs());
     window.addEventListener('ak_favorites_updated', onFavUpdate);
@@ -237,13 +239,13 @@ function ShopsDirectoryContent() {
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                        <span>{shop.rating || '4.8'}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">({shop.reviewCount || 45})</span>
+                        <span>{shop.rating ? Number(shop.rating).toFixed(1) : 'New'}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">({shop.reviewCount || 0})</span>
                       </div>
 
                       <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Verified Lucknow Pilot</span>
+                        <span>Verified Store</span>
                       </div>
                     </div>
 
@@ -253,14 +255,14 @@ function ShopsDirectoryContent() {
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Wait</span>
                         <div className="flex items-center gap-1 font-black text-[#176B65] text-sm">
                           <Clock className="w-3.5 h-3.5" />
-                          <span>~{shop.avgWaitMin || 10} Mins</span>
+                          <span>~{shop.avgWaitMin !== undefined ? shop.avgWaitMin : (shop.estimatedMinutesPerTurn || 0)} Mins</span>
                         </div>
                       </div>
 
                       <div className="text-right space-y-0.5">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">In Line Now</span>
                         <span className="font-token font-bold text-sm text-[#283B3D]">
-                          {shop.queueLength || 2} People
+                          {shop.activeQueueCount !== undefined ? shop.activeQueueCount : (shop.queueLength || 0)} People
                         </span>
                       </div>
                     </div>
