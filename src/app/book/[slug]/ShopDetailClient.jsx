@@ -701,15 +701,13 @@ export default function ShopDetailClient() {
       return;
     }
 
-    if (!customerAge || isNaN(parseInt(customerAge, 10))) {
-      setErrorMsg("Kripya apni Age (Umar) bharein.");
-      return;
-    }
-
-    const ageNum = parseInt(customerAge, 10);
-    if (ageNum < 5 || ageNum > 115) {
-      setErrorMsg("Kripya sahi age (umar) darj karein (5 se 115 saal).");
-      return;
+    // Age is optional
+    if (customerAge && String(customerAge).trim()) {
+      const ageNum = parseInt(customerAge, 10);
+      if (isNaN(ageNum) || ageNum < 5 || ageNum > 115) {
+        setErrorMsg("Kripya sahi age (umar) darj karein (5 se 115 saal).");
+        return;
+      }
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('ak_token') : null;
@@ -2037,7 +2035,7 @@ export default function ShopDetailClient() {
 
               <div>
                 <label className="block text-xs font-bold text-[#283B3D] mb-1.5">
-                  Your Age (in years) <span className="text-rose-500">*</span>
+                  Your Age (in years) <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
                 </label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
@@ -2049,7 +2047,6 @@ export default function ShopDetailClient() {
                     value={customerAge}
                     onChange={(e) => setCustomerAge(e.target.value)}
                     className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#DCE9E3] focus:border-[#176B65] focus:outline-none text-sm text-[#283B3D] bg-[#F3F1E9]/40"
-                    required
                   />
                 </div>
               </div>

@@ -202,16 +202,19 @@ function LoginContent() {
         setErrorMsg("Please enter a valid email address.");
         return;
       }
-      const parsedAge = parseInt(age, 10);
-      if (!age || isNaN(parsedAge) || parsedAge < 5 || parsedAge > 115) {
-        setErrorMsg("Please enter a valid age (between 5 and 115 years).");
-        return;
-      }
-
       payload.name = fullName.trim();
       payload.phone = cleanPhone;
       payload.email = email.trim().toLowerCase();
-      payload.age = parsedAge;
+
+      // Age is optional
+      if (age && age.trim()) {
+        const parsedAge = parseInt(age, 10);
+        if (isNaN(parsedAge) || parsedAge < 5 || parsedAge > 115) {
+          setErrorMsg("Please enter a valid age (between 5 and 115 years).");
+          return;
+        }
+        payload.age = parsedAge;
+      }
     }
 
     setLoading(true);
@@ -458,7 +461,7 @@ function LoginContent() {
                   required
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="yourname@gmail.com"
+                  placeholder="noor123@gmail.com"
                   className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                 />
               </div>
@@ -595,7 +598,7 @@ function LoginContent() {
                         required
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        placeholder="yourname@gmail.com"
+                        placeholder="noor123@gmail.com"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
@@ -615,7 +618,7 @@ function LoginContent() {
                         required
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Abhishek Sharma"
+                        placeholder="e.g. Noor Mohammad"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
@@ -632,7 +635,7 @@ function LoginContent() {
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="e.g. yourname@gmail.com"
+                        placeholder="e.g. noor123@gmail.com"
                         className="w-full bg-[#F3F1E9] border border-[#DCE9E3] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#176B65]"
                       />
                     </div>
@@ -658,13 +661,12 @@ function LoginContent() {
 
                   <div>
                     <label className="text-xs font-bold text-[#283B3D] block mb-1">
-                      Your Age (in years) <span className="text-rose-500">*</span>
+                      Your Age (in years) <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
                     </label>
                     <div className="relative">
                       <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                       <input
                         type="number"
-                        required
                         min={5}
                         max={115}
                         value={age}
