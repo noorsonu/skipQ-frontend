@@ -77,6 +77,11 @@ function ShopsDirectoryContent() {
               !name.includes('gupta medical')
             );
           });
+          loadedShops.sort((a, b) => {
+            const rA = Number(a.rating || a.averageRating) || 0;
+            const rB = Number(b.rating || b.averageRating) || 0;
+            return rB - rA;
+          });
         }
       } catch (err) {
         console.warn('API shops fetch error:', err);

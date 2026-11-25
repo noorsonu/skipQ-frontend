@@ -540,15 +540,28 @@ export default function ShopDetailClient() {
     }
   };
 
-  // Fetch genuine shop by slug strictly from backend API
+  // Fetch genuine shop by slug strictly from backend API and fetch live queue status
   useEffect(() => {
     if (slug) {
       setLoadingShop(true);
       shopApi.getShopBySlug(slug)
-        .then((res) => {
+        .then(async (res) => {
           if (res?.data?.data) {
             const data = res.data.data;
             data.imageUrl = data.imageUrl || resolveShopImage(data);
+            try {
+              const qRes = await shopApi.getQueueStatus(data.id);
+              if (qRes?.data?.data) {
+                data.waitingCount = qRes.data.data.waitingCount !== undefined ? qRes.data.data.waitingCount : 0;
+                data.estimatedWaitMin = qRes.data.data.estimatedWaitMin !== undefined ? qRes.data.data.estimatedWaitMin : 0;
+              } else {
+                data.waitingCount = 0;
+                data.estimatedWaitMin = 0;
+              }
+            } catch (qe) {
+              data.waitingCount = 0;
+              data.estimatedWaitMin = 0;
+            }
             setShop(data);
           } else {
             setShop(null);
@@ -1205,7 +1218,7 @@ export default function ShopDetailClient() {
                   <div className="flex items-center gap-1.5 mt-1">
                     <Clock className="w-4 h-4 text-[#176B65]" />
                     <span className="font-token font-bold text-sm text-[#283B3D]">
-                      ~{(shop.estimatedWaitMin || 15) + (shopBroadcast?.delayMinutes || 0)} mins
+                      ~{Math.max(0, (shop.estimatedWaitMin !== undefined ? shop.estimatedWaitMin : 0) + (shopBroadcast?.delayMinutes || 0))} mins
                     </span>
                   </div>
                   {shopBroadcast?.delayMinutes > 0 && (
@@ -1219,7 +1232,9 @@ export default function ShopDetailClient() {
                   <span className="text-[10px] uppercase font-bold text-[#283B3D]/60 block">Queue Count</span>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Users className="w-4 h-4 text-[#176B65]" />
-                    <span className="font-token font-bold text-sm text-[#283B3D]">{shop.waitingCount || 2} waiting</span>
+                    <span className="font-token font-bold text-sm text-[#283B3D]">
+                      {shop.waitingCount !== undefined ? shop.waitingCount : 0} waiting
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1707,29 +1722,11 @@ export default function ShopDetailClient() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-[#283B3D]">Pooja S.</span>
-                      <span className="text-amber-500 font-bold">★★★★★ (5.0★)</span>
-                    </div>
-                    <p className="text-[11px] text-[#283B3D]/80 italic">
-                      "Token system worked seamlessly! Reached when 1 person was ahead and didn't waste time in line."
-                    </p>
-                    <div className="mt-1.5 ml-1 pl-2.5 py-1.5 px-2.5 rounded-lg bg-[#176B65]/5 border-l-2 border-[#176B65] text-[10px]">
-                      <span className="font-bold text-[#176B65] block">🏪 {shop?.name || 'Shopkeeper'} (Official Reply):</span>
-                      <p className="text-[#283B3D]/80 italic mt-0.5">"Thank you Pooja! Happy to serve you without line waiting."</p>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-[#283B3D]">Rohit V.</span>
-                      <span className="text-amber-500 font-bold">★★★★★ (5.0★)</span>
-                    </div>
-                    <p className="text-[11px] text-[#283B3D]/80 italic">
-                      "Staff was very polite and called turn exactly on time."
-                    </p>
-                  </div>
+                <div className="text-center py-6 px-4 bg-slate-50 rounded-2xl border border-dashed border-[#DCE9E3] space-y-1.5">
+                  <p className="text-xs font-bold text-[#283B3D]">No customer reviews yet</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    This shop has not received any ratings yet. Reviews and comments will appear here in real-time as customers rate after their visits!
+                  </p>
                 </div>
               )}
             </div>
