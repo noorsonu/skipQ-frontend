@@ -876,6 +876,7 @@ export default function MerchantDashboardPage() {
   const servingTokenRef = useRef(null);
   const completedListRef = useRef([]);
   const absentListRef = useRef([]);
+  const stationsListRef = useRef([]);
 
   useEffect(() => {
     servingTokenRef.current = servingToken;
@@ -888,6 +889,10 @@ export default function MerchantDashboardPage() {
   useEffect(() => {
     absentListRef.current = absentList;
   }, [absentList]);
+
+  useEffect(() => {
+    stationsListRef.current = stationsList;
+  }, [stationsList]);
 
   // Live real-time digital clock (ticking every second)
   useEffect(() => {
@@ -954,6 +959,10 @@ export default function MerchantDashboardPage() {
         tokenMap.set(key, t);
       });
 
+      const currentStations = (stationsListRef.current && stationsListRef.current.length > 0)
+        ? stationsListRef.current
+        : loadShopStations(shop);
+
       // 2. Overlay backend cloud tokens (Ground Truth from Cloud DB)
       backendTokens.forEach(bt => {
         const key = String(bt.id || bt.displayToken || bt.tokenNumber);
@@ -961,7 +970,8 @@ export default function MerchantDashboardPage() {
 
         const isLocallyCompleted = completedListRef.current.some(c => isTokenMatch(c, bt));
         const isLocallyAbsent = absentListRef.current.some(a => isTokenMatch(a, bt));
-        const isLocallyServing = isTokenMatch(servingTokenRef.current, bt);
+        const isLocallyServing = isTokenMatch(servingTokenRef.current, bt) ||
+          currentStations.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, bt));
 
         // Maintain terminal state if locally completed/absent or if backend says completed
         let effectiveStatus = bt.status || 'WAITING';
@@ -994,7 +1004,7 @@ export default function MerchantDashboardPage() {
       const waitingOnly = shopTokens.filter(t => {
         if (t.status && t.status !== 'WAITING') return false;
         if (isTokenMatch(servingTokenRef.current, t)) return false;
-        if (stationsList.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, t))) return false;
+        if (currentStations.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, t))) return false;
         if (completedListRef.current.some(c => isTokenMatch(c, t))) return false;
         if (absentListRef.current.some(a => isTokenMatch(a, t))) return false;
         return true;
@@ -1231,6 +1241,7 @@ export default function MerchantDashboardPage() {
         const servs = loadShopServices(activeShop);
         setShopServicesList(servs);
         const stns = loadShopStations(activeShop);
+        stationsListRef.current = stns;
         setStationsList(stns);
         const kList = loadShopKhata(activeShop);
         setKhataList(kList);
@@ -2059,6 +2070,7 @@ export default function MerchantDashboardPage() {
 
   // BRD FR-709: Multi-Station / Multi-Counter Operations Handlers
   const saveStationsList = (updated) => {
+    stationsListRef.current = updated;
     setStationsList(updated);
     if (!activeShop || typeof window === 'undefined') return;
     try {
@@ -2265,8 +2277,12 @@ export default function MerchantDashboardPage() {
     }));
     setWaitingQueue(remaining);
 
+    const prevStationToken = station.currentToken || null;
+    const todayDate = new Date().toISOString().slice(0, 10);
+
     const tokenWithStation = {
       ...nextToken,
+      status: 'SERVING',
       assignedStation: {
         id: station.id,
         name: station.name,
