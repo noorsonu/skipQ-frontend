@@ -293,7 +293,7 @@ export default function MerchantRegisterPage() {
     }
 
     if (!loginPassword) {
-      setLoginError('Please enter your account password.');
+      setLoginError('Please enter your password.');
       return;
     }
     setLoginLoading(true);
@@ -1004,21 +1004,9 @@ export default function MerchantRegisterPage() {
             /* Quick Login View */
             <div className="space-y-4 max-w-lg">
               {loginError && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 space-y-1">
-                  <p>{loginError}</p>
-                  {(loginError.toLowerCase().includes('not found') || loginError.toLowerCase().includes('register')) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsLoginTab(false);
-                        setLoginError('');
-                        setAuthError('');
-                      }}
-                      className="inline-block text-[11px] font-bold text-rose-800 hover:text-rose-950 underline cursor-pointer mt-1"
-                    >
-                      👉 Click here to Register New Shop Profile
-                    </button>
-                  )}
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-center gap-2 shadow-2xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{loginError.toLowerCase().includes('not found') ? 'Account not found. Please register first.' : loginError}</span>
                 </div>
               )}
 
@@ -1081,7 +1069,7 @@ export default function MerchantRegisterPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-[#283B3D]">Account Password</label>
+                  <label className="block text-xs font-bold text-[#283B3D]">Password</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -1100,7 +1088,7 @@ export default function MerchantRegisterPage() {
                   </span>
                   <input
                     type={showLoginPassword ? "text" : "password"}
-                    placeholder="Enter your account password"
+                    placeholder="Enter your password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-11 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"

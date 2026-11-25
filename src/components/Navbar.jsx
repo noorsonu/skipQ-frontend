@@ -497,7 +497,7 @@ export default function Navbar() {
       }
     } else {
       if (!loginPassword) {
-        setLoginError("Please enter your account password.");
+        setLoginError("Please enter your password.");
         return;
       }
     }
