@@ -1000,10 +1000,10 @@ export default function Navbar() {
                   </div>
                   <div className="text-left hidden sm:block pr-1">
                     <span className="text-[10px] uppercase font-bold text-[#176B65] block leading-none">
-                      Shopkeeper
+                      Store
                     </span>
                     <span className="text-xs font-black text-[#283B3D] line-clamp-1 max-w-[120px] leading-tight mt-0.5">
-                      Partner / Shop
+                      Store Log In
                     </span>
                   </div>
                   <span className="text-[10px] font-bold bg-[#176B65] text-white px-2 py-0.5 rounded-lg hidden sm:inline-block ml-0.5">

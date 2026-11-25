@@ -388,45 +388,40 @@ function ShopsDirectoryContent() {
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          {/* Filter Pills: Exactly 3 Compact Buttons in 1 Line (No Scroll) */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full py-1">
             <button
               type="button"
               onClick={() => setShowFavoritesOnly(false)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+              className={`w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate ${
                 !showFavoritesOnly 
                   ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
                   : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
               }`}
             >
-              <Store className="w-3.5 h-3.5" />
-              <span>All Categories</span>
+              <Store className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">All Categories</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowFavoritesOnly(true)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+              className={`w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate ${
                 showFavoritesOnly 
                   ? 'bg-[#176B65] text-white border-[#176B65] shadow-sm' 
                   : 'bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D]'
               }`}
             >
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              <span>My Favorites ({favoriteSlugs.length})</span>
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />
+              <span className="truncate">Favorites ({favoriteSlugs.length})</span>
             </button>
 
             <Link
               href="/history"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] shadow-2xs hover:border-[#176B65]"
+              className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border bg-white hover:bg-[#DCE9E3]/40 border-[#DCE9E3] text-[#283B3D] shadow-2xs hover:border-[#176B65] flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate"
             >
-              <History className="w-3.5 h-3.5 text-[#176B65]" />
-              <span>Service History</span>
-              {historyCount > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-[#DCE9E3] text-[#176B65]">
-                  {historyCount}
-                </span>
-              )}
+              <History className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
+              <span className="truncate">History</span>
             </Link>
           </div>
 

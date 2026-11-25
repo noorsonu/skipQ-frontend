@@ -634,54 +634,37 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Categories Bar */}
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
-          {/* 1. All Categories (First Button) */}
+        {/* Categories Bar: Exactly 3 Compact Buttons in 1 Line (No Scroll) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full py-1">
+          {/* 1. All Categories */}
           <Link
             href="/shops"
-            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
+            className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-center truncate shadow-2xs"
           >
-            <Store className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>All Categories</span>
+            <Store className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
+            <span className="truncate">All Categories</span>
           </Link>
 
-          {/* 2. Favorites Filter Tab (Shows only the user's saved places) */}
+          {/* 2. Favorites */}
           <Link
             href="/shops?category=favorites"
-            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-rose-300 hover:bg-rose-50 hover:border-rose-400 shadow-2xs"
+            className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-rose-300 hover:bg-rose-50 hover:border-rose-400 text-center truncate shadow-2xs"
           >
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-            <span>Saved Places</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700">
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />
+            <span className="truncate">Favorites</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-700 shrink-0">
               {favoriteSlugs.length}
             </span>
           </Link>
 
-          {/* 3. Service History Tab */}
+          {/* 3. History */}
           <Link
             href="/history"
-            className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 shadow-2xs"
+            className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-center truncate shadow-2xs"
           >
-            <History className="w-3.5 h-3.5 text-[#176B65]" />
-            <span>Service History</span>
+            <History className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
+            <span className="truncate">History</span>
           </Link>
-
-          {/* 3. The 6 Category Buttons */}
-          {categories.slice(0, 6).map((c) => (
-            <Link
-              key={c.id}
-              id={`category-pill-${c.id}`}
-              href={`/shops?cat=${c.id}`}
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('ak_home_last_clicked', `category-pill-${c.id}`);
-                }
-              }}
-              className="px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40"
-            >
-              {c.name}
-            </Link>
-          ))}
         </div>
 
         {/* Category Cards Grid (Strictly 4 Cards on Homepage) */}

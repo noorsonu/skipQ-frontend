@@ -692,11 +692,13 @@ export default function MerchantRegisterPage() {
       {/* Top Header */}
       <div className="text-center space-y-3">
         <h1 className="text-3xl sm:text-4xl font-black text-[#283B3D]">
-          Register Your Shop on SkipQ
+          {isLoginTab ? 'Store Counter Log In' : 'Register Your Shop on SkipQ'}
         </h1>
 
         <p className="text-xs sm:text-sm text-[#283B3D]/70 max-w-xl mx-auto font-medium">
-          Say goodbye to crowded waiting rooms and lost customers. Give your customers instant digital queue passes and track your counter smoothly.
+          {isLoginTab 
+            ? 'Log in to manage your store counter, call tokens, and track queue live.' 
+            : 'Say goodbye to crowded waiting rooms and lost customers. Give your customers instant digital queue passes and track your counter smoothly.'}
         </p>
       </div>
 
@@ -776,8 +778,8 @@ export default function MerchantRegisterPage() {
         </motion.div>
       )}
 
-      {/* Stepper Progress Bar (Only shown when registering a new shop or forced) */}
-      {(!existingShop || forceNewRegister) && (
+      {/* Stepper Progress Bar (Only shown when registering a new shop) */}
+      {(!existingShop || forceNewRegister) && !isLoginTab && (
         <div className="bg-white rounded-2xl p-3 sm:p-4 border border-[#DCE9E3] shadow-xs">
           <div className="flex items-center justify-between max-w-md mx-auto text-[11px] sm:text-xs font-bold">
             
@@ -832,10 +834,10 @@ export default function MerchantRegisterPage() {
           <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-4 flex-wrap gap-3">
             <div>
               <h2 className="text-xl font-black text-[#283B3D]">
-                {isLoginTab ? 'Shopkeeper / Partner Log In' : 'Step 1: Register New Shop'}
+                {isLoginTab ? 'Store Log In' : 'Step 1: Register New Shop'}
               </h2>
               <p className="text-xs text-[#283B3D]/70 font-medium">
-                {isLoginTab ? 'Log in directly to manage your store counter and queue live.' : 'Verify your mobile number to register your shop and start issuing tokens.'}
+                {isLoginTab ? 'Log in to manage your store counter and digital queue live.' : 'Verify your mobile number to register your shop and start issuing tokens.'}
               </p>
             </div>
 
@@ -1115,13 +1117,13 @@ export default function MerchantRegisterPage() {
 
               <div className="text-center pt-1">
                 <p className="text-xs text-slate-500 font-medium">
-                  New shopkeeper on SkipQ?{' '}
+                  New store on SkipQ?{' '}
                   <button
                     type="button"
                     onClick={() => { setIsLoginTab(false); setAuthError(''); }}
                     className="font-bold text-[#176B65] hover:underline cursor-pointer"
                   >
-                    Register your shop here
+                    Register your store here
                   </button>
                 </p>
               </div>
