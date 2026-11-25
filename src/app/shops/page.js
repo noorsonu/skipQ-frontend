@@ -197,39 +197,6 @@ function ShopsDirectoryContent() {
     }
   }, [activeCategory, shops]);
 
-  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if (activeCategory || showFavoritesOnly) {
-      window.history.pushState({ page: 'category_view' }, '');
-
-      const handlePopState = () => {
-        if (showFavoritesOnly) {
-          setShowFavoritesOnly(false);
-        }
-        router.replace('/shops');
-      };
-
-      window.addEventListener('popstate', handlePopState);
-      return () => {
-        window.removeEventListener('popstate', handlePopState);
-      };
-    } else {
-      // User is on All Categories root (/shops)
-      window.history.pushState({ page: 'all_categories' }, '');
-
-      const handlePopState = () => {
-        router.replace('/');
-      };
-
-      window.addEventListener('popstate', handlePopState);
-      return () => {
-        window.removeEventListener('popstate', handlePopState);
-      };
-    }
-  }, [activeCategory, showFavoritesOnly, router]);
-
   const handleToggleFav = (slug, e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -466,7 +433,7 @@ function ShopsDirectoryContent() {
               type="button"
               onClick={() => {
                 setShowFavoritesOnly(false);
-                router.push('/shops');
+                router.replace('/shops', { scroll: false });
               }}
               className={`w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate ${
                 !showFavoritesOnly 
@@ -482,7 +449,7 @@ function ShopsDirectoryContent() {
               type="button"
               onClick={() => {
                 setShowFavoritesOnly(true);
-                router.push('/shops?category=favorites');
+                router.replace('/shops?category=favorites', { scroll: false });
               }}
               className={`w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer border flex items-center justify-center gap-1 sm:gap-1.5 text-center truncate ${
                 showFavoritesOnly 

@@ -117,40 +117,22 @@ export default function ShopDetailClient() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [shopBroadcast, setShopBroadcast] = useState(null);
 
-  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
+  // Handle closing open modals on mobile back button
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!showOtpModal && !showAllReviews) return;
 
-    window.history.pushState({ page: 'shop_detail' }, '');
+    window.history.pushState({ modal_open: true }, '');
 
-    const handlePopState = () => {
-      if (showOtpModal) {
-        setShowOtpModal(false);
-        window.history.pushState({ page: 'shop_detail' }, '');
-        return;
-      }
-      if (showAllReviews) {
-        setShowAllReviews(false);
-        window.history.pushState({ page: 'shop_detail' }, '');
-        return;
-      }
-
-      const lastCat = sessionStorage.getItem('ak_shops_last_cat');
-      if (lastCat === 'favorites') {
-        router.replace('/shops?category=favorites');
-      } else if (lastCat) {
-        router.replace(`/shops?cat=${encodeURIComponent(lastCat)}`);
-      } else {
-        const targetCat = getCategoryKey(shop);
-        router.replace(`/shops?cat=${targetCat}`);
-      }
+    const handleModalPop = () => {
+      if (showOtpModal) setShowOtpModal(false);
+      if (showAllReviews) setShowAllReviews(false);
     };
 
-    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleModalPop, { once: true });
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('popstate', handleModalPop);
     };
-  }, [shop, router, showOtpModal, showAllReviews]);
+  }, [showOtpModal, showAllReviews]);
 
   // BRD FR-1103: Multi-reply and follow-up comment thread states
   const [activeReplyReviewId, setActiveReplyReviewId] = useState(null);

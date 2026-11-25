@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  History, Store, Calendar, Clock, Ticket, ArrowRight, RotateCw,
+import { 
+  History, Store, Calendar, Clock, Ticket, ArrowRight, RotateCw, 
   MapPin, CheckCircle2, ChevronRight, X, Sparkles, Star, AlertTriangle,
   Receipt, CreditCard, Banknote, ShieldAlert, Search, Heart
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { getFavoriteShopSlugs } from '@/lib/favorites';
 function getPaymentInfo(item) {
   const total = Number(item.amount || item.billAmount || item.totalAmount || 0);
   const mode = String(item.paymentMode || item.billPaymentMode || '').toUpperCase();
-
+  
   // Check if shop khata ledger has pending due for this customer
   let khataDue = 0;
   if (typeof window !== 'undefined') {
@@ -34,7 +34,7 @@ function getPaymentInfo(item) {
             }
           }
         }
-      } catch (e) { }
+      } catch (e) {}
     }
   }
 
@@ -85,26 +85,21 @@ export default function ServiceHistoryPage() {
   const [search, setSearch] = useState('');
   const [favoriteSlugs, setFavoriteSlugs] = useState([]);
 
-  // 1-Page Strict Back Navigation on Mobile Hardware Back (popstate) - No on-screen buttons
+  // Handle closing detail modal on mobile back button
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!selectedVisit) return;
 
-    window.history.pushState({ page: 'history_page' }, '');
+    window.history.pushState({ modal_open: true }, '');
 
-    const handlePopState = () => {
-      if (selectedVisit) {
-        setSelectedVisit(null);
-        window.history.pushState({ page: 'history_page' }, '');
-      } else {
-        router.replace('/shops');
-      }
+    const handleModalPop = () => {
+      setSelectedVisit(null);
     };
 
-    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleModalPop, { once: true });
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('popstate', handleModalPop);
     };
-  }, [selectedVisit, router]);
+  }, [selectedVisit]);
 
   useEffect(() => {
     enforceCleanSlate();
@@ -143,7 +138,7 @@ export default function ServiceHistoryPage() {
               });
             }
           }
-        } catch (e) { }
+        } catch (e) {}
 
         try {
           const raw = localStorage.getItem('ak_my_tokens');
@@ -157,7 +152,7 @@ export default function ServiceHistoryPage() {
               });
             }
           }
-        } catch (e) { }
+        } catch (e) {}
       }
 
       // Sort newest first
@@ -180,8 +175,8 @@ export default function ServiceHistoryPage() {
     const q = search.toLowerCase().trim();
     const sName = (item.shopName || '').toLowerCase();
     const tokenNo = (item.tokenNumber || '').toLowerCase();
-    const services = Array.isArray(item.servicesOpted)
-      ? item.servicesOpted.join(' ').toLowerCase()
+    const services = Array.isArray(item.servicesOpted) 
+      ? item.servicesOpted.join(' ').toLowerCase() 
       : String(item.servicesOpted || '').toLowerCase();
     return sName.includes(q) || tokenNo.includes(q) || services.includes(q);
   });
@@ -290,12 +285,12 @@ export default function ServiceHistoryPage() {
           {filteredHistory.map((item, idx) => {
             const dateStr = item.completedAt || item.servedAt || item.createdAt
               ? new Date(item.completedAt || item.servedAt || item.createdAt).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
               : 'Recent Visit';
 
             const shopSlug = item.shopSlug || (item.shopName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -451,9 +446,9 @@ export default function ServiceHistoryPage() {
                   <span className="font-semibold text-[#283B3D]">
                     {selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt
                       ? new Date(selectedVisit.completedAt || selectedVisit.servedAt || selectedVisit.createdAt).toLocaleString('en-IN', {
-                        dateStyle: 'medium',
-                        timeStyle: 'short'
-                      })
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })
                       : 'Recent Visit'}
                   </span>
                 </div>

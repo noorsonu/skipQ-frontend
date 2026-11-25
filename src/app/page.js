@@ -53,24 +53,32 @@ const DEMO_OUTLETS = [
 export default function HomePage() {
   const router = useRouter();
 
-  // Enforce clean platform slate if epoch changed
+  // Enforce clean platform slate if epoch changed & restore exact scroll position
   useEffect(() => {
     enforceCleanSlate();
 
-    // Check if user refreshed the page (reload)
     if (typeof window !== 'undefined') {
       const navEntries = performance.getEntriesByType('navigation');
       const isReload = navEntries.length > 0 && navEntries[0].type === 'reload';
       if (isReload) {
+        sessionStorage.removeItem('ak_home_scroll_y');
         sessionStorage.removeItem('ak_home_last_clicked');
         window.scrollTo(0, 0);
         return;
       }
 
-      // Mobile phone back button scroll restoration to exact clicked card (One-time only)
+      // Check if user came back from a subpage - restore exact scroll position
+      const savedY = sessionStorage.getItem('ak_home_scroll_y');
       const lastClicked = sessionStorage.getItem('ak_home_last_clicked');
-      if (lastClicked) {
-        // Immediately remove it so subsequent refreshes stay at the top (Hero)
+
+      if (savedY) {
+        const y = parseInt(savedY, 10);
+        if (!isNaN(y) && y > 0) {
+          window.scrollTo({ top: y, behavior: 'instant' });
+          setTimeout(() => window.scrollTo({ top: y, behavior: 'instant' }), 50);
+          setTimeout(() => window.scrollTo({ top: y, behavior: 'instant' }), 150);
+        }
+      } else if (lastClicked) {
         sessionStorage.removeItem('ak_home_last_clicked');
         setTimeout(() => {
           const el = document.getElementById(lastClicked);
@@ -79,6 +87,15 @@ export default function HomePage() {
           }
         }, 150);
       }
+
+      // Track scroll on homepage so returning always lands on exact spot
+      const handleScroll = () => {
+        if (window.scrollY > 0) {
+          sessionStorage.setItem('ak_home_scroll_y', String(window.scrollY));
+        }
+      };
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      return () => window.removeEventListener('scroll', handleScroll);
     }
   }, []);
 
@@ -639,6 +656,11 @@ export default function HomePage() {
           {/* 1. All Categories */}
           <Link
             href="/shops"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('ak_home_scroll_y', String(window.scrollY));
+              }
+            }}
             className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-center truncate shadow-2xs"
           >
             <Store className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
@@ -648,6 +670,11 @@ export default function HomePage() {
           {/* 2. Favorites */}
           <Link
             href="/shops?category=favorites"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('ak_home_scroll_y', String(window.scrollY));
+              }
+            }}
             className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-rose-300 hover:bg-rose-50 hover:border-rose-400 text-center truncate shadow-2xs"
           >
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />
@@ -660,6 +687,11 @@ export default function HomePage() {
           {/* 3. History */}
           <Link
             href="/history"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('ak_home_scroll_y', String(window.scrollY));
+              }
+            }}
             className="w-full py-2.5 px-1 sm:px-3 rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 bg-white text-[#283B3D] border border-[#DCE9E3] hover:border-[#176B65] hover:bg-[#DCE9E3]/40 text-center truncate shadow-2xs"
           >
             <History className="w-3.5 h-3.5 text-[#176B65] shrink-0" />
