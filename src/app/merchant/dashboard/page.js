@@ -141,6 +141,7 @@ export default function MerchantDashboardPage() {
 
   // Live Queue State
   const [servingToken, setServingToken] = useState(null);
+  const [readyForBillingList, setReadyForBillingList] = useState([]);
   const [waitingQueue, setWaitingQueue] = useState([]);
   const [completedList, setCompletedList] = useState([]);
   const [absentList, setAbsentList] = useState([]);
@@ -421,6 +422,22 @@ export default function MerchantDashboardPage() {
             return c;
           });
         }
+      }
+    } catch (e) { }
+    return [];
+  };
+
+  // Ready for Cashier Billing Queue Storage Key & Loader
+  const getBillingQueueStorageKey = (shop) => `ak_shop_billing_queue_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopBillingQueue = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getBillingQueueStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) { }
     return [];
@@ -1028,6 +1045,13 @@ export default function MerchantDashboardPage() {
     return false;
   };
 
+  // Format token number to guarantee single '#' prefix without duplicate '##'
+  const formatTokenNum = (num) => {
+    if (num === null || num === undefined) return '#';
+    const clean = String(num).replace(/^#+/, '').trim();
+    return clean ? `#${clean}` : '#';
+  };
+
   // Sync real customer tokens booked for this specific shop from Cloud Backend & Local Fallback
   const syncCustomerQueueForShop = async (shop) => {
     if (!shop || typeof window === 'undefined') return;
@@ -1269,6 +1293,10 @@ export default function MerchantDashboardPage() {
           const kList = loadShopKhata(parsed);
           setKhataList(kList);
 
+          // Load Ready for Cashier Billing Queue
+          const bQueue = loadShopBillingQueue(parsed);
+          setReadyForBillingList(bQueue);
+
           // Load Staff Attendance & Multi-Operator Roster (BRD FR-711)
           const sList = loadShopStaff(parsed);
           setStaffList(sList);
@@ -1363,6 +1391,8 @@ export default function MerchantDashboardPage() {
         setStationsList(stns);
         const kList = loadShopKhata(activeShop);
         setKhataList(kList);
+        const bQueue = loadShopBillingQueue(activeShop);
+        setReadyForBillingList(bQueue);
         const sList = loadShopStaff(activeShop);
         setStaffList(sList);
         const oPin = loadOwnerPin(activeShop);
@@ -2314,6 +2344,15 @@ export default function MerchantDashboardPage() {
     } catch (e) { }
   };
 
+  const saveReadyForBillingList = (updated) => {
+    setReadyForBillingList(updated);
+    if (!activeShop || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(getBillingQueueStorageKey(activeShop), JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) { }
+  };
+
   // Shopkeeper manually assigns current serving customer to a specific counter/chair from the Green Card
   const handleAssignStationToServingToken = (station) => {
     if (!servingToken) return;
@@ -2592,6 +2631,59 @@ export default function MerchantDashboardPage() {
     }
 
     setAnnouncementMsg(`🪑 Calling ${custFullName} to ${station.name}`);
+    setTimeout(() => setAnnouncementMsg(''), 4500);
+  };
+
+  // Counter / Chair staff action: Complete service at chair and send customer to Main Owner Cashier Desk
+  const handleCompleteServiceAtStation = (stationId) => {
+    const station = stationsList.find(s => s.id === stationId);
+    if (!station || !station.currentToken) return;
+
+    const completedCust = station.currentToken;
+    const durationMins = Math.max(1, Math.floor((station.timerSeconds || 0) / 60));
+
+    // 1. Clear station & mark Free 🟢
+    const updatedStations = stationsList.map(st => {
+      if (st.id === stationId) {
+        return {
+          ...st,
+          currentToken: null,
+          timerSeconds: 0,
+          totalServedToday: (st.totalServedToday || 0) + 1
+        };
+      }
+      return st;
+    });
+    saveStationsList(updatedStations);
+
+    // 2. Add customer to readyForBillingList (Cashier Queue)
+    const billingToken = {
+      ...completedCust,
+      stationCompletedFrom: station.name,
+      staffName: station.staffName || '',
+      completedAtTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      serviceDurationMins: durationMins
+    };
+
+    const nextBillingQueue = [...readyForBillingList.filter(t => !isTokenMatch(t, completedCust)), billingToken];
+    saveReadyForBillingList(nextBillingQueue);
+
+    // If main owner desk doesn't have an active servingToken, stage this customer for billing
+    setServingToken(prev => {
+      if (!prev || isTokenMatch(prev, completedCust)) return billingToken;
+      return prev;
+    });
+
+    // 3. Audio & Voice Announcement
+    if (soundEnabled) {
+      playChime();
+      const custFullName = completedCust.customerName && completedCust.customerName !== 'Customer'
+        ? completedCust.customerName
+        : `Token ${completedCust.tokenNumber}`;
+      speakAnnouncement(completedCust.tokenNumber, custFullName, 'Cashier Desk');
+    }
+
+    setAnnouncementMsg(`✅ Service Complete at ${station.name}! ${completedCust.customerName || `Token ${completedCust.tokenNumber}`} sent to Owner Cashier Desk.`);
     setTimeout(() => setAnnouncementMsg(''), 4500);
   };
 
@@ -3052,10 +3144,12 @@ export default function MerchantDashboardPage() {
       localStorage.removeItem(`ak_merchant_cap_${(activeShop.slug || 'shop').toLowerCase()}`);
       localStorage.removeItem(`ak_shop_break_${(activeShop.slug || 'shop').toLowerCase()}`);
       localStorage.removeItem(getBroadcastStorageKey(activeShop));
+      localStorage.removeItem(getBillingQueueStorageKey(activeShop));
     }
 
     // Reset local component states to zero
     setWaitingQueue([]);
+    setReadyForBillingList([]);
     setServingToken(null);
     setCompletedList([]);
     setAbsentList([]);
@@ -3464,6 +3558,36 @@ export default function MerchantDashboardPage() {
       assignedStation: activeStation ? activeStation.name : undefined
     });
 
+    // Update readyForBillingList
+    let remainingReady = readyForBillingList.filter(t => !isTokenMatch(t, tokenToFinalize));
+    if (billingScope === 'GROUP') {
+      const relatedBillingTokens = readyForBillingList.filter(t => !isTokenMatch(t, tokenToFinalize) && isRelatedGroupMember(t, tokenToFinalize));
+      if (relatedBillingTokens.length > 0) {
+        const relIds = new Set(relatedBillingTokens.map(t => String(t.id || t.tokenNumber)));
+        remainingReady = remainingReady.filter(t => !relIds.has(String(t.id || t.tokenNumber)));
+        relatedBillingTokens.forEach(comp => {
+          setCompletedList(prev => [
+            {
+              tokenNumber: comp.tokenNumber,
+              customerName: comp.customerName,
+              customerPhone: comp.customerPhone || 'Offline',
+              completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              duration: 'Group Member',
+              amount: 0,
+              paymentMode: 'GROUP_BILLED',
+              service: comp.service || 'General Service',
+              billNotes: `Billed together under Pass #${tokenToFinalize.tokenNumber}`
+            },
+            ...prev
+          ]);
+          if (activeShop?.id && comp.id) {
+            queueApi.completeToken(activeShop.id, comp.id).catch(() => { });
+          }
+        });
+      }
+    }
+    saveReadyForBillingList(remainingReady);
+
     if (billingStationId) {
       const updatedStations = stationsList.map(st => {
         if (st.id === billingStationId) {
@@ -3478,7 +3602,11 @@ export default function MerchantDashboardPage() {
       });
       saveStationsList(updatedStations);
       if (servingToken?.tokenNumber === tokenToFinalize.tokenNumber) {
-        setServingToken(null);
+        if (remainingReady.length > 0) {
+          setServingToken(remainingReady[0]);
+        } else {
+          setServingToken(null);
+        }
         setCounterSeconds(0);
       }
       setBillingStationId(null);
@@ -3497,7 +3625,11 @@ export default function MerchantDashboardPage() {
         });
         saveStationsList(updatedStations);
       }
-      setServingToken(null);
+      if (remainingReady.length > 0) {
+        setServingToken(remainingReady[0]);
+      } else {
+        setServingToken(null);
+      }
       setCounterSeconds(0);
     }
 
@@ -3564,6 +3696,9 @@ export default function MerchantDashboardPage() {
     });
 
     syncWithCustomerStorage(null, null, servingToken);
+
+    const updatedReady = readyForBillingList.filter(t => !isTokenMatch(t, servingToken));
+    saveReadyForBillingList(updatedReady);
 
     // Advance to next if available
     if (waitingQueue.length > 0) {
@@ -4774,7 +4909,7 @@ export default function MerchantDashboardPage() {
                             {isServing ? (
                               <div className="text-right shrink-0">
                                 <span className="text-xs font-token font-bold text-emerald-300 block">
-                                  #{st.currentToken.tokenNumber}
+                                  {formatTokenNum(st.currentToken.tokenNumber)}
                                 </span>
                                 <span className="text-[10px] font-mono font-bold text-amber-300 inline-flex items-center gap-1">
                                   <Clock className="w-2.5 h-2.5 text-amber-400" />
@@ -4793,13 +4928,81 @@ export default function MerchantDashboardPage() {
                   </div>
                 )}
 
+                {/* Ready for Cashier Billing Queue Bar */}
+                {readyForBillingList.length > 0 && (
+                  <div className="bg-emerald-950/80 border border-emerald-400/40 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
+                    <div className="flex items-center justify-between text-xs font-black text-emerald-200">
+                      <span className="flex items-center gap-1.5">
+                        <Receipt className="w-4 h-4 text-[#F2A15A]" />
+                        <span>Ready for Cashier Billing ({readyForBillingList.length} Finished at Chairs):</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-300/80 font-medium">Tap customer to stage or bill</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {readyForBillingList.map((rbToken) => {
+                        const isSelected = servingToken && isTokenMatch(servingToken, rbToken);
+                        const parsed = parseCustomerAndServices(rbToken.customerName, rbToken.service);
+                        return (
+                          <div
+                            key={rbToken.id || rbToken.tokenNumber}
+                            className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-emerald-800/90 border-emerald-300 ring-2 ring-emerald-300/40 text-white shadow-xs'
+                                : 'bg-black/40 border-white/15 hover:border-emerald-400/50 text-slate-200'
+                            }`}
+                          >
+                            <div
+                              className="min-w-0 cursor-pointer flex-1"
+                              onClick={() => setServingToken(rbToken)}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-token font-bold text-emerald-300 text-sm">
+                                  {formatTokenNum(rbToken.tokenNumber)}
+                                </span>
+                                <span className="text-xs font-black truncate text-white">
+                                  {parsed.cleanName}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-300 truncate">
+                                Finished at {rbToken.stationCompletedFrom || 'Chair'} • {parsed.totalCost || parsed.servicesString}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setServingToken(rbToken);
+                                  handleOpenBillingModal();
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-[#176B65] text-[11px] font-black shadow-xs cursor-pointer active:scale-95 transition-all"
+                                title="Open billing for this customer"
+                              >
+                                Bill ₹
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {servingToken ? (
                   <div className="space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <span className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Current Customer Pass</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">
+                            {readyForBillingList.some(t => isTokenMatch(t, servingToken)) ? 'Ready for Cashier Bill' : 'Current Customer Pass'}
+                          </span>
+                          {readyForBillingList.some(t => isTokenMatch(t, servingToken)) && (
+                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
+                              Finished at {servingToken.stationCompletedFrom || 'Chair'}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-5xl sm:text-6xl font-token font-bold text-white tracking-tight mt-1">
-                          {servingToken.tokenNumber}
+                          {formatTokenNum(servingToken.tokenNumber)}
                         </div>
                       </div>
 
@@ -4883,7 +5086,7 @@ export default function MerchantDashboardPage() {
                               const statusTag = isAssigned
                                 ? "✓ Currently Assigned"
                                 : isOccupiedByOther
-                                  ? `🔴 Busy: ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber})`
+                                  ? `🔴 Busy: ${station.currentToken.customerName || 'Customer'} (${formatTokenNum(station.currentToken.tokenNumber)})`
                                   : "🟢 Free / Ready";
                               return (
                                 <option
@@ -4932,7 +5135,7 @@ export default function MerchantDashboardPage() {
                         className="sm:col-span-2 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                       >
                         <Volume2 className="w-5 h-5 text-[#F2A15A]" />
-                        <span>Call Next Customer ({waitingQueue[0]?.tokenNumber || 'Queue Empty'})</span>
+                        <span>Call Next Customer ({waitingQueue[0]?.tokenNumber ? formatTokenNum(waitingQueue[0].tokenNumber) : 'Queue Empty'})</span>
                       </button>
 
                       {/* Mark Complete & Billing Hisaab */}
@@ -4976,7 +5179,7 @@ export default function MerchantDashboardPage() {
                         <div className="flex items-center justify-between text-xs font-bold text-slate-300 flex-wrap gap-1">
                           <span className="flex items-center gap-1.5 text-amber-300">
                             <Sparkles className="w-4 h-4 text-[#F2A15A]" />
-                            <span>Dispatch Next: #{waitingQueue[0].tokenNumber} ({waitingQueue[0].customerName})</span>
+                            <span>Dispatch Next: {formatTokenNum(waitingQueue[0].tokenNumber)} ({waitingQueue[0].customerName})</span>
                           </span>
                           <span className="text-[10px] text-slate-400">Tap counter below to send</span>
                         </div>
@@ -4997,7 +5200,7 @@ export default function MerchantDashboardPage() {
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold truncate block">{st.name}</span>
                                   <span className="text-[10px] text-slate-300 truncate block">
-                                    {st.currentToken ? `Busy (#${st.currentToken.tokenNumber})` : (st.role || 'Available')}
+                                    {st.currentToken ? `Busy (${formatTokenNum(st.currentToken.tokenNumber)})` : (st.role || 'Available')}
                                   </span>
                                 </div>
                                 <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 font-black'
@@ -5016,7 +5219,7 @@ export default function MerchantDashboardPage() {
                     {(() => {
                       const nextCust = waitingQueue[0];
                       const parsed = parseCustomerAndServices(nextCust.customerName, nextCust.service);
-                      const tokenDisplay = String(nextCust.tokenNumber).startsWith('#') ? nextCust.tokenNumber : `#${nextCust.tokenNumber}`;
+                      const tokenDisplay = formatTokenNum(nextCust.tokenNumber);
                       return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
                           <div>
@@ -5390,7 +5593,7 @@ export default function MerchantDashboardPage() {
                                     disabled={isBusy}
                                     className={isBusy ? "bg-slate-100 text-slate-400 font-normal cursor-not-allowed" : "bg-white text-slate-800 font-bold"}
                                   >
-                                    {st.name} {isBusy ? `(🔴 Busy #${st.currentToken.tokenNumber})` : '• Free 🟢'}
+                                    {st.name} {isBusy ? `(🔴 Busy ${formatTokenNum(st.currentToken.tokenNumber)})` : '• Free 🟢'}
                                   </option>
                                 );
                               })}
@@ -5486,7 +5689,7 @@ export default function MerchantDashboardPage() {
                           </div>
                           <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
                             {isStationServing
-                              ? `👤 Serving: ${parseCustomerAndServices(station.currentToken.customerName, station.currentToken.service).cleanName} (#${station.currentToken.tokenNumber})`
+                              ? `👤 Serving: ${parseCustomerAndServices(station.currentToken.customerName, station.currentToken.service).cleanName} (${formatTokenNum(station.currentToken.tokenNumber)})`
                               : `🟢 Ready • ${station.role || 'Service Counter'}`
                             }
                           </span>
@@ -5508,7 +5711,7 @@ export default function MerchantDashboardPage() {
                             {/* Token Number & Prominent Live Elapsed Timer Badge */}
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               <span className="text-2xl sm:text-3xl font-token font-bold text-emerald-800">
-                                {String(station.currentToken.tokenNumber).startsWith('#') ? station.currentToken.tokenNumber : `#${station.currentToken.tokenNumber}`}
+                                {formatTokenNum(station.currentToken.tokenNumber)}
                               </span>
                               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#283B3D] text-amber-200 border border-emerald-900/30 shadow-2xs">
                                 <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -5613,25 +5816,15 @@ export default function MerchantDashboardPage() {
                     {/* Station Actions */}
                     <div className="pt-2 border-t border-[#DCE9E3]/70 space-y-1.5">
                       {station.active && isStationServing && (
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenStationBilling(station.id)}
-                            className="col-span-2 py-2 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                            title="Complete service & enter billing amount"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Done & Bill</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleMarkStationAbsent(station.id)}
-                            className="py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                            title="Customer not present at this counter"
-                          >
-                            <span>Skip</span>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteServiceAtStation(station.id)}
+                          className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
+                          title="Chair service complete! Customer moves to Cashier Desk for billing and chair becomes Free"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-[#F2A15A]" />
+                          <span>Service Complete ➔ Send to Cash Desk</span>
+                        </button>
                       )}
 
                       {station.active && !isStationServing && (
@@ -5642,7 +5835,7 @@ export default function MerchantDashboardPage() {
                           className="w-full py-2.5 rounded-xl bg-[#176B65] hover:bg-[#125550] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shadow-xs"
                         >
                           <Volume2 className="w-3.5 h-3.5 text-[#F2A15A]" />
-                          <span>Call Next Here {waitingQueue.length > 0 ? `(${waitingQueue[0].tokenNumber})` : ''}</span>
+                          <span>Call Next Here {waitingQueue.length > 0 ? `(${formatTokenNum(waitingQueue[0].tokenNumber)})` : ''}</span>
                         </button>
                       )}
 
@@ -8499,6 +8692,7 @@ export default function MerchantDashboardPage() {
 
           const relatedTokens = [
             ...waitingQueue,
+            ...readyForBillingList,
             ...(servingToken ? [servingToken] : []),
             ...stationsList.filter(s => s.currentToken).map(s => s.currentToken)
           ].filter(t => t && !isTokenMatch(t, activeBillingToken) && isRelatedGroupMember(t, activeBillingToken));
@@ -8548,7 +8742,7 @@ export default function MerchantDashboardPage() {
                 {/* Customer Pass Summary Banner */}
                 {(() => {
                   const parsedBilling = parseCustomerAndServices(activeBillingToken.customerName, activeBillingToken.service);
-                  const tokenDisplay = String(activeBillingToken.tokenNumber).startsWith('#') ? activeBillingToken.tokenNumber : `#${activeBillingToken.tokenNumber}`;
+                  const tokenDisplay = formatTokenNum(activeBillingToken.tokenNumber);
                   return (
                     <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
