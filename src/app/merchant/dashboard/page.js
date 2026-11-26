@@ -464,6 +464,31 @@ export default function MerchantDashboardPage() {
     return [];
   };
 
+  // Persistent Shop Completed Tokens Storage (so billed/completed tokens are never revived on refresh)
+  const getShopCompletedStorageKey = (shop) => `ak_shop_completed_${(shop?.slug || 'shop').toLowerCase()}`;
+
+  const loadShopCompleted = (shop) => {
+    if (!shop || typeof window === 'undefined') return [];
+    const key = getShopCompletedStorageKey(shop);
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) { }
+    return [];
+  };
+
+  const saveShopCompleted = (shop, list) => {
+    if (!shop || typeof window === 'undefined') return;
+    const key = getShopCompletedStorageKey(shop);
+    try {
+      localStorage.setItem(key, JSON.stringify(list || []));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) { }
+  };
+
   // Helper to fetch live real-time formatted in Indian Standard 12-hour AM/PM
   const getNowTimeStr = () => {
     return new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -1123,12 +1148,29 @@ export default function MerchantDashboardPage() {
         ? stationsListRef.current
         : loadShopStations(shop);
 
+      // Persistent check helper to ensure completed/billed tokens are NEVER revived
+      const savedCompleted = loadShopCompleted(shop);
+      let customerHistory = [];
+      try {
+        const hStr = localStorage.getItem('ak_customer_history');
+        if (hStr) customerHistory = JSON.parse(hStr);
+      } catch (e) { }
+
+      const isCompletedToken = (t) => {
+        if (!t) return false;
+        if (t.status === 'COMPLETED') return true;
+        if (completedListRef.current.some(c => isTokenMatch(c, t))) return true;
+        if (savedCompleted.some(c => isTokenMatch(c, t))) return true;
+        if (customerHistory.some(h => isTokenMatch(h, t) && (h.status === 'COMPLETED' || h.completedAt))) return true;
+        return false;
+      };
+
       // 2. Overlay backend cloud tokens (Ground Truth from Cloud DB)
       backendTokens.forEach(bt => {
         const key = String(bt.id || bt.displayToken || bt.tokenNumber);
         const existing = tokenMap.get(key) || Array.from(tokenMap.values()).find(et => isTokenMatch(et, bt));
 
-        const isLocallyCompleted = completedListRef.current.some(c => isTokenMatch(c, bt));
+        const isLocallyCompleted = isCompletedToken(bt) || isCompletedToken(existing);
         const isLocallyAbsent = absentListRef.current.some(a => isTokenMatch(a, bt));
         const isLocallyServing = isTokenMatch(servingTokenRef.current, bt) ||
           currentStations.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, bt));
@@ -1168,7 +1210,7 @@ export default function MerchantDashboardPage() {
         if (t.status && t.status !== 'WAITING') return false;
         if (isTokenMatch(servingTokenRef.current, t)) return false;
         if (currentStations.some(st => st.active && st.currentToken && isTokenMatch(st.currentToken, t))) return false;
-        if (completedListRef.current.some(c => isTokenMatch(c, t))) return false;
+        if (isCompletedToken(t)) return false;
         if (absentListRef.current.some(a => isTokenMatch(a, t))) return false;
         return true;
       }).map((t, index) => ({
@@ -1198,10 +1240,10 @@ export default function MerchantDashboardPage() {
       setWaitingQueue(waitingOnly);
 
       // 2. Currently Serving Token: only if there is an unassigned serving customer not seated at a station
-      const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !completedListRef.current.some(c => isTokenMatch(c, t)));
+      const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !isCompletedToken(t));
       const isServingAtStation = servingItem && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, servingItem));
 
-      if (servingItem && !isServingAtStation) {
+      if (servingItem && !isServingAtStation && !isCompletedToken(servingItem)) {
         setServingToken({
           id: servingItem.id,
           tokenNumber: servingItem.displayToken || servingItem.tokenNumber,
@@ -1211,12 +1253,13 @@ export default function MerchantDashboardPage() {
           service: servingItem.customerPurpose || servingItem.service || 'General Service',
           assignedStation: servingItem.assignedStation || null
         });
-      } else if (!servingItem || isServingAtStation || waitingOnly.length === 0) {
-        // Do NOT clear serving token if merchant is viewing a finished customer ready for billing or if billing modal is open!
+      } else {
+        // Clear serving token if no active unassigned customer, or if current token was completed/seated
         setServingToken(prev => {
-          if (prev && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, prev))) return null;
+          if (prev && (isCompletedToken(prev) || stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, prev)))) return null;
           if (prev && readyForBillingListRef.current?.some(rb => isTokenMatch(rb, prev))) return prev;
           if (billingModalOpenRef.current) return prev;
+          if (waitingOnly.length === 0 && (!readyForBillingListRef.current || readyForBillingListRef.current.length === 0)) return null;
           return null;
         });
       }
@@ -1330,6 +1373,10 @@ export default function MerchantDashboardPage() {
           const bQueue = loadShopBillingQueue(parsed);
           setReadyForBillingList(bQueue);
 
+          // Load Persistent Completed Tokens
+          const cList = loadShopCompleted(parsed);
+          setCompletedList(cList);
+
           // Load Staff Attendance & Multi-Operator Roster (BRD FR-711)
           const sList = loadShopStaff(parsed);
           setStaffList(sList);
@@ -1426,6 +1473,8 @@ export default function MerchantDashboardPage() {
         setKhataList(kList);
         const bQueue = loadShopBillingQueue(activeShop);
         setReadyForBillingList(bQueue);
+        const cList = loadShopCompleted(activeShop);
+        setCompletedList(cList);
         const sList = loadShopStaff(activeShop);
         setStaffList(sList);
         const oPin = loadOwnerPin(activeShop);
@@ -3417,8 +3466,8 @@ export default function MerchantDashboardPage() {
     }
     setBillPaymentMode('CASH');
     setBillNotes('');
-    setBillingScope('SINGLE');
-    setCustomBillCount(Math.min(target.groupSize || 1, 2));
+    setBillingScope('GROUP'); // Default to full group so the entire booking/pass completes cleanly
+    setCustomBillCount(target.groupSize || 1);
     setBillingModalOpen(true);
   };
 
@@ -3595,7 +3644,11 @@ export default function MerchantDashboardPage() {
       stationName: activeStation ? activeStation.name : undefined
     };
 
-    setCompletedList(prev => [completedRecord, ...prev]);
+    setCompletedList(prev => {
+      const updated = [completedRecord, ...prev];
+      saveShopCompleted(activeShop, updated);
+      return updated;
+    });
 
     updateRecordInHistory(activeShop, {
       id: tokenToFinalize.id || `token-${tokenToFinalize.tokenNumber}`,
@@ -5061,7 +5114,7 @@ export default function MerchantDashboardPage() {
                       {/* Customer Header info */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-xs uppercase font-extrabold tracking-wider ${isReadyForBilling ? 'text-amber-300' : 'text-slate-400'}`}>
                               {isReadyForBilling
                                 ? 'Ready for Cashier Bill'
@@ -5075,6 +5128,17 @@ export default function MerchantDashboardPage() {
                                 Finished at {servingToken.stationCompletedFrom || 'Chair'}
                               </span>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setServingToken(null);
+                                setCounterSeconds(0);
+                              }}
+                              className="text-[10px] font-bold text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                              title="Clear / Dismiss desk pass"
+                            >
+                              ✕ Dismiss
+                            </button>
                           </div>
                           <div className="text-5xl sm:text-6xl font-token font-bold text-white tracking-tight mt-1">
                             {formatTokenNum(servingToken.tokenNumber)}
