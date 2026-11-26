@@ -835,15 +835,13 @@ export default function ShopDetailClient() {
       setErrorMsg('');
 
       // Build member names list with purpose notes
-      const mainName = customerName || 'Customer';
-      const mainEntry = customerPurpose ? `${mainName} (${customerPurpose})` : mainName;
+      const mainName = customerName?.trim() || 'Customer';
 
-      const memberEntries = [mainEntry];
+      const memberEntries = [mainName];
       for (let i = 0; i < companionDetails.length; i++) {
         const comp = companionDetails[i];
-        const cName = comp.name.trim() || `Companion #${i + 2}`;
-        const cPurp = comp.purpose.trim();
-        memberEntries.push(cPurp ? `${cName} (${cPurp})` : cName);
+        const cName = comp.name?.trim() || `Companion #${i + 2}`;
+        memberEntries.push(cName);
       }
 
       // Clean 10-digit Indian mobile number

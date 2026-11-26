@@ -24,7 +24,71 @@ import { queueApi, reviewApi, shopApi } from '@/lib/api';
 import { playChime } from '@/lib/audioChime';
 import { enforceCleanSlate } from '@/lib/storageSync';
 
+export function parseCustomerAndServices(rawName, rawService) {
+  let cleanName = (rawName || 'Customer').trim();
+  let servicesString = (rawService || '').trim();
+
+  // If customerName has "(...services...)" appended:
+  const parenMatch = cleanName.match(/^([^(]+?)\s*\((.+)\)$/);
+  if (parenMatch && (parenMatch[2].includes('₹') || parenMatch[2].includes('•') || parenMatch[2].includes('Total:') || parenMatch[2].includes('~'))) {
+    cleanName = parenMatch[1].trim() || 'Customer';
+    if (!servicesString || servicesString === 'General Service') {
+      servicesString = parenMatch[2].trim();
+    }
+  }
+
+  // Parse items from servicesString
+  let items = [];
+  let totalCost = '';
+  let estTime = '';
+
+  if (servicesString) {
+    const parts = servicesString.split('•').map(p => p.trim());
+    const servicePart = parts[0] || '';
+
+    parts.slice(1).forEach(p => {
+      if (p.startsWith('Total:')) totalCost = p.replace('Total:', '').trim();
+      else if (p.startsWith('~') || p.includes('m') || p.includes('min')) estTime = p.trim();
+      else if (p.startsWith('₹')) totalCost = p.trim();
+    });
+
+    if (servicePart) {
+      items = servicePart.split(/,(?![^()]*\))/).map(s => s.trim()).filter(Boolean);
+    }
+    if (items.length === 0 && servicesString) {
+      items = [servicesString];
+    }
+  }
+
+  return {
+    cleanName,
+    servicesString: servicesString || 'General Service',
+    items,
+    totalCost,
+    estTime
+  };
+}
+
 export default function MerchantDashboardPage() {
+  // Service Dropdown toggle states for Queue, Stations, and Next Customer
+  const [expandedQueueServices, setExpandedQueueServices] = useState({});
+  const [expandedStationServices, setExpandedStationServices] = useState({});
+  const [expandedNextCustomerService, setExpandedNextCustomerService] = useState(false);
+
+  const toggleQueueService = (id) => {
+    setExpandedQueueServices(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const toggleStationService = (stationId) => {
+    setExpandedStationServices(prev => ({
+      ...prev,
+      [stationId]: !prev[stationId]
+    }));
+  };
+
   // Authorization Gate State
   const [isAuthorized, setIsAuthorized] = useState(null); // null = checking, true = authorized, false = blocked
   const [currentUserRole, setCurrentUserRole] = useState('GUEST');
@@ -2395,9 +2459,16 @@ export default function MerchantDashboardPage() {
     const station = stationsList.find(s => s.id === stationId);
     if (!station || !station.currentToken) return;
     setBillingStationId(stationId);
-    setBillServices(station.currentToken.service || 'General Service');
-    setBillAmount('');
-    setBillPaidAmount('');
+    const parsed = parseCustomerAndServices(station.currentToken.customerName, station.currentToken.service);
+    setBillServices(parsed.items.length > 0 ? parsed.items.join(' + ') : parsed.servicesString);
+    if (parsed.totalCost) {
+      const numMatch = parsed.totalCost.replace(/[^0-9]/g, '');
+      setBillAmount(numMatch || '');
+      setBillPaidAmount(numMatch || '');
+    } else {
+      setBillAmount('');
+      setBillPaidAmount('');
+    }
     setBillPaymentMode('CASH');
     setBillNotes('');
     setBillingScope('SINGLE');
@@ -3063,9 +3134,16 @@ export default function MerchantDashboardPage() {
   const handleOpenBillingModal = () => {
     if (!servingToken) return;
     setBillingStationId(null);
-    setBillServices(servingToken.service || 'General Service');
-    setBillAmount('');
-    setBillPaidAmount('');
+    const parsed = parseCustomerAndServices(servingToken.customerName, servingToken.service);
+    setBillServices(parsed.items.length > 0 ? parsed.items.join(' + ') : parsed.servicesString);
+    if (parsed.totalCost) {
+      const numMatch = parsed.totalCost.replace(/[^0-9]/g, '');
+      setBillAmount(numMatch || '');
+      setBillPaidAmount(numMatch || '');
+    } else {
+      setBillAmount('');
+      setBillPaidAmount('');
+    }
     setBillPaymentMode('CASH');
     setBillNotes('');
     setBillingScope('SINGLE');
@@ -4820,40 +4898,71 @@ export default function MerchantDashboardPage() {
               </div>
             ) : waitingQueue.length > 0 ? (
               <div className="space-y-4 pt-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
-                  <div>
-                    <span className="text-xs uppercase font-extrabold text-amber-300 tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
-                      <span>Next Customer Ready in Queue</span>
-                    </span>
-                    <div className="text-4xl sm:text-5xl font-token font-bold text-white tracking-tight mt-0.5">
-                      #{waitingQueue[0].tokenNumber}
+                {(() => {
+                  const nextCust = waitingQueue[0];
+                  const parsed = parseCustomerAndServices(nextCust.customerName, nextCust.service);
+                  const tokenDisplay = String(nextCust.tokenNumber).startsWith('#') ? nextCust.tokenNumber : `#${nextCust.tokenNumber}`;
+                  return (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
+                      <div>
+                        <span className="text-xs uppercase font-extrabold text-amber-300 tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
+                          <span>Next Customer Ready in Queue</span>
+                        </span>
+                        <div className="text-4xl sm:text-5xl font-token font-bold text-white tracking-tight mt-0.5">
+                          {tokenDisplay}
+                        </div>
+                      </div>
+                      <div className="sm:text-right space-y-1.5">
+                        <span className="text-base sm:text-lg font-black text-[#DCE9E3] block">{parsed.cleanName}</span>
+                        <div className="flex flex-wrap sm:justify-end items-center gap-1.5">
+                          {parsed.items.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedNextCustomerService(prev => !prev)}
+                              className="text-xs text-amber-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
+                              title="Click to view all requested services"
+                            >
+                              <span>✂️ {parsed.items.length} {parsed.items.length === 1 ? 'Service' : 'Services'}</span>
+                              {parsed.totalCost && <span className="font-bold text-emerald-300">({parsed.totalCost})</span>}
+                              <span className="text-[10px] text-amber-300">{expandedNextCustomerService ? '▲ Hide' : '▼ View'}</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-300 font-medium">{parsed.servicesString}</span>
+                          )}
+                          <span className="text-xs text-slate-400 font-medium">• Party of {nextCust.groupSize || 1}</span>
+                        </div>
+
+                        {expandedNextCustomerService && parsed.items.length > 0 && (
+                          <div className="p-2.5 rounded-xl bg-black/50 border border-white/15 text-left space-y-1 text-xs sm:max-w-xs sm:ml-auto">
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Services Requested:</div>
+                            {parsed.items.map((svc, sIdx) => (
+                              <div key={sIdx} className="text-slate-200 font-medium">
+                                • {svc}
+                              </div>
+                            ))}
+                            {parsed.totalCost && (
+                              <div className="pt-1 border-t border-white/10 text-emerald-300 font-bold flex justify-between">
+                                <span>Est. Total:</span>
+                                <span>{parsed.totalCost}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div>
+                          <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-md inline-block border border-emerald-400/20">
+                            Est. wait: ~{nextCust.estWaitMin || 0}m
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="sm:text-right space-y-1">
-                    <span className="text-base sm:text-lg font-black text-[#DCE9E3] block">{waitingQueue[0].customerName}</span>
-                    <span className="text-xs text-slate-300 font-medium block">
-                      {waitingQueue[0].service} • Party of {waitingQueue[0].groupSize || 1}
-                    </span>
-                    <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md inline-block">
-                      Est. wait: ~{waitingQueue[0].estWaitMin || 0}m
-                    </span>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* 1-Tap Counter Dispatch Buttons for Next Customer */}
                 {stationsList.filter(s => s.active).length > 0 ? (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                        <ArrowRight className="w-4 h-4 text-emerald-400" />
-                        <span>Tap counter below to send #{waitingQueue[0].tokenNumber} ({waitingQueue[0].customerName}):</span>
-                      </span>
-                      <span className="text-[10px] text-amber-200/90 font-bold bg-white/10 px-2 py-0.5 rounded">
-                        1-Tap Voice Announcement
-                      </span>
-                    </div>
-
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {stationsList.filter(s => s.active).map(st => {
                         const isBusy = !!st.currentToken;
@@ -5015,95 +5124,141 @@ export default function MerchantDashboardPage() {
             </div>
 
             {/* Scrollable Waiting Queue List with WhatsApp Direct Alert */}
-            <div className="overflow-y-auto flex-1 space-y-2.5 divide-y divide-[#DCE9E3]/50 pr-1">
+            <div className="overflow-y-auto flex-1 space-y-3 pr-1">
               {waitingQueue.map((item, index) => {
                 const hasPhone = item.customerPhone && item.customerPhone !== 'Offline';
                 const sentTime = whatsappSentMap[item.tokenNumber];
+                const parsed = parseCustomerAndServices(item.customerName, item.service);
+                const isExpanded = !!expandedQueueServices[item.id || item.tokenNumber];
+                const tokenDisplay = String(item.tokenNumber).startsWith('#') ? item.tokenNumber : `#${item.tokenNumber}`;
 
                 return (
                   <div 
                     key={`${item.id || item.tokenNumber}-${index}`}
-                    className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 p-2.5 rounded-2xl hover:bg-[#F3F1E9]/70 transition-all border border-transparent hover:border-[#DCE9E3]"
+                    className="p-3 rounded-2xl bg-white border border-[#DCE9E3] hover:border-[#176B65]/40 hover:shadow-xs transition-all space-y-2.5"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
-                        index === 0 ? 'bg-[#176B65] text-white shadow-xs' : 'bg-[#DCE9E3] text-[#176B65]'
-                      }`}>
-                        {index + 1}
-                      </span>
+                    {/* Top Row: Sequence, Token, Name, Badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center shrink-0 ${
+                          index === 0 ? 'bg-[#176B65] text-white shadow-xs' : 'bg-[#DCE9E3] text-[#176B65]'
+                        }`}>
+                          {index + 1}
+                        </span>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-token font-bold text-sm text-[#176B65]">{item.tokenNumber}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCustomerReviewModal(item)}
-                            className="font-black text-xs text-[#283B3D] hover:text-[#176B65] truncate hover:underline text-left cursor-pointer flex items-center gap-1.5"
-                            title="Click karke is customer ka review aur visit details dekhein"
-                          >
-                            <span>{item.customerName}</span>
-                            {(() => {
-                              const rev = findCustomerReview(item);
-                              if (!rev) return null;
-                              return (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
-                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                                  <span>{rev.rating}.0</span>
-                                </span>
-                              );
-                            })()}
-                          </button>
-                          {index === 0 && (
-                            <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded">
-                              Next
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-[#283B3D]/70">
-                          <span className="truncate">{item.service}</span>
-                          <span>•</span>
-                          <span>~{item.estWaitMin}m wait</span>
-                          {item.serviceDurationMin > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-[#176B65] font-semibold">Service: ~{item.serviceDurationMin}m</span>
-                            </>
-                          )}
-                          {sentTime && (
-                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
-                              ✓ WA Sent {sentTime}
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-token font-bold text-sm text-[#176B65] shrink-0">{tokenDisplay}</span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomerReviewModal(item)}
+                          className="font-black text-xs sm:text-sm text-[#283B3D] hover:text-[#176B65] truncate hover:underline text-left cursor-pointer flex items-center gap-1.5"
+                          title="Click karke is customer ka review aur visit details dekhein"
+                        >
+                          <span className="truncate">{parsed.cleanName}</span>
+                          {(() => {
+                            const rev = findCustomerReview(item);
+                            if (!rev) return null;
+                            return (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                                <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                <span>{rev.rating}.0</span>
+                              </span>
+                            );
+                          })()}
+                        </button>
+
+                        {index === 0 && (
+                          <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded shrink-0">
+                            Next
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] font-bold text-[#176B65] bg-[#DCE9E3] px-2 py-0.5 rounded-lg whitespace-nowrap">
+                          {item.waitAhead} Ahead
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg whitespace-nowrap">
+                          ~{item.estWaitMin}m
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {hasPhone && (
-                        <>
-                          <a
-                            href={`tel:${item.customerPhone}`}
-                            title={`Direct phone call to +91 ${item.customerPhone}`}
-                            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#283B3D] transition-colors cursor-pointer"
-                          >
-                            <PhoneCall className="w-3.5 h-3.5" />
-                          </a>
+                    {/* Middle Row: Service Dropdown / Summary */}
+                    <div className="bg-[#F3F1E9]/70 rounded-xl p-2 border border-[#DCE9E3]/70">
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleQueueService(item.id || item.tokenNumber)}
+                          className="text-[11px] font-bold text-[#176B65] hover:text-[#125550] flex items-center gap-1.5 text-left cursor-pointer transition-colors min-w-0"
+                          title="Customer kya kya karaega dekhne ke liye tap karein"
+                        >
+                          <span className="shrink-0">✂️</span>
+                          <span className="truncate">
+                            {parsed.items.length > 0 
+                              ? `${parsed.items.length} ${parsed.items.length === 1 ? 'Service' : 'Services'} ${parsed.totalCost ? `(${parsed.totalCost})` : ''}` 
+                              : parsed.servicesString}
+                          </span>
+                          <span className="text-[9px] bg-white px-1.5 py-0.5 rounded border border-[#DCE9E3] text-[#176B65] shrink-0 font-bold shadow-2xs">
+                            {isExpanded ? 'Hide ▲' : 'View Services ▼'}
+                          </span>
+                        </button>
+                        {sentTime && (
+                          <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                            ✓ WA Sent {sentTime}
+                          </span>
+                        )}
+                      </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenWhatsAppModal(item, index === 0 ? 'CALLING_SOON' : 'CALLING_SOON')}
-                            title="Send WhatsApp Turn Reminder"
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
-                              sentTime
-                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : 'bg-[#25D366] hover:bg-[#20ba59] text-white'
-                            }`}
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                            <span className="hidden sm:inline">{sentTime ? 'Ping Again' : 'WA Ping'}</span>
-                          </button>
-                        </>
+                      {/* Expanded Services Breakdown */}
+                      {isExpanded && (
+                        <div className="mt-2 pt-2 border-t border-[#DCE9E3] space-y-1 text-xs">
+                          <div className="text-[10px] uppercase font-bold text-[#283B3D]/70 tracking-wider">
+                            Customer Services List:
+                          </div>
+                          {parsed.items.map((svc, sIdx) => (
+                            <div key={sIdx} className="flex items-center justify-between text-[#283B3D] text-[11px] font-medium bg-white px-2 py-1 rounded-lg border border-[#DCE9E3]/50">
+                              <span>• {svc}</span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between pt-1 text-[11px] font-bold text-[#176B65]">
+                            {parsed.totalCost && <span>Total: {parsed.totalCost}</span>}
+                            {item.serviceDurationMin > 0 && <span>Est. Duration: ~{item.serviceDurationMin}m</span>}
+                          </div>
+                        </div>
                       )}
+                    </div>
+
+                    {/* Bottom Row: Actions (Call, WhatsApp, Send to Counter) */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                      <div className="flex items-center gap-1.5">
+                        {hasPhone && (
+                          <>
+                            <a
+                              href={`tel:${item.customerPhone}`}
+                              title={`Direct phone call to +91 ${item.customerPhone}`}
+                              className="px-2 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <PhoneCall className="w-3.5 h-3.5 text-emerald-700" />
+                              <span className="text-[11px]">Call</span>
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenWhatsAppModal(item, index === 0 ? 'CALLING_SOON' : 'CALLING_SOON')}
+                              title="Send WhatsApp Turn Reminder"
+                              className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 ${
+                                sentTime
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  : 'bg-[#25D366] hover:bg-[#20ba59] text-white'
+                              }`}
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 fill-current" />
+                              <span className="text-[11px]">{sentTime ? 'Ping Again' : 'WA Ping'}</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
 
                       {stationsList.filter(s => s.active).length > 0 && (
                         <select
@@ -5113,10 +5268,10 @@ export default function MerchantDashboardPage() {
                             if (!targetId) return;
                             handleCallNextForStation(targetId, item);
                           }}
-                          className="text-[10px] font-bold bg-[#176B65] hover:bg-[#125550] text-white py-1 px-2 rounded-xl cursor-pointer border border-emerald-400/50 shadow-2xs focus:outline-none shrink-0"
+                          className="text-[11px] font-bold bg-[#176B65] hover:bg-[#125550] text-white py-1 px-2.5 rounded-xl cursor-pointer border border-emerald-400/50 shadow-2xs focus:outline-none shrink-0"
                           title="1-Tap Send this customer to a specific counter / chair"
                         >
-                          <option value="" disabled className="bg-white text-slate-800">Send to ▾</option>
+                          <option value="" disabled className="bg-white text-slate-800">Send to Counter ▾</option>
                           {stationsList.filter(s => s.active).map(st => {
                             const isBusy = !!st.currentToken;
                             return (
@@ -5132,10 +5287,6 @@ export default function MerchantDashboardPage() {
                           })}
                         </select>
                       )}
-
-                      <span className="text-[10px] font-bold text-[#176B65] bg-[#DCE9E3] px-2 py-1 rounded-lg">
-                        {item.waitAhead} Ahead
-                      </span>
                     </div>
                   </div>
                 );
@@ -5227,7 +5378,7 @@ export default function MerchantDashboardPage() {
                       </div>
                       <span className="text-[11px] text-[#283B3D]/70 font-semibold block line-clamp-1">
                         {isStationServing
-                          ? `👤 Serving: ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber})`
+                          ? `👤 Serving: ${parseCustomerAndServices(station.currentToken.customerName, station.currentToken.service).cleanName} (#${station.currentToken.tokenNumber})`
                           : `🟢 Ready • ${station.role || 'Service Counter'}`
                         }
                       </span>
@@ -5250,7 +5401,7 @@ export default function MerchantDashboardPage() {
                         {/* Token Number & Prominent Live Elapsed Timer Badge */}
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <span className="text-2xl sm:text-3xl font-token font-bold text-emerald-800">
-                            #{station.currentToken.tokenNumber}
+                            {String(station.currentToken.tokenNumber).startsWith('#') ? station.currentToken.tokenNumber : `#${station.currentToken.tokenNumber}`}
                           </span>
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#283B3D] text-amber-200 border border-emerald-900/30 shadow-2xs">
                             <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -5262,40 +5413,82 @@ export default function MerchantDashboardPage() {
                         </div>
 
                         {/* Customer Name & Direct Call / WhatsApp */}
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs sm:text-sm font-black text-[#283B3D] truncate">
-                            {station.currentToken.customerName || 'Customer'}
-                          </span>
-                          {station.currentToken.customerPhone && station.currentToken.customerPhone !== 'Offline' && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <a
-                                href={`tel:${station.currentToken.customerPhone}`}
-                                className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
-                                title="Direct Phone Call"
-                              >
-                                <PhoneCall className="w-3 h-3 text-emerald-600" />
-                                <span>Call</span>
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleDirectWhatsAppSend(station.currentToken, 'SERVING_NOW')}
-                                className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
-                                title="Send WhatsApp Serving Alert"
-                              >
-                                <MessageCircle className="w-3 h-3 fill-current" />
-                                <span>WA</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        {(() => {
+                          const parsedStation = parseCustomerAndServices(station.currentToken.customerName, station.currentToken.service);
+                          const isStationSvcExpanded = !!expandedStationServices[station.id];
+                          return (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs sm:text-sm font-black text-[#283B3D] truncate">
+                                  {parsedStation.cleanName}
+                                </span>
+                                {station.currentToken.customerPhone && station.currentToken.customerPhone !== 'Offline' && (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <a
+                                      href={`tel:${station.currentToken.customerPhone}`}
+                                      className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[#283B3D] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                                      title="Direct Phone Call"
+                                    >
+                                      <PhoneCall className="w-3 h-3 text-emerald-600" />
+                                      <span>Call</span>
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDirectWhatsAppSend(station.currentToken, 'SERVING_NOW')}
+                                      className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
+                                      title="Send WhatsApp Serving Alert"
+                                    >
+                                      <MessageCircle className="w-3 h-3 fill-current" />
+                                      <span>WA</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
 
-                        {/* Service & Party Size Pill */}
-                        <div className="text-[11px] text-[#176B65] font-semibold bg-[#DCE9E3]/70 px-2.5 py-1 rounded-lg flex items-center justify-between gap-2">
-                          <span className="truncate">{station.currentToken.service || 'General Service'}</span>
-                          <span className="shrink-0 text-slate-600 font-medium text-[10px]">
-                            Party of {station.currentToken.groupSize || 1}
-                          </span>
-                        </div>
+                              {/* Service Dropdown & Party Size Pill */}
+                              <div className="text-[11px] font-semibold bg-[#DCE9E3]/70 px-2.5 py-1.5 rounded-lg border border-[#176B65]/10">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStationService(station.id)}
+                                    className="text-[#176B65] hover:text-[#125550] flex items-center gap-1 font-bold text-left cursor-pointer truncate min-w-0"
+                                    title="Counter staff: Click to view full services list"
+                                  >
+                                    <span className="shrink-0">✂️</span>
+                                    <span className="truncate">
+                                      {parsedStation.items.length > 0
+                                        ? `${parsedStation.items.length} ${parsedStation.items.length === 1 ? 'Service' : 'Services'} ${parsedStation.totalCost ? `(${parsedStation.totalCost})` : ''}`
+                                        : parsedStation.servicesString}
+                                    </span>
+                                    <span className="text-[9px] bg-white px-1.5 py-0.2 rounded border border-[#DCE9E3] font-bold shrink-0">
+                                      {isStationSvcExpanded ? '▲' : '▼'}
+                                    </span>
+                                  </button>
+                                  <span className="shrink-0 text-slate-600 font-medium text-[10px]">
+                                    Party: {station.currentToken.groupSize || 1}
+                                  </span>
+                                </div>
+
+                                {isStationSvcExpanded && (
+                                  <div className="mt-2 pt-2 border-t border-[#176B65]/20 space-y-1 text-xs">
+                                    <div className="text-[10px] uppercase font-bold text-[#176B65]">Customer Requirements:</div>
+                                    {parsedStation.items.map((svc, sIdx) => (
+                                      <div key={sIdx} className="bg-white/80 px-2 py-0.5 rounded text-[11px] text-[#283B3D] font-medium">
+                                        • {svc}
+                                      </div>
+                                    ))}
+                                    {parsedStation.totalCost && (
+                                      <div className="pt-0.5 font-bold text-emerald-800 text-[11px] flex justify-between">
+                                        <span>Total:</span>
+                                        <span>{parsedStation.totalCost}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="py-3 text-center space-y-1">
@@ -8281,7 +8474,7 @@ export default function MerchantDashboardPage() {
                       <Receipt className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-300/80 whitespace-nowrap">
                         Service Complete • Billing & Ledger
                       </span>
                       <h3 className="font-black text-base text-[#283B3D] mt-0.5">
@@ -8298,23 +8491,54 @@ export default function MerchantDashboardPage() {
                 </div>
 
                 {/* Customer Pass Summary Banner */}
-                <div className="p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-[#283B3D] text-[#F3F1E9] flex flex-col items-center justify-center font-token font-bold text-sm shadow-xs shrink-0">
-                      <span className="text-[8px] text-[#F2A15A] uppercase tracking-wider">Pass</span>
-                      <span>{activeBillingToken.tokenNumber}</span>
+                {(() => {
+                  const parsedBilling = parseCustomerAndServices(activeBillingToken.customerName, activeBillingToken.service);
+                  const tokenDisplay = String(activeBillingToken.tokenNumber).startsWith('#') ? activeBillingToken.tokenNumber : `#${activeBillingToken.tokenNumber}`;
+                  return (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F3F1E9]/80 border border-[#DCE9E3] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#283B3D] text-[#F3F1E9] flex flex-col items-center justify-center font-token font-bold text-xs sm:text-sm shadow-xs shrink-0">
+                          <span className="text-[8px] text-[#F2A15A] uppercase tracking-wider">Pass</span>
+                          <span>{tokenDisplay}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-black text-sm text-[#283B3D] block truncate">{parsedBilling.cleanName}</span>
+                          <span className="text-xs text-slate-500 font-medium block truncate">
+                            {activeBillingToken.customerPhone ? `+91 ${activeBillingToken.customerPhone}` : 'Walk-in Guest'} • Party of {totalGroupCount}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:items-end gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-xl">
+                            {parsedBilling.items.length > 0 
+                              ? `${parsedBilling.items.length} ${parsedBilling.items.length === 1 ? 'Service' : 'Services'}` 
+                              : parsedBilling.servicesString}
+                          </span>
+                          {parsedBilling.totalCost && (
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg">
+                              Est: {parsedBilling.totalCost}
+                            </span>
+                          )}
+                        </div>
+                        {parsedBilling.items.length > 0 && (
+                          <details className="text-left sm:text-right group">
+                            <summary className="text-[10px] font-bold text-[#176B65] hover:underline cursor-pointer list-none flex items-center sm:justify-end gap-1">
+                              <span>Services Breakdown</span>
+                              <span className="group-open:rotate-180 transition-transform">▾</span>
+                            </summary>
+                            <div className="mt-1 p-2 rounded-xl bg-white border border-[#DCE9E3] space-y-0.5 text-[10px] text-slate-700 text-left shadow-2xs">
+                              {parsedBilling.items.map((it, idx) => (
+                                <div key={idx}>• {it}</div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-black text-sm text-[#283B3D] block">{activeBillingToken.customerName}</span>
-                      <span className="text-xs text-slate-500 font-medium block">
-                        {activeBillingToken.customerPhone ? `+91 ${activeBillingToken.customerPhone}` : 'Walk-in Guest'} • Party of {totalGroupCount}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-xl shrink-0">
-                    {activeBillingToken.service || 'General Service'}
-                  </span>
-                </div>
+                  );
+                })()}
 
                 {/* Group Billing & Checkout Mode Selector (When >1 Person) */}
                 {isGroupBooking && (
