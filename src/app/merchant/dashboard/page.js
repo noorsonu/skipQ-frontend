@@ -4109,7 +4109,7 @@ export default function MerchantDashboardPage() {
                   title="View customer star ratings & feedback (FR-1105)"
                 >
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-                  <span>{avgRating} ({totalReviewsCount})</span>
+                  <span>{avgRating}</span>
                 </button>
               </div>
 
@@ -5036,7 +5036,7 @@ export default function MerchantDashboardPage() {
                         {stationsList.filter(s => s.active && !s.currentToken).length} Free
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-28 overflow-y-auto pr-1">
                       {stationsList.filter(s => s.active).map(st => {
                         const isServing = !!st.currentToken;
                         return (
@@ -5243,12 +5243,61 @@ export default function MerchantDashboardPage() {
                                 <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-400">Tap chair below</span>
+                              <span className="text-[10px] text-slate-400">Select chair or counter below</span>
                             )}
                           </div>
 
-                          {/* 1-Tap Quick Chair Buttons */}
-                          <div className="flex flex-wrap items-center gap-2">
+                          {/* Dropdown Selector for 10-15 Chairs / Counters */}
+                          <div className="relative">
+                            <select
+                              value={
+                                servingToken.assignedStation?.id ||
+                                stationsList.find(s => s.name === (servingToken.assignedStation?.name || servingToken.assignedStation))?.id ||
+                                ""
+                              }
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                if (!selectedId) return;
+                                const st = stationsList.find(s => s.id === selectedId);
+                                if (st) handleAssignStationToServingToken(st);
+                              }}
+                              className="w-full appearance-none bg-[#174642] hover:bg-[#123936] focus:bg-[#0e2f2c] text-white text-xs sm:text-sm font-bold py-3 pl-3.5 pr-10 rounded-2xl border border-white/20 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all cursor-pointer shadow-sm"
+                            >
+                              <option value="" disabled className="bg-[#283B3D] text-slate-400">
+                                -- 💈 Select Chair / Counter to Send Customer --
+                              </option>
+                              {stationsList.filter(s => s.active).map(st => {
+                                const isAssigned = servingToken.assignedStation && (
+                                  servingToken.assignedStation.id === st.id ||
+                                  servingToken.assignedStation.name === st.name ||
+                                  servingToken.assignedStation === st.name
+                                );
+                                const isBusyByOther = st.currentToken && !isTokenMatch(st.currentToken, servingToken);
+                                const statusTag = isAssigned
+                                  ? "✓ Currently Assigned"
+                                  : isBusyByOther
+                                    ? `🔴 Busy: ${st.currentToken.customerName || 'Customer'} (${formatTokenNum(st.currentToken.tokenNumber)})`
+                                    : "🟢 Free / Ready";
+                                return (
+                                  <option
+                                    key={st.id}
+                                    value={st.id}
+                                    disabled={isBusyByOther}
+                                    className={isBusyByOther ? "bg-slate-700 text-slate-400 py-2 cursor-not-allowed" : "bg-[#283B3D] text-white py-2"}
+                                  >
+                                    {st.name} {st.role ? `(${st.role})` : ''} — [{statusTag}]
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-emerald-300">
+                              <ChevronDown className="w-4 h-4" />
+                            </div>
+                          </div>
+
+                          {/* Quick 1-Tap Horizontal Scroll Chips */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-0.5">
+                            <span className="text-[10px] text-slate-400 shrink-0 font-medium mr-1">Quick 1-Tap:</span>
                             {stationsList.filter(s => s.active).map(st => {
                               const isAssigned = servingToken.assignedStation && (
                                 servingToken.assignedStation.id === st.id ||
@@ -5262,7 +5311,7 @@ export default function MerchantDashboardPage() {
                                   type="button"
                                   disabled={isBusyByOther}
                                   onClick={() => handleAssignStationToServingToken(st)}
-                                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                                     isAssigned
                                       ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
                                       : isBusyByOther
@@ -5557,32 +5606,7 @@ export default function MerchantDashboardPage() {
                 </div>
               )}
 
-              {/* Day-End Settlement Card (BRD FR-708) */}
-              <div className="bg-gradient-to-r from-slate-900 to-[#283B3D] text-[#F3F1E9] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md border border-slate-700">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                    <Moon className="w-5 h-5 text-[#F2A15A]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black">Day-End Queue Settlement</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#F2A15A]">
-                        FR-708
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 font-medium mt-0.5">
-                      Pack up for tonight: expire remaining queue, finalize hisaab, and reset to fresh Token #1 for tomorrow.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setResetModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-[#176B65] hover:bg-[#135853] text-white font-black text-xs shrink-0 cursor-pointer shadow-xs active:scale-95 w-full sm:w-auto text-center"
-                >
-                  Close Day & Reset
-                </button>
-              </div>
+
 
             </div>
 
