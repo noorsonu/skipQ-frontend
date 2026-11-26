@@ -196,6 +196,11 @@ export default function MerchantDashboardPage() {
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [billingDeskModalOpen, setBillingDeskModalOpen] = useState(false);
   const [billingPage, setBillingPage] = useState(1);
+  const [selectedBillingTokens, setSelectedBillingTokens] = useState([]);
+  const [batchBillingModalOpen, setBatchBillingModalOpen] = useState(false);
+  const [batchPaymentMode, setBatchPaymentMode] = useState('CASH'); // 'CASH' | 'UPI' | 'PENDING'
+  const [batchCustomAmount, setBatchCustomAmount] = useState('');
+  const [batchBillNotes, setBatchBillNotes] = useState('');
   const [activeBillingCustomer, setActiveBillingCustomer] = useState(null);
   const [customBillCount, setCustomBillCount] = useState(1);
   const readyForBillingListRef = useRef([]);
@@ -2512,6 +2517,22 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setAnnouncementMsg(''), 4000);
   };
 
+  // Dispatches current customer (servingToken or next waiting customer) directly to a free station/counter
+  const handleSendCustomerToStation = (station) => {
+    if (!station) return;
+    if (station.currentToken) {
+      alert(`⚠️ ${station.name} abhi busy hai! Yahan pehle se ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber}) baithe hain.\n\nKripya pehle unka kaam Done karein ya koi Free 🟢 chair chunein.`);
+      return;
+    }
+    if (servingToken) {
+      handleAssignStationToServingToken(station);
+    } else if (waitingQueue.length > 0) {
+      handleCallNextForStation(station.id, waitingQueue[0]);
+    } else {
+      alert('Queue me koi customer nahi hai jise counter par bheja ja sake.');
+    }
+  };
+
   // Reassign / Move a customer from one station to another available station
   const handleReassignStation = (fromStationId, toStationId) => {
     const fromStation = stationsList.find(s => s.id === fromStationId);
@@ -3882,6 +3903,68 @@ export default function MerchantDashboardPage() {
     setCounterSeconds(0);
   };
 
+  // Action: Finalize and Settle Multiple Selected Customers in One Single Batch
+  const handleFinalizeBatchService = () => {
+    if (!selectedBillingTokens || selectedBillingTokens.length === 0) return;
+    const tokens = [...selectedBillingTokens];
+    const tokenNumbers = tokens.map(t => formatTokenNum(t.tokenNumber)).join(', ');
+
+    // 1. Complete all selected tokens in cloud backend
+    tokens.forEach(t => {
+      if (activeShop?.id && t.id) {
+        queueApi.completeToken(activeShop.id, t.id).catch(() => { });
+      }
+    });
+
+    // 2. Determine final amount & per-customer distribution
+    const autoSum = tokens.reduce((sum, t) => {
+      const parsed = parseCustomerAndServices(t.customerName, t.service);
+      const cost = parsed.totalCost ? Number(parsed.totalCost.replace(/[^0-9]/g, '')) : 0;
+      return sum + (cost || 0);
+    }, 0);
+    const finalAmount = batchCustomAmount !== '' && !isNaN(Number(batchCustomAmount))
+      ? Number(batchCustomAmount)
+      : autoSum;
+
+    const perCustomerAmount = tokens.length > 0 ? Math.round(finalAmount / tokens.length) : 0;
+
+    // 3. Create completed records
+    const newCompleted = tokens.map((t, idx) => ({
+      tokenNumber: t.tokenNumber,
+      customerName: t.customerName || 'Customer',
+      customerPhone: t.customerPhone || 'Offline',
+      completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: 'Group/Batch Bill',
+      amount: idx === 0 ? finalAmount - (perCustomerAmount * (tokens.length - 1)) : perCustomerAmount,
+      paymentMode: batchPaymentMode,
+      service: t.service || 'General Service',
+      billNotes: batchBillNotes ? `${batchBillNotes} (Combined: ${tokenNumbers})` : `Combined Billing (${tokens.length} Customers: ${tokenNumbers})`
+    }));
+
+    setCompletedList(prev => {
+      const updated = [...newCompleted, ...prev];
+      saveShopCompleted(activeShop, updated);
+      return updated;
+    });
+
+    // 4. Remove all selected from readyForBillingList
+    const selectedIds = new Set(tokens.map(t => String(t.id || t.tokenNumber)));
+    const remaining = readyForBillingList.filter(t => !selectedIds.has(String(t.id || t.tokenNumber)));
+    setReadyForBillingList(remaining);
+    saveReadyForBillingList(remaining);
+
+    // 5. If desk servingToken was one of them, clear/update
+    if (servingToken && selectedIds.has(String(servingToken.id || servingToken.tokenNumber))) {
+      setServingToken(remaining.length > 0 ? remaining[0] : null);
+      setCounterSeconds(0);
+    }
+
+    setSelectedBillingTokens([]);
+    setBatchBillingModalOpen(false);
+    setAnnouncementMsg(`✅ Batch Settle: ₹${finalAmount} received for ${tokens.length} customers (${tokenNumbers})`);
+    setTimeout(() => setAnnouncementMsg(''), 4000);
+  };
+
   // Action: Add Walk-in Token
   const handleAddWalkin = (e) => {
     e.preventDefault();
@@ -5031,46 +5114,87 @@ export default function MerchantDashboardPage() {
                   </div>
                 </div>
 
-                {/* Live Multi-Staff Chairs Service & Elapsed Timers Overview Bar (Compact) */}
-                {stationsList.filter(s => s.active).length > 0 && (
-                  <div className="bg-black/25 rounded-2xl p-2.5 border border-white/10 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-300 px-1">
-                      <span className="flex items-center gap-1.5 text-emerald-300">
-                        <Clock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Chairs Status:</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {stationsList.filter(s => s.active && !s.currentToken).length} Free
-                      </span>
+                {/* Live Multi-Staff Chairs Service: Dropdown + Mini Free Badges with 1-Tap Quick Send */}
+                {stationsList.filter(s => s.active).length > 0 && (() => {
+                  const activeStList = stationsList.filter(s => s.active);
+                  const freeStList = activeStList.filter(s => !s.currentToken);
+
+                  return (
+                    <div className="bg-black/25 rounded-2xl p-2.5 sm:p-3 border border-white/10 space-y-2">
+                      {/* Top Header & Mini Free Counter Badges */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap text-xs font-bold text-slate-300 px-0.5">
+                        <div className="flex items-center gap-1.5 text-emerald-300">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Chairs Status:</span>
+                          <span className="text-[10px] text-slate-400">
+                            ({freeStList.length} Free / {activeStList.length} Total)
+                          </span>
+                        </div>
+
+                        {/* Ekdum Chota Sa: Mini Free Counter Badges (Click to Send Customer Immediately!) */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                          <span className="text-[10px] text-slate-400 font-medium shrink-0">Free Now:</span>
+                          {freeStList.length === 0 ? (
+                            <span className="text-[10px] text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-400/30 shrink-0 font-bold">
+                              All Busy (0 Free)
+                            </span>
+                          ) : (
+                            freeStList.map(st => (
+                              <button
+                                key={st.id}
+                                type="button"
+                                onClick={() => handleSendCustomerToStation(st)}
+                                className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 shadow-2xs"
+                                title={`Click to send customer directly to ${st.name}`}
+                              >
+                                <span>{st.name}</span>
+                                <span className="text-[9px] font-black text-emerald-200">🟢 Free ➔</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Dropdown Selector to assign or view chair status */}
+                      <div className="relative">
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (!selectedId) return;
+                            const st = stationsList.find(s => s.id === selectedId);
+                            if (st) handleSendCustomerToStation(st);
+                          }}
+                          className="w-full appearance-none bg-[#123936] hover:bg-[#0e2f2c] text-white text-xs font-bold py-2.5 pl-3 pr-9 rounded-xl border border-white/15 focus:border-emerald-400 focus:outline-none transition-all cursor-pointer shadow-xs"
+                        >
+                          <option value="" disabled className="bg-[#283B3D] text-slate-300">
+                            -- 💈 Select Free Counter to Send Customer --
+                          </option>
+                          {activeStList.map(st => {
+                            const isBusy = !!st.currentToken;
+                            return (
+                              <option
+                                key={st.id}
+                                value={st.id}
+                                disabled={isBusy}
+                                className={isBusy ? "bg-slate-700 text-slate-400 py-1.5 cursor-not-allowed" : "bg-[#283B3D] text-white font-bold py-1.5"}
+                              >
+                                {st.name} {st.role ? `(${st.role})` : ''} — [
+                                {isBusy
+                                  ? `🔴 Busy: ${st.currentToken.customerName || 'Customer'} (${formatTokenNum(st.currentToken.tokenNumber)})`
+                                  : "🟢 Free & Ready — Send Customer ➔"
+                                }]
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-emerald-300">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-28 overflow-y-auto pr-1">
-                      {stationsList.filter(s => s.active).map(st => {
-                        const isServing = !!st.currentToken;
-                        return (
-                          <div
-                            key={st.id}
-                            className={`p-2 rounded-xl border flex items-center justify-between gap-1.5 ${
-                              isServing
-                                ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-200'
-                                : 'bg-white/5 border-white/10 text-slate-300'
-                            }`}
-                          >
-                            <span className="text-xs font-bold truncate text-white">{st.name}</span>
-                            {isServing ? (
-                              <span className="text-[10px] font-mono text-amber-300 shrink-0">
-                                {formatTokenNum(st.currentToken.tokenNumber)} ({formatTimer(st.timerSeconds || 0)})
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded shrink-0">
-                                Free 🟢
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Ready for Cashier Billing Queue Bar (Compact Dropdown & Paginated Desk Modal Trigger) */}
                 {readyForBillingList.length > 0 && (
@@ -8934,7 +9058,7 @@ export default function MerchantDashboardPage() {
               className="relative w-full max-w-2xl bg-gradient-to-b from-[#1C2C2E] to-[#121E20] text-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-emerald-500/30 flex flex-col max-h-[90vh] z-10"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3.5 border-b border-white/10 shrink-0">
+              <div className="flex items-center justify-between pb-3.5 border-b border-white/10 shrink-0 flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
                     <Receipt className="w-5 h-5" />
@@ -8947,18 +9071,86 @@ export default function MerchantDashboardPage() {
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      Service completed at chairs • 5 customers per page
+                      Service completed at chairs • 5 per page • Multi-select for joint bills
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setBillingDeskModalOpen(false)}
-                  className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  {readyForBillingList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedBillingTokens.length === readyForBillingList.length) {
+                          setSelectedBillingTokens([]);
+                        } else {
+                          setSelectedBillingTokens([...readyForBillingList]);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-amber-300 border border-white/10 transition-colors cursor-pointer"
+                    >
+                      {selectedBillingTokens.length === readyForBillingList.length ? 'Deselect All' : `Select All (${readyForBillingList.length})`}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setBillingDeskModalOpen(false)}
+                    className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Multi-Customer Batch Billing Bar (When 1 or more customers are selected) */}
+              {selectedBillingTokens.length > 0 && (() => {
+                const autoSum = selectedBillingTokens.reduce((sum, t) => {
+                  const parsed = parseCustomerAndServices(t.customerName, t.service);
+                  const cost = parsed.totalCost ? Number(parsed.totalCost.replace(/[^0-9]/g, '')) : 0;
+                  return sum + (cost || 0);
+                }, 0);
+
+                return (
+                  <div className="my-2.5 p-3 rounded-2xl bg-gradient-to-r from-amber-500/25 via-emerald-500/20 to-teal-500/25 border border-amber-400/50 flex items-center justify-between gap-3 shadow-lg shrink-0 flex-wrap animate-fadeIn">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+                        ✓
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-amber-200">
+                          {selectedBillingTokens.length} Customers Selected for Joint / Group Billing
+                        </p>
+                        <p className="text-[10px] text-slate-300 truncate max-w-xs sm:max-w-md">
+                          {selectedBillingTokens.map(t => formatTokenNum(t.tokenNumber)).join(', ')}
+                          {autoSum > 0 ? ` • Est. Total: ₹${autoSum}` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBillingTokens([])}
+                        className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold text-slate-300 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBatchCustomAmount(autoSum > 0 ? String(autoSum) : '');
+                          setBatchPaymentMode('CASH');
+                          setBatchBillingModalOpen(true);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                      >
+                        <Receipt className="w-4 h-4" />
+                        <span>Bill {selectedBillingTokens.length} Customers Together {autoSum > 0 ? `(₹${autoSum})` : ''} ➔</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Modal Body: 5 Customers List */}
               <div className="flex-1 overflow-y-auto py-3.5 space-y-2.5 pr-1">
@@ -8979,13 +9171,40 @@ export default function MerchantDashboardPage() {
                       const parsed = parseCustomerAndServices(rb.customerName, rb.service);
                       const tNum = formatTokenNum(rb.tokenNumber);
                       const chairName = rb.stationCompletedFrom || rb.assignedStation?.name || rb.assignedStation || 'Chair';
+                      const isSelected = selectedBillingTokens.some(t => isTokenMatch(t, rb));
 
                       return (
                         <div
                           key={rb.id || rb.tokenNumber || idx}
-                          className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between gap-3 transition-all"
+                          className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
+                            isSelected
+                              ? 'bg-amber-500/15 border-amber-400/60 shadow-md ring-1 ring-amber-400/40'
+                              : 'bg-white/5 hover:bg-white/10 border-white/10'
+                          }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
+                            {/* Checkbox for Multi-Select Batch Billing */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBillingTokens(prev => {
+                                  if (prev.some(t => isTokenMatch(t, rb))) {
+                                    return prev.filter(t => !isTokenMatch(t, rb));
+                                  } else {
+                                    return [...prev, rb];
+                                  }
+                                });
+                              }}
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shrink-0 ${
+                                isSelected
+                                  ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300'
+                                  : 'bg-white/10 border border-white/20 text-transparent hover:border-amber-400/50'
+                              }`}
+                              title={isSelected ? 'Unselect' : 'Select for joint/batch billing'}
+                            >
+                              ✓
+                            </button>
+
                             <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 flex flex-col items-center justify-center shrink-0">
                               <span className="text-[9px] font-black uppercase text-amber-300 leading-none">Token</span>
                               <span className="text-sm font-black text-amber-200">{tNum}</span>
@@ -9004,18 +9223,20 @@ export default function MerchantDashboardPage() {
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBillingDeskModalOpen(false);
-                              setServingToken(rb);
-                              handleOpenBillingModal(rb);
-                            }}
-                            className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shrink-0 flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
-                          >
-                            <Receipt className="w-3.5 h-3.5" />
-                            <span>Bill {tNum} ₹</span>
-                          </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBillingDeskModalOpen(false);
+                                setServingToken(rb);
+                                handleOpenBillingModal(rb);
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                              <span>Bill {tNum} ₹</span>
+                            </button>
+                          </div>
                         </div>
                       );
                     });
@@ -9075,6 +9296,162 @@ export default function MerchantDashboardPage() {
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* MODAL 2.9: MULTI-CUSTOMER BATCH BILLING MODAL (COMBINED SETTLE) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {batchBillingModalOpen && selectedBillingTokens.length > 0 && (() => {
+          const autoSum = selectedBillingTokens.reduce((sum, t) => {
+            const parsed = parseCustomerAndServices(t.customerName, t.service);
+            const cost = parsed.totalCost ? Number(parsed.totalCost.replace(/[^0-9]/g, '')) : 0;
+            return sum + (cost || 0);
+          }, 0);
+          const currentTotal = batchCustomAmount !== '' && !isNaN(Number(batchCustomAmount))
+            ? Number(batchCustomAmount)
+            : autoSum;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setBatchBillingModalOpen(false)}
+                className="fixed inset-0"
+              />
+
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-emerald-500/30 space-y-5 z-10 max-h-[92vh] overflow-y-auto"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-[#DCE9E3] pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-black shadow-xs">
+                      <Receipt className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <span className="inline-block text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                        Multi-Customer Batch Settlement
+                      </span>
+                      <h3 className="font-black text-base text-[#283B3D] mt-0.5">
+                        Bill {selectedBillingTokens.length} Customers Together
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBatchBillingModalOpen(false)}
+                    className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Selected Customers Chips List */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-[#283B3D] block">
+                    Selected Customers ({selectedBillingTokens.length}):
+                  </label>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-2xl bg-[#F3F1E9]/60 border border-[#DCE9E3]">
+                    {selectedBillingTokens.map((t, idx) => {
+                      const parsed = parseCustomerAndServices(t.customerName, t.service);
+                      return (
+                        <div key={t.id || t.tokenNumber || idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white shadow-2xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-token font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded text-[11px]">
+                              {formatTokenNum(t.tokenNumber)}
+                            </span>
+                            <span className="font-bold text-[#283B3D] truncate">{parsed.cleanName}</span>
+                            <span className="text-[10px] text-slate-400 truncate">({parsed.servicesString})</span>
+                          </div>
+                          {parsed.totalCost && (
+                            <span className="font-bold text-emerald-700 text-xs shrink-0">{parsed.totalCost}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Total Combined Amount */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-[#283B3D]">
+                      Total Combined Bill Amount (₹)
+                    </label>
+                    {autoSum > 0 && (
+                      <span className="text-[11px] font-bold text-emerald-700">
+                        Calculated Sum: ₹{autoSum}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400 font-bold text-sm">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={batchCustomAmount !== '' ? batchCustomAmount : (autoSum > 0 ? String(autoSum) : '')}
+                      onChange={(e) => setBatchCustomAmount(e.target.value)}
+                      placeholder={autoSum > 0 ? String(autoSum) : "Enter total amount for all customers"}
+                      className="w-full pl-8 pr-4 py-3 rounded-2xl border-2 border-[#DCE9E3] focus:border-[#176B65] focus:outline-none font-black text-lg text-[#283B3D] bg-white transition-all shadow-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Payment Mode Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-[#283B3D] block">Payment Mode</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { mode: 'CASH', label: '💵 Cash', activeClass: 'bg-emerald-600 text-white' },
+                      { mode: 'UPI', label: '📱 Online / UPI', activeClass: 'bg-sky-600 text-white' },
+                      { mode: 'PENDING', label: '📒 Khata / Due', activeClass: 'bg-amber-600 text-white' }
+                    ].map(p => (
+                      <button
+                        key={p.mode}
+                        type="button"
+                        onClick={() => setBatchPaymentMode(p.mode)}
+                        className={`py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          batchPaymentMode === p.mode
+                            ? `${p.activeClass} shadow-md`
+                            : 'bg-[#F3F1E9] text-[#283B3D] hover:bg-slate-200'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setBatchBillingModalOpen(false)}
+                    className="sm:w-1/3 py-3 rounded-2xl border border-[#DCE9E3] hover:bg-slate-50 text-[#283B3D] font-bold text-xs cursor-pointer transition-colors text-center"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinalizeBatchService}
+                    className="sm:w-2/3 py-3 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98 transition-all"
+                  >
+                    <Receipt className="w-4 h-4 text-amber-300" />
+                    <span>Confirm & Settle All {selectedBillingTokens.length} Bills (₹{currentTotal})</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ========================================================= */}
