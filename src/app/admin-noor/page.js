@@ -49,7 +49,8 @@ export default function AdminUsersPage() {
 
   const handleUnlock = (e) => {
     e.preventDefault();
-    if (passkeyInput.trim() === 'admin2026' || passkeyInput.trim() === ADMIN_SECRET) {
+    const input = passkeyInput.trim();
+    if (input === 'Noormd870@' || input === ADMIN_SECRET) {
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(PASSKEY_KEY, 'true');
       }
@@ -179,7 +180,7 @@ export default function AdminUsersPage() {
                 <input
                   type="password"
                   required
-                  placeholder="Enter admin passkey (e.g. admin2026)"
+                  placeholder="Enter admin passkey"
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value)}
                   className="w-full bg-[#F3F1E9]/60 border border-[#DCE9E3] rounded-2xl pl-11 pr-4 py-3 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
