@@ -1240,10 +1240,20 @@ export default function MerchantDashboardPage() {
       setWaitingQueue(waitingOnly);
 
       // 2. Currently Serving Token: only if there is an unassigned serving customer not seated at a station
+      const isShopIdle = waitingOnly.length === 0 && stationsList.every(st => !st.currentToken) && (!readyForBillingListRef.current || readyForBillingListRef.current.length === 0);
       const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !isCompletedToken(t));
       const isServingAtStation = servingItem && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, servingItem));
 
-      if (servingItem && !isServingAtStation && !isCompletedToken(servingItem)) {
+      if (isShopIdle) {
+        // When queue has 0 customers and all chairs are free and no billing is pending:
+        // Shop is completely clear! Auto-complete any orphan backend token so it never haunts the screen.
+        if (servingItem && shop.id) {
+          queueApi.completeToken(shop.id, servingItem.id).catch(() => {});
+          const currentCompleted = loadShopCompleted(shop);
+          saveShopCompleted(shop, [{ ...servingItem, status: 'COMPLETED' }, ...currentCompleted]);
+        }
+        setServingToken(null);
+      } else if (servingItem && !isServingAtStation && !isCompletedToken(servingItem)) {
         setServingToken({
           id: servingItem.id,
           tokenNumber: servingItem.displayToken || servingItem.tokenNumber,
@@ -3841,6 +3851,35 @@ export default function MerchantDashboardPage() {
     setWaitingQueue(prev => [absentItem, ...prev]);
   };
 
+  // Action: Manually Dismiss/Clear Ghost or Finished Serving Token from Desk
+  const handleDismissServingToken = (tokenToDismiss = null) => {
+    const target = tokenToDismiss || servingToken;
+    if (target) {
+      if (activeShop?.id && target.id) {
+        queueApi.completeToken(activeShop.id, target.id).catch(() => { });
+      }
+      const currentCompleted = loadShopCompleted(activeShop);
+      const updated = [
+        {
+          ...target,
+          completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'COMPLETED'
+        },
+        ...currentCompleted.filter(c => !isTokenMatch(c, target))
+      ];
+      setCompletedList(updated);
+      saveShopCompleted(activeShop, updated);
+
+      syncWithCustomerStorage(null, target);
+
+      const remReady = readyForBillingList.filter(t => !isTokenMatch(t, target));
+      setReadyForBillingList(remReady);
+      saveReadyForBillingList(remReady);
+    }
+    setServingToken(null);
+    setCounterSeconds(0);
+  };
+
   // Action: Add Walk-in Token
   const handleAddWalkin = (e) => {
     e.preventDefault();
@@ -5130,10 +5169,7 @@ export default function MerchantDashboardPage() {
                             )}
                             <button
                               type="button"
-                              onClick={() => {
-                                setServingToken(null);
-                                setCounterSeconds(0);
-                              }}
+                              onClick={() => handleDismissServingToken(servingToken)}
                               className="text-[10px] font-bold text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
                               title="Clear / Dismiss desk pass"
                             >
