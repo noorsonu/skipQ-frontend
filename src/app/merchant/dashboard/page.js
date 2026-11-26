@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import QRCode from 'qrcode';
+import { downloadStandeePoster } from '@/lib/standeeGenerator';
 import { queueApi, reviewApi, shopApi } from '@/lib/api';
 import { playChime } from '@/lib/audioChime';
 import { enforceCleanSlate } from '@/lib/storageSync';
@@ -1327,38 +1328,28 @@ export default function MerchantDashboardPage() {
     if (!activeShop || typeof window === 'undefined') return;
     setIsDownloadingStandee(true);
     try {
-      const element = document.getElementById('printable-standee-card');
-      if (!element) {
-        if (standeeQrUrl) {
-          const link = document.createElement('a');
-          link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
-          link.href = standeeQrUrl;
-          link.click();
-        }
-        return;
-      }
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(element, {
-        scale: 3, // 3x high resolution for crisp print/image
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#FFFFFF',
-        logging: false,
+      await downloadStandeePoster({
+        shopName: activeShop.name || 'Royal Looks Salon',
+        categoryName: activeShop.categoryName || 'Salon & Barber',
+        address: activeShop.address || 'Indira Nagar, Lucknow',
+        bookingUrl: standeeBookingUrl || `${window.location.origin}/book/${activeShop.slug || 'shop'}`,
+        qrDataUrl: standeeQrUrl,
+        theme: standeeTheme || 'EMERALD',
+        tagline: standeeTagline || 'Line me khade mat raho, QR scan karo aur aaram se baithiye!',
+        openTime: activeShop.openTime || '09:30 AM',
+        closeTime: activeShop.closeTime || '08:30 PM',
+        weeklyOff: activeShop.weeklyOff || 'None',
+        avgWaitMin: activeShop.avgWaitMin || 12,
+        tokenPrefix: activeShop.tokenPrefix || 'AK',
+        wifiName: standeeWifiName,
+        wifiPass: standeeWifiPass,
+        showHours: showStandeeHours,
+        showWifi: showStandeeWifi,
+        slug: activeShop.slug || 'shop'
       });
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-standee.png`;
-      link.href = dataUrl;
-      link.click();
       setAnnouncementMsg('📥 Full Standee Poster downloaded in high resolution!');
     } catch (err) {
-      console.error('Failed to export standee image:', err);
-      if (standeeQrUrl) {
-        const link = document.createElement('a');
-        link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
-        link.href = standeeQrUrl;
-        link.click();
-      }
+      console.error('Failed to export standee poster image:', err);
     } finally {
       setIsDownloadingStandee(false);
     }

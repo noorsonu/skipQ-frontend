@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import OfficialBrandLogo from '@/components/OfficialBrandLogo';
+import { downloadStandeePoster } from '@/lib/standeeGenerator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { shopApi, authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
@@ -104,37 +105,25 @@ export default function MerchantRegisterPage() {
     if (!registeredShop || typeof window === 'undefined') return;
     setIsDownloadingRegStandee(true);
     try {
-      const element = document.getElementById('registration-standee-card');
-      if (!element) {
-        if (registrationQrUrl) {
-          const link = document.createElement('a');
-          link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
-          link.href = registrationQrUrl;
-          link.click();
-        }
-        return;
-      }
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(element, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#FFFFFF',
-        logging: false,
+      const origin = window.location.origin || 'https://skipq.in';
+      const bookingUrl = `${origin}/book/${(registeredShop.slug || 'shop').toLowerCase()}`;
+      await downloadStandeePoster({
+        shopName: registeredShop.name || 'Partner Store',
+        categoryName: registeredShop.categoryName || 'Service Counter',
+        address: registeredShop.address || 'Local Market',
+        bookingUrl,
+        qrDataUrl: registrationQrUrl,
+        theme: 'EMERALD',
+        tagline: 'Line me khade mat raho, QR scan karo aur aaram se baithiye!',
+        openTime: registeredShop.openTime || '09:30 AM',
+        closeTime: registeredShop.closeTime || '08:30 PM',
+        weeklyOff: registeredShop.weeklyOff || 'None',
+        avgWaitMin: registeredShop.avgWaitMin || 12,
+        tokenPrefix: registeredShop.tokenPrefix || 'AK',
+        slug: registeredShop.slug || 'shop'
       });
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-standee-poster.png`;
-      link.href = dataUrl;
-      link.click();
     } catch (err) {
-      console.error('Failed to export standee image:', err);
-      if (registrationQrUrl) {
-        const link = document.createElement('a');
-        link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
-        link.href = registrationQrUrl;
-        link.click();
-      }
+      console.error('Failed to export standee poster image:', err);
     } finally {
       setIsDownloadingRegStandee(false);
     }
