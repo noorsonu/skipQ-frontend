@@ -1214,6 +1214,7 @@ export default function MerchantDashboardPage() {
       } else if (!servingItem || isServingAtStation || waitingOnly.length === 0) {
         // Do NOT clear serving token if merchant is viewing a finished customer ready for billing or if billing modal is open!
         setServingToken(prev => {
+          if (prev && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, prev))) return null;
           if (prev && readyForBillingListRef.current?.some(rb => isTokenMatch(rb, prev))) return prev;
           if (billingModalOpenRef.current) return prev;
           return null;
@@ -2408,7 +2409,9 @@ export default function MerchantDashboardPage() {
       }
     };
 
-    setServingToken(tokenWithStation);
+    // Once dispatched to chair, clear desk servingToken so desk becomes empty & ready for next customer
+    setServingToken(null);
+    setCounterSeconds(0);
 
     // Update stationsList:
     // 1. Assign this token to target station
@@ -4956,7 +4959,7 @@ export default function MerchantDashboardPage() {
                             <span className="text-xs font-bold truncate text-white">{st.name}</span>
                             {isServing ? (
                               <span className="text-[10px] font-mono text-amber-300 shrink-0">
-                                #{st.currentToken.tokenNumber} ({formatTimer(st.timerSeconds || 0)})
+                                {formatTokenNum(st.currentToken.tokenNumber)} ({formatTimer(st.timerSeconds || 0)})
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded shrink-0">
@@ -4970,40 +4973,79 @@ export default function MerchantDashboardPage() {
                   </div>
                 )}
 
-                {/* Ready for Cashier Billing Queue Bar (Clean & Compact) */}
+                {/* Ready for Cashier Billing Queue Bar (Fully Responsive & Sleek) */}
                 {readyForBillingList.length > 0 && (
-                  <div className="bg-amber-400/15 border border-amber-400/30 rounded-2xl p-3 flex items-center justify-between gap-2.5 shadow-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-900 font-bold flex items-center justify-center shrink-0">
-                        <Receipt className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-black text-amber-200 flex items-center gap-1.5">
-                          <span>{readyForBillingList.length} Finished at Chairs</span>
-                          <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-md uppercase tracking-wider">
-                            Ready to Bill
-                          </span>
+                  <div className="bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-emerald-500/10 border border-amber-400/40 rounded-2xl p-3 sm:p-4 shadow-sm space-y-2.5">
+                    {/* Header */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-xs shrink-0">
+                          <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </div>
-                        <div className="text-[10px] text-slate-300 truncate">
-                          {readyForBillingList.map(t => `#${t.tokenNumber} ${t.customerName?.split(' ')[0] || 'Guest'}`).join(', ')}
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs sm:text-sm font-black text-amber-200">
+                              Ready for Cashier Billing
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-2xs">
+                              {readyForBillingList.length} {readyForBillingList.length === 1 ? 'Customer' : 'Customers'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-300">
+                            Service completed at chairs • Awaiting payment
+                          </p>
                         </div>
                       </div>
+                      <span className="text-[10px] font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded-lg border border-white/5 shrink-0">
+                        Cashier Desk
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                      {readyForBillingList.map(rb => (
-                        <button
-                          key={rb.id || rb.tokenNumber}
-                          type="button"
-                          onClick={() => {
-                            setServingToken(rb);
-                            handleOpenBillingModal(rb);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1"
-                        >
-                          <span>Bill #{rb.tokenNumber}</span>
-                          <span className="text-[10px]">₹</span>
-                        </button>
-                      ))}
+
+                    {/* Customer Cards Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {readyForBillingList.map((rb) => {
+                        const parsed = parseCustomerAndServices(rb.customerName, rb.service);
+                        const tNum = formatTokenNum(rb.tokenNumber);
+                        return (
+                          <div
+                            key={rb.id || rb.tokenNumber}
+                            className="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-amber-400/30 hover:border-amber-400/60 transition-all flex items-center justify-between gap-2.5 shadow-xs"
+                          >
+                            <div
+                              className="min-w-0 cursor-pointer flex-1"
+                              onClick={() => {
+                                setServingToken(rb);
+                                handleOpenBillingModal(rb);
+                              }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-token font-bold text-amber-300 text-xs sm:text-sm bg-amber-400/20 px-1.5 py-0.5 rounded-md border border-amber-400/30">
+                                  {tNum}
+                                </span>
+                                <span className="text-xs sm:text-sm font-black truncate text-white">
+                                  {parsed.cleanName}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-300 truncate mt-0.5">
+                                {rb.stationCompletedFrom ? `Chair: ${rb.stationCompletedFrom}` : 'Finished'} • {parsed.totalCost || parsed.servicesString}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setServingToken(rb);
+                                handleOpenBillingModal(rb);
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                              title="Open Bill & Ledger"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                              <span>Bill {tNum} ₹</span>
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -5132,7 +5174,7 @@ export default function MerchantDashboardPage() {
                                   {isAssigned ? (
                                     <span className="text-[10px] font-black text-emerald-200">✓ Assigned</span>
                                   ) : isBusyByOther ? (
-                                    <span className="text-[9px] text-slate-400 font-normal">Busy (#{st.currentToken.tokenNumber})</span>
+                                    <span className="text-[9px] text-slate-400 font-normal">Busy ({formatTokenNum(st.currentToken.tokenNumber)})</span>
                                   ) : (
                                     <span className="text-[10px] text-emerald-300 font-bold">🟢 Free</span>
                                   )}
@@ -5171,7 +5213,7 @@ export default function MerchantDashboardPage() {
                             className="sm:col-span-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                           >
                             <Receipt className="w-5 h-5 text-amber-300" />
-                            <span>Collect Payment & Bill #{servingToken.tokenNumber} (₹)</span>
+                            <span>Collect Payment & Bill {formatTokenNum(servingToken.tokenNumber)} (₹)</span>
                           </button>
                           <button
                             type="button"
