@@ -243,8 +243,28 @@ export default function ShopDetailClient() {
     const author = newReviewName.trim() || 'Verified Customer';
     const curSlug = (shop?.slug || slug || '').toLowerCase();
     const nowIso = new Date().toISOString();
+    let backendReview = null;
+
+    // Persist to database so shopkeeper and all customers see it across devices
+    if (shop?.id) {
+      try {
+        const res = await reviewApi.submitReview({
+          shopId: shop.id,
+          stars: newReviewStars,
+          text: newReviewComment.trim(),
+          tags: newReviewTags,
+          customerName: author
+        });
+        if (res?.data?.data) {
+          backendReview = res.data.data;
+        }
+      } catch (err) {
+        console.warn("Backend review submission fallback:", err?.message);
+      }
+    }
+
     const newRev = {
-      id: 'rev-' + Date.now(),
+      id: backendReview?.id || ('rev-' + Date.now()),
       shopSlug: curSlug,
       customerName: author,
       stars: newReviewStars,
@@ -261,7 +281,7 @@ export default function ShopDetailClient() {
       try {
         const key = `ak_merchant_reviews_${curSlug}`;
         const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        const updated = [newRev, ...existing];
+        const updated = [newRev, ...existing.filter(r => r.id !== newRev.id)];
         localStorage.setItem(key, JSON.stringify(updated));
         window.dispatchEvent(new Event('storage'));
       } catch (e) {}
@@ -269,7 +289,7 @@ export default function ShopDetailClient() {
 
     setRatingSummary(prev => {
       const existingReviews = prev?.reviews || [];
-      const updated = [newRev, ...existingReviews];
+      const updated = [newRev, ...existingReviews.filter(r => r.id !== newRev.id)];
       const totalStars = updated.reduce((s, r) => s + (Number(r.stars) || 5), 0);
       const avg = Math.round((totalStars / updated.length) * 10) / 10;
       return {
@@ -617,14 +637,15 @@ export default function ShopDetailClient() {
     let isMounted = true;
     const loadAllReviews = async () => {
       let cloudSummary = null;
-      const shopUuid = shop?.id && shop.id.includes('-') ? shop.id : 'd1b2c3d4-0000-0000-0000-000000000001';
-      try {
-        const res = await reviewApi.getShopReviews(shopUuid);
-        if (res?.data?.data) {
-          cloudSummary = res.data.data;
+      if (shop?.id && shop.id.includes('-')) {
+        try {
+          const res = await reviewApi.getShopReviews(shop.id);
+          if (res?.data?.data) {
+            cloudSummary = res.data.data;
+          }
+        } catch (err) {
+          console.warn("Reviews fetch fallback:", err?.message);
         }
-      } catch (err) {
-        console.warn("Reviews fetch fallback:", err?.message);
       }
 
       // Read local storage reviews for this shop slug
@@ -736,12 +757,14 @@ export default function ShopDetailClient() {
     }
 
     // Age is optional
+    let finalAge = null;
     if (customerAge && String(customerAge).trim()) {
       const ageNum = parseInt(customerAge, 10);
       if (isNaN(ageNum) || ageNum < 5 || ageNum > 115) {
         setErrorMsg("Kripya sahi age (umar) darj karein (5 se 115 saal).");
         return;
       }
+      finalAge = ageNum;
     }
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('ak_token') : null;
@@ -759,7 +782,9 @@ export default function ShopDetailClient() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('ak_phone', cleanPhone);
       localStorage.setItem('ak_customer_name', customerName.trim());
-      localStorage.setItem('ak_customer_age', String(ageNum));
+      if (finalAge !== null) {
+        localStorage.setItem('ak_customer_age', String(finalAge));
+      }
     }
 
     // Directly join queue for verified customer
@@ -1327,32 +1352,17 @@ export default function ShopDetailClient() {
 
               return (
                 <>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center border border-[#176B65]/20">
+                      <div className="w-8 h-8 rounded-xl bg-[#DCE9E3] text-[#176B65] flex items-center justify-center border border-[#176B65]/20 shrink-0">
                         <Tag className="w-4 h-4" />
                       </div>
-                      <div>
-                        <h3 className="text-xs font-black text-[#283B3D]">Rate Card & Fixed Counter Prices</h3>
-                        <span className="text-[10px] text-slate-500 font-semibold">
-                          Set by Shopkeeper ({fullServicesList.length} Items)
-                        </span>
-                      </div>
+                      <h3 className="text-xs font-black text-[#283B3D]">Rate Card & Fixed Counter Prices</h3>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        No Hidden Charges
-                      </span>
-                      {fullServicesList.length > 3 && (
-                        <button
-                          type="button"
-                          onClick={() => setRateCardExpanded(!rateCardExpanded)}
-                          className="text-[10px] font-black text-[#176B65] hover:text-[#125550] flex items-center gap-0.5 bg-[#DCE9E3]/50 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
-                        >
-                          <span>{rateCardExpanded ? 'Collapse ▲' : `View All (${fullServicesList.length}) ▼`}</span>
-                        </button>
-                      )}
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/90 whitespace-nowrap shrink-0 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      No Hidden Charges
+                    </span>
                   </div>
 
                   {/* If expanded, show Quick Search Bar & Dropdown Select Picker */}
@@ -1517,19 +1527,14 @@ export default function ShopDetailClient() {
                   <MessageSquare className="w-3.5 h-3.5 text-[#176B65]" />
                   <span>Public Reviews & Thread ({ratingSummary?.reviews?.length || 0}):</span>
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    Publicly Visible
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setWriteReviewModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg bg-[#176B65] hover:bg-[#135954] text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
-                  >
-                    <Edit3 className="w-3 h-3 text-[#F2A15A]" />
-                    <span>+ Write Review</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setWriteReviewModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-[#176B65] hover:bg-[#135954] text-white font-bold text-[10px] transition-all flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Edit3 className="w-3 h-3 text-[#F2A15A]" />
+                  <span>+ Write Review</span>
+                </button>
               </div>
 
               {ratingSummary?.reviews && ratingSummary.reviews.length > 0 ? (
