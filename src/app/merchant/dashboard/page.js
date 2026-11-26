@@ -1094,6 +1094,11 @@ export default function MerchantDashboardPage() {
   const isTokenMatch = (a, b) => {
     if (!a || !b) return false;
     if (a.id && b.id && String(a.id) === String(b.id)) return true;
+    if (a.id && b.id && String(a.id) !== String(b.id)) {
+      if (String(a.id).startsWith('walkin-') || String(b.id).startsWith('walkin-')) {
+        return false;
+      }
+    }
     const ca = String(a.displayToken || a.tokenNumber || '').replace(/\D/g, '');
     const cb = String(b.displayToken || b.tokenNumber || '').replace(/\D/g, '');
     if (ca && cb) {
@@ -1166,9 +1171,11 @@ export default function MerchantDashboardPage() {
       const isCompletedToken = (t) => {
         if (!t) return false;
         if (t.status === 'COMPLETED') return true;
-        if (completedListRef.current.some(c => isTokenMatch(c, t))) return true;
-        if (savedCompleted.some(c => isTokenMatch(c, t))) return true;
-        if (customerHistory.some(h => isTokenMatch(h, t) && (h.status === 'COMPLETED' || h.completedAt))) return true;
+        // Brand new / active WAITING tokens are definitely NOT completed
+        if (t.status === 'WAITING') return false;
+        if (t.id && completedListRef.current.some(c => c.id && String(c.id) === String(t.id))) return true;
+        if (t.id && savedCompleted.some(c => c.id && String(c.id) === String(t.id))) return true;
+        if (t.id && customerHistory.some(h => h.id && String(h.id) === String(t.id) && (h.status === 'COMPLETED' || h.completedAt))) return true;
         return false;
       };
 
@@ -3974,7 +3981,46 @@ export default function MerchantDashboardPage() {
     const basePhone = walkinPhone.trim() || 'Offline';
     const baseService = walkinService.trim() || 'General Service';
     const currentQueueCount = waitingQueue.length + (servingToken ? 1 : 0);
-    const startNum = completedList.length + currentQueueCount + 22;
+
+    // Calculate next sequential token number guaranteed not to collide with any existing/completed token today
+    let maxNum = 0;
+    const inspectToken = (t) => {
+      if (!t) return;
+      const numStr = String(t.displayToken || t.tokenNumber || '').replace(/\D/g, '');
+      const val = parseInt(numStr, 10);
+      if (!isNaN(val) && val > maxNum && val < 100000) {
+        maxNum = val;
+      }
+    };
+
+    waitingQueue.forEach(inspectToken);
+    if (servingToken) inspectToken(servingToken);
+    stationsList.forEach(st => st.currentToken && inspectToken(st.currentToken));
+    readyForBillingList.forEach(inspectToken);
+    completedList.forEach(inspectToken);
+    absentList.forEach(inspectToken);
+
+    try {
+      const savedCompleted = loadShopCompleted(activeShop);
+      if (Array.isArray(savedCompleted)) savedCompleted.forEach(inspectToken);
+
+      const allTokensStr = localStorage.getItem('ak_customer_tokens');
+      if (allTokensStr) {
+        const allTokens = JSON.parse(allTokensStr);
+        if (Array.isArray(allTokens)) allTokens.forEach(inspectToken);
+      }
+
+      const hStr = localStorage.getItem('ak_customer_history');
+      if (hStr) {
+        const history = JSON.parse(hStr);
+        if (Array.isArray(history)) {
+          const today = new Date().toISOString().slice(0, 10);
+          history.filter(h => h.date === today).forEach(inspectToken);
+        }
+      }
+    } catch (e) { }
+
+    const startNum = maxNum > 0 ? maxNum + 1 : (completedList.length + currentQueueCount + 1);
 
     const nowIso = new Date().toISOString();
     const todayDate = nowIso.slice(0, 10);
@@ -4025,6 +4071,7 @@ export default function MerchantDashboardPage() {
           createdAt: nowIso
         }));
         localStorage.setItem('ak_customer_tokens', JSON.stringify([...currentTokens, ...walkinEntries]));
+        window.dispatchEvent(new Event('storage'));
       } catch (e) { }
 
       const firstToken = newTokens[0].tokenNumber;
@@ -4069,6 +4116,7 @@ export default function MerchantDashboardPage() {
           createdAt: nowIso
         };
         localStorage.setItem('ak_customer_tokens', JSON.stringify([...currentTokens, walkinEntry]));
+        window.dispatchEvent(new Event('storage'));
       } catch (e) { }
 
       setAnnouncementMsg(`✅ Walk-in Token Generated: ${formattedToken} ${count > 1 ? `(Party of ${count})` : ''}`);
