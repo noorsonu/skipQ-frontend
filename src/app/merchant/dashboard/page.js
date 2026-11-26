@@ -1094,11 +1094,6 @@ export default function MerchantDashboardPage() {
   const isTokenMatch = (a, b) => {
     if (!a || !b) return false;
     if (a.id && b.id && String(a.id) === String(b.id)) return true;
-    if (a.id && b.id && String(a.id) !== String(b.id)) {
-      if (String(a.id).startsWith('walkin-') || String(b.id).startsWith('walkin-')) {
-        return false;
-      }
-    }
     const ca = String(a.displayToken || a.tokenNumber || '').replace(/\D/g, '');
     const cb = String(b.displayToken || b.tokenNumber || '').replace(/\D/g, '');
     if (ca && cb) {
@@ -1108,6 +1103,18 @@ export default function MerchantDashboardPage() {
       if (!isNaN(na) && !isNaN(nb) && na === nb) return true;
     }
     return false;
+  };
+
+  // Helper to check if a customer token is actively seated / serving at any station / chair
+  const isCustomerSeatedAtStation = (token, stations = stationsList) => {
+    if (!token || !stations || !Array.isArray(stations)) return false;
+    const cleanT = String(token.displayToken || token.tokenNumber || '').replace(/\D/g, '');
+    return stations.some(st => {
+      if (!st.active || !st.currentToken) return false;
+      if (token.id && st.currentToken.id && String(token.id) === String(st.currentToken.id)) return true;
+      const cleanSt = String(st.currentToken.displayToken || st.currentToken.tokenNumber || '').replace(/\D/g, '');
+      return cleanT && cleanSt && cleanT === cleanSt;
+    });
   };
 
   // Format token number to guarantee single '#' prefix without duplicate '##'
@@ -1256,7 +1263,7 @@ export default function MerchantDashboardPage() {
       // 2. Currently Serving Token: only if there is an unassigned serving customer not seated at a station
       const isShopIdle = waitingOnly.length === 0 && stationsList.every(st => !st.currentToken) && (!readyForBillingListRef.current || readyForBillingListRef.current.length === 0);
       const servingItem = shopTokens.find(t => (t.status === 'SERVING' || t.status === 'CALLED') && !isCompletedToken(t));
-      const isServingAtStation = servingItem && stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, servingItem));
+      const isServingAtStation = servingItem && isCustomerSeatedAtStation(servingItem, stationsList);
 
       if (isShopIdle) {
         // When queue has 0 customers and all chairs are free and no billing is pending:
@@ -1268,20 +1275,25 @@ export default function MerchantDashboardPage() {
         }
         setServingToken(null);
       } else if (servingItem && !isServingAtStation && !isCompletedToken(servingItem)) {
-        setServingToken({
-          id: servingItem.id,
-          tokenNumber: servingItem.displayToken || servingItem.tokenNumber,
-          customerName: servingItem.customerName || 'Customer',
-          customerPhone: servingItem.customerPhone || 'Online',
-          groupSize: servingItem.groupSize || 1,
-          service: servingItem.customerPurpose || servingItem.service || 'General Service',
-          assignedStation: servingItem.assignedStation || null
-        });
+        const isAlreadyBilling = readyForBillingListRef.current?.some(rb => isTokenMatch(rb, servingItem));
+        if (!isAlreadyBilling) {
+          setServingToken({
+            id: servingItem.id,
+            tokenNumber: servingItem.displayToken || servingItem.tokenNumber,
+            customerName: servingItem.customerName || 'Customer',
+            customerPhone: servingItem.customerPhone || 'Online',
+            groupSize: servingItem.groupSize || 1,
+            service: servingItem.customerPurpose || servingItem.service || 'General Service',
+            assignedStation: servingItem.assignedStation || null
+          });
+        }
       } else {
-        // Clear serving token if no active unassigned customer, or if current token was completed/seated
+        // Clear serving token if customer is seated at a station or completed
         setServingToken(prev => {
-          if (prev && (isCompletedToken(prev) || stationsList.some(st => st.currentToken && isTokenMatch(st.currentToken, prev)))) return null;
-          if (prev && readyForBillingListRef.current?.some(rb => isTokenMatch(rb, prev))) return prev;
+          if (!prev) return null;
+          if (isCompletedToken(prev)) return null;
+          if (isCustomerSeatedAtStation(prev, stationsList)) return null;
+          if (readyForBillingListRef.current?.some(rb => isTokenMatch(rb, prev))) return prev;
           if (billingModalOpenRef.current) return prev;
           if (waitingOnly.length === 0 && (!readyForBillingListRef.current || readyForBillingListRef.current.length === 0)) return null;
           return null;
@@ -2460,20 +2472,21 @@ export default function MerchantDashboardPage() {
   };
 
   // Shopkeeper manually assigns current serving customer to a specific counter/chair from the Green Card
-  const handleAssignStationToServingToken = (station) => {
-    if (!servingToken) return;
+  const handleAssignStationToServingToken = (station, targetToken = null) => {
+    const token = targetToken || servingToken;
+    if (!token) return;
 
     // Strict Busy Protection: Cannot assign to a chair that is occupied by another customer!
-    if (station.currentToken && !isTokenMatch(station.currentToken, servingToken)) {
+    if (station.currentToken && !isTokenMatch(station.currentToken, token)) {
       alert(`⚠️ ${station.name} abhi busy hai! Yahan pehle se ${station.currentToken.customerName || 'Customer'} (#${station.currentToken.tokenNumber}) baitha hai.\n\nKripya koi doosri Free 🟢 chair chunein ya is chair ka kaam pehle Done karein.`);
       return;
     }
 
-    const previousStationName = servingToken.assignedStation?.name || servingToken.assignedStation;
+    const previousStationName = token.assignedStation?.name || token.assignedStation;
     const isReassignment = previousStationName && previousStationName !== station.name;
 
     const tokenWithStation = {
-      ...servingToken,
+      ...token,
       assignedStation: {
         id: station.id,
         name: station.name,
@@ -2497,7 +2510,7 @@ export default function MerchantDashboardPage() {
           timerSeconds: isReassignment ? (s.timerSeconds || 0) : 0
         };
       }
-      if (s.currentToken && isTokenMatch(s.currentToken, servingToken)) {
+      if (s.currentToken && isTokenMatch(s.currentToken, token)) {
         return {
           ...s,
           currentToken: null,
@@ -2511,10 +2524,10 @@ export default function MerchantDashboardPage() {
     syncWithCustomerStorage(tokenWithStation);
 
     // Announce via speech: Customer full name + please proceed to counter
-    const custFullName = servingToken.customerName && servingToken.customerName !== 'Customer'
-      ? servingToken.customerName
-      : `Token ${servingToken.tokenNumber}`;
-    speakAnnouncement(servingToken.tokenNumber, custFullName, station.name);
+    const custFullName = token.customerName && token.customerName !== 'Customer'
+      ? token.customerName
+      : `Token ${token.tokenNumber}`;
+    speakAnnouncement(token.tokenNumber, custFullName, station.name);
 
     if (isReassignment) {
       setAnnouncementMsg(`🔀 Reassigned ${custFullName} from ${previousStationName} to ${station.name}`);
@@ -5330,11 +5343,169 @@ export default function MerchantDashboardPage() {
                   </div>
                 )}
 
-                {servingToken ? (() => {
-                  const isReadyForBilling = readyForBillingList.some(t => isTokenMatch(t, servingToken));
+                {(() => {
+                  // Resolve which customer should be active on the Reception / Billing Desk
+                  // 1. If any customer is ready for billing (completed at chair), show them for cashier checkout
+                  // 2. Else if an intake customer is called from waiting queue and NOT yet seated, show them to assign chair
+                  // 3. Customers currently seated at chairs are NEVER shown on this card.
+                  const billingCustCandidate = (servingToken && readyForBillingList.some(rb => isTokenMatch(rb, servingToken)))
+                    ? readyForBillingList.find(rb => isTokenMatch(rb, servingToken))
+                    : (readyForBillingList.length > 0 ? readyForBillingList[0] : null);
+
+                  const isSeatedAtChair = servingToken && isCustomerSeatedAtStation(servingToken, stationsList);
+                  const intakeCustCandidate = (!billingCustCandidate && servingToken && !isSeatedAtChair) ? servingToken : null;
+
+                  const deskCustomer = billingCustCandidate || intakeCustCandidate;
+                  const isReadyForBilling = !!billingCustCandidate;
                   const hasActiveStations = stationsList.filter(s => s.active).length > 0;
-                  const isAssignedToStation = !!servingToken.assignedStation;
-                  const parsedCust = parseCustomerAndServices(servingToken.customerName, servingToken.service);
+
+                  if (!deskCustomer) {
+                    if (waitingQueue.length > 0) {
+                      const nextCust = waitingQueue[0];
+                      const parsed = parseCustomerAndServices(nextCust.customerName, nextCust.service);
+                      const tokenDisplay = formatTokenNum(nextCust.tokenNumber);
+                      return (
+                        <div className="space-y-4 pt-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
+                            <div>
+                              <span className="text-xs uppercase font-extrabold text-amber-300 tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
+                                <span>Next Customer Ready in Queue</span>
+                              </span>
+                              <div className="text-4xl sm:text-5xl font-token font-bold text-white tracking-tight mt-0.5">
+                                {tokenDisplay}
+                              </div>
+                            </div>
+                            <div className="sm:text-right space-y-1.5">
+                              <span className="text-base sm:text-lg font-black text-[#DCE9E3] block">{parsed.cleanName}</span>
+                              <div className="flex flex-wrap sm:justify-end items-center gap-1.5">
+                                {parsed.items.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedNextCustomerService(prev => !prev)}
+                                    className="text-xs text-amber-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
+                                    title="Click to view all requested services"
+                                  >
+                                    <span>✂️ {parsed.items.length} {parsed.items.length === 1 ? 'Service' : 'Services'}</span>
+                                    {parsed.totalCost && <span className="font-bold text-emerald-300">({parsed.totalCost})</span>}
+                                    <span className="text-[10px] text-amber-300">{expandedNextCustomerService ? '▲ Hide' : '▼ View'}</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-slate-300 font-medium">{parsed.servicesString}</span>
+                                )}
+                                <span className="text-xs text-slate-400 font-medium">• Party of {nextCust.groupSize || 1}</span>
+                              </div>
+
+                              {expandedNextCustomerService && parsed.items.length > 0 && (
+                                <div className="p-2.5 rounded-xl bg-black/50 border border-white/15 text-left space-y-1 text-xs sm:max-w-xs sm:ml-auto">
+                                  <div className="text-[10px] uppercase font-bold text-slate-400">Services Requested:</div>
+                                  {parsed.items.map((svc, sIdx) => (
+                                    <div key={sIdx} className="text-slate-200 font-medium">
+                                      • {svc}
+                                    </div>
+                                  ))}
+                                  {parsed.totalCost && (
+                                    <div className="pt-1 border-t border-white/10 text-emerald-300 font-bold flex justify-between">
+                                      <span>Est. Total:</span>
+                                      <span>{parsed.totalCost}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div>
+                                <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-md inline-block border border-emerald-400/20">
+                                  Est. wait: ~{nextCust.estWaitMin || 0}m
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 1-Tap Counter Dispatch Buttons for Next Customer */}
+                          {stationsList.filter(s => s.active).length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                {stationsList.filter(s => s.active).map(st => {
+                                  const isBusy = !!st.currentToken;
+                                  return (
+                                    <button
+                                      key={st.id}
+                                      type="button"
+                                      disabled={isBusy}
+                                      onClick={() => handleCallNextForStation(st.id)}
+                                      className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1.5 shadow-sm ${isBusy
+                                          ? 'bg-white/5 border-white/10 opacity-40 text-slate-400 cursor-not-allowed'
+                                          : 'bg-gradient-to-br from-emerald-600/90 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400 text-white shadow-md hover:shadow-lg cursor-pointer active:scale-95'
+                                        }`}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="font-black text-xs text-white">{st.name}</span>
+                                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 animate-pulse font-extrabold'
+                                          }`}>
+                                          {isBusy ? `🔴 Busy (#${st.currentToken.tokenNumber})` : 'Free • Send Here 🟢'}
+                                        </span>
+                                      </div>
+                                      <div className="text-[11px] text-slate-200 truncate font-semibold">
+                                        {st.currentToken ? `👤 ${st.currentToken.customerName || 'Customer'}` : (st.role || 'Service Station')}
+                                      </div>
+                                      <div className="text-[10px] font-bold text-amber-200/90 pt-1 border-t border-white/10 flex items-center justify-between">
+                                        <span>{isBusy ? `In Service (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
+                                        <ArrowRight className="w-3 h-3 text-emerald-300" />
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : allChairsFull ? (
+                            <div className="w-full py-3.5 px-4 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between gap-3 text-amber-200">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                                  <Users className="w-4 h-4 text-amber-300" />
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-xs font-black text-white">All Chairs are Full ({activeStations.length}/{activeStations.length} Busy)</p>
+                                  <p className="text-[10px] text-slate-300">Sabhi chairs par service chal rahi hai. Chair free hone par Call Next show hoga.</p>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2.5 py-1 rounded-lg shrink-0 border border-amber-400/30">
+                                Chairs Full ⏳
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleCallNext}
+                              className="w-full py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                            >
+                              <Volume2 className="w-5 h-5 text-[#F2A15A]" />
+                              <span>Call Next Customer ({waitingQueue[0].tokenNumber})</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="text-center py-8 space-y-3">
+                        <Store className="w-10 h-10 text-slate-400 mx-auto" />
+                        <div className="space-y-1">
+                          <h3 className="text-lg sm:text-xl font-black text-white">
+                            {stationsList.some(s => s.active && s.currentToken)
+                              ? `${stationsList.filter(s => s.active && s.currentToken).length} Customer(s) Serving in Counters`
+                              : "Queue is Empty"}
+                          </h3>
+                          <p className="text-xs text-slate-400">
+                            {stationsList.some(s => s.active && s.currentToken)
+                              ? "All waiting customers have been dispatched to counters. Chairs are actively serving."
+                              : "No customers currently waiting in line."}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const parsedCust = parseCustomerAndServices(deskCustomer.customerName, deskCustomer.service);
 
                   return (
                     <div className="space-y-5">
@@ -5345,19 +5516,17 @@ export default function MerchantDashboardPage() {
                             <span className={`text-xs uppercase font-extrabold tracking-wider ${isReadyForBilling ? 'text-amber-300' : 'text-slate-400'}`}>
                               {isReadyForBilling
                                 ? 'Ready for Cashier Bill'
-                                : isAssignedToStation
-                                  ? `Serving at ${servingToken.assignedStation.name || servingToken.assignedStation}`
-                                  : 'Next Customer Pass'
+                                : 'Next Customer Pass'
                               }
                             </span>
                             {isReadyForBilling && (
                               <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
-                                Finished at {servingToken.stationCompletedFrom || 'Chair'}
+                                Finished at {deskCustomer.stationCompletedFrom || deskCustomer.assignedStation?.name || deskCustomer.assignedStation || 'Chair'}
                               </span>
                             )}
                             <button
                               type="button"
-                              onClick={() => handleDismissServingToken(servingToken)}
+                              onClick={() => handleDismissServingToken(deskCustomer)}
                               className="text-[10px] font-bold text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-lg border border-white/10 transition-colors cursor-pointer"
                               title="Clear / Dismiss desk pass"
                             >
@@ -5365,7 +5534,7 @@ export default function MerchantDashboardPage() {
                             </button>
                           </div>
                           <div className="text-5xl sm:text-6xl font-token font-bold text-white tracking-tight mt-1">
-                            {formatTokenNum(servingToken.tokenNumber)}
+                            {formatTokenNum(deskCustomer.tokenNumber)}
                           </div>
                         </div>
 
@@ -5373,12 +5542,12 @@ export default function MerchantDashboardPage() {
                           <span className="text-lg font-black text-[#DCE9E3] block">{parsedCust.cleanName}</span>
                           <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
                             <span className="text-xs text-slate-400">
-                              {servingToken.customerPhone ? `+91 ${servingToken.customerPhone}` : 'Walk-in'}
+                              {deskCustomer.customerPhone ? `+91 ${deskCustomer.customerPhone}` : 'Walk-in'}
                             </span>
-                            {servingToken.customerPhone && servingToken.customerPhone !== 'Offline' && (
+                            {deskCustomer.customerPhone && deskCustomer.customerPhone !== 'Offline' && (
                               <div className="flex items-center gap-1.5">
                                 <a
-                                  href={`tel:${servingToken.customerPhone}`}
+                                  href={`tel:${deskCustomer.customerPhone}`}
                                   className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#DCE9E3] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
                                   title="Direct Phone Call"
                                 >
@@ -5387,7 +5556,7 @@ export default function MerchantDashboardPage() {
                                 </a>
                                 <button
                                   type="button"
-                                  onClick={() => handleDirectWhatsAppSend(servingToken, 'SERVING_NOW')}
+                                  onClick={() => handleDirectWhatsAppSend(deskCustomer, 'SERVING_NOW')}
                                   className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
                                   title="Send WhatsApp Serving Now Alert"
                                 >
@@ -5401,11 +5570,11 @@ export default function MerchantDashboardPage() {
                           {/* Services & Party Size Tag */}
                           <div className="flex items-center gap-1.5 flex-wrap justify-start sm:justify-end">
                             <span className="text-[11px] font-bold text-[#F2A15A] bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/5">
-                              {parsedCust.items.length > 0 ? `${parsedCust.items.length} Services` : (servingToken.service || 'Service')}
+                              {parsedCust.items.length > 0 ? `${parsedCust.items.length} Services` : (deskCustomer.service || 'Service')}
                             </span>
-                            {servingToken.groupSize > 1 && (
+                            {deskCustomer.groupSize > 1 && (
                               <span className="text-[11px] font-bold text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded-lg border border-sky-400/30">
-                                Party of {servingToken.groupSize}
+                                Party of {deskCustomer.groupSize}
                               </span>
                             )}
                           </div>
@@ -5425,29 +5594,22 @@ export default function MerchantDashboardPage() {
                               <Users className="w-4 h-4 text-[#F2A15A]" />
                               <span>Assign to Chair / Counter:</span>
                             </span>
-                            {isAssignedToStation ? (
-                              <span className="text-[11px] font-black text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400">Select chair or counter below</span>
-                            )}
+                            <span className="text-[10px] text-slate-400">Select chair or counter below</span>
                           </div>
 
                           {/* Dropdown Selector for 10-15 Chairs / Counters */}
                           <div className="relative">
                             <select
                               value={
-                                servingToken.assignedStation?.id ||
-                                stationsList.find(s => s.name === (servingToken.assignedStation?.name || servingToken.assignedStation))?.id ||
+                                deskCustomer.assignedStation?.id ||
+                                stationsList.find(s => s.name === (deskCustomer.assignedStation?.name || deskCustomer.assignedStation))?.id ||
                                 ""
                               }
                               onChange={(e) => {
                                 const selectedId = e.target.value;
                                 if (!selectedId) return;
                                 const st = stationsList.find(s => s.id === selectedId);
-                                if (st) handleAssignStationToServingToken(st);
+                                if (st) handleAssignStationToServingToken(st, deskCustomer);
                               }}
                               className="w-full appearance-none bg-[#174642] hover:bg-[#123936] focus:bg-[#0e2f2c] text-white text-xs sm:text-sm font-bold py-3 pl-3.5 pr-10 rounded-2xl border border-white/20 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all cursor-pointer shadow-sm"
                             >
@@ -5456,16 +5618,9 @@ export default function MerchantDashboardPage() {
                               </option>
                               {stationsList.filter(s => s.active).map(st => {
                                 const isBusy = !!st.currentToken;
-                                const isAssigned = !isBusy && servingToken.assignedStation && (
-                                  servingToken.assignedStation.id === st.id ||
-                                  servingToken.assignedStation.name === st.name ||
-                                  servingToken.assignedStation === st.name
-                                );
                                 const statusTag = isBusy
                                   ? `🔴 Busy: ${st.currentToken.customerName || 'Customer'} (${formatTokenNum(st.currentToken.tokenNumber)})`
-                                  : isAssigned
-                                    ? "✓ Currently Assigned"
-                                    : "🟢 Free / Ready";
+                                  : "🟢 Free / Ready";
                                 return (
                                   <option
                                     key={st.id}
@@ -5488,30 +5643,21 @@ export default function MerchantDashboardPage() {
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium mr-1">Quick 1-Tap:</span>
                             {stationsList.filter(s => s.active).map(st => {
                               const isBusy = !!st.currentToken;
-                              const isAssigned = !isBusy && servingToken.assignedStation && (
-                                servingToken.assignedStation.id === st.id ||
-                                servingToken.assignedStation.name === st.name ||
-                                servingToken.assignedStation === st.name
-                              );
                               return (
                                 <button
                                   key={st.id}
                                   type="button"
                                   disabled={isBusy}
-                                  onClick={() => !isBusy && handleAssignStationToServingToken(st)}
+                                  onClick={() => !isBusy && handleAssignStationToServingToken(st, deskCustomer)}
                                   className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
                                     isBusy
                                       ? 'bg-slate-800/60 text-slate-500 border border-white/5 cursor-not-allowed opacity-75'
-                                      : isAssigned
-                                        ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300 cursor-pointer'
-                                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 active:scale-95 cursor-pointer'
+                                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 active:scale-95 cursor-pointer'
                                   }`}
                                 >
                                   <span>{st.name}</span>
                                   {isBusy ? (
                                     <span className="text-[9px] text-slate-400 font-normal">Busy ({formatTokenNum(st.currentToken.tokenNumber)})</span>
-                                  ) : isAssigned ? (
-                                    <span className="text-[10px] font-black text-emerald-200">✓ Assigned</span>
                                   ) : (
                                     <span className="text-[10px] text-emerald-300 font-bold">🟢 Free</span>
                                   )}
@@ -5519,24 +5665,6 @@ export default function MerchantDashboardPage() {
                               );
                             })}
                           </div>
-
-                          {isAssignedToStation && (
-                            <div className="text-[11px] text-emerald-200/90 font-medium flex items-center justify-between gap-2 px-1 pt-1">
-                              <span className="truncate">
-                                Current: <strong className="text-white">{servingToken.assignedStation.name || servingToken.assignedStation}</strong>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const st = stationsList.find(s => s.id === servingToken.assignedStation?.id || s.name === servingToken.assignedStation?.name || s.name === servingToken.assignedStation);
-                                  if (st) handleAssignStationToServingToken(st);
-                                }}
-                                className="text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer text-[10px] shrink-0"
-                              >
-                                Re-announce
-                              </button>
-                            </div>
-                          )}
                         </div>
                       )}
 
@@ -5546,15 +5674,18 @@ export default function MerchantDashboardPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                           <button
                             type="button"
-                            onClick={() => handleOpenBillingModal(servingToken)}
+                            onClick={() => handleOpenBillingModal(deskCustomer)}
                             className="sm:col-span-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                           >
                             <Receipt className="w-5 h-5 text-amber-300" />
-                            <span>Collect Payment & Bill {formatTokenNum(servingToken.tokenNumber)} (₹)</span>
+                            <span>Collect Payment & Bill {formatTokenNum(deskCustomer.tokenNumber)} (₹)</span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleFinalizeService({ skipBilling: true })}
+                            onClick={() => {
+                              setActiveBillingCustomer(deskCustomer);
+                              handleFinalizeService({ skipBilling: true });
+                            }}
                             className="py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
                           >
                             Skip Bill (₹0)
@@ -5599,7 +5730,7 @@ export default function MerchantDashboardPage() {
                             {!hasActiveStations && (
                               <button
                                 type="button"
-                                onClick={() => handleOpenBillingModal(servingToken)}
+                                onClick={() => handleOpenBillingModal(deskCustomer)}
                                 className="py-4 rounded-2xl bg-white hover:bg-slate-100 text-[#283B3D] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                               >
                                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -5625,7 +5756,7 @@ export default function MerchantDashboardPage() {
                             {hasActiveStations && (
                               <button
                                 type="button"
-                                onClick={() => handleOpenBillingModal(servingToken)}
+                                onClick={() => handleOpenBillingModal(deskCustomer)}
                                 className="text-xs font-bold text-emerald-300 hover:text-emerald-200 underline cursor-pointer"
                                 title="If serving directly at counter instead of chair"
                               >
@@ -5637,149 +5768,7 @@ export default function MerchantDashboardPage() {
                       )}
                     </div>
                   );
-                })() : waitingQueue.length > 0 ? (
-                  <div className="space-y-4 pt-1">
-                    {(() => {
-                      const nextCust = waitingQueue[0];
-                      const parsed = parseCustomerAndServices(nextCust.customerName, nextCust.service);
-                      const tokenDisplay = formatTokenNum(nextCust.tokenNumber);
-                      return (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/30 p-4 rounded-2xl border border-white/10">
-                          <div>
-                            <span className="text-xs uppercase font-extrabold text-amber-300 tracking-wider flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
-                              <span>Next Customer Ready in Queue</span>
-                            </span>
-                            <div className="text-4xl sm:text-5xl font-token font-bold text-white tracking-tight mt-0.5">
-                              {tokenDisplay}
-                            </div>
-                          </div>
-                          <div className="sm:text-right space-y-1.5">
-                            <span className="text-base sm:text-lg font-black text-[#DCE9E3] block">{parsed.cleanName}</span>
-                            <div className="flex flex-wrap sm:justify-end items-center gap-1.5">
-                              {parsed.items.length > 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedNextCustomerService(prev => !prev)}
-                                  className="text-xs text-amber-200 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
-                                  title="Click to view all requested services"
-                                >
-                                  <span>✂️ {parsed.items.length} {parsed.items.length === 1 ? 'Service' : 'Services'}</span>
-                                  {parsed.totalCost && <span className="font-bold text-emerald-300">({parsed.totalCost})</span>}
-                                  <span className="text-[10px] text-amber-300">{expandedNextCustomerService ? '▲ Hide' : '▼ View'}</span>
-                                </button>
-                              ) : (
-                                <span className="text-xs text-slate-300 font-medium">{parsed.servicesString}</span>
-                              )}
-                              <span className="text-xs text-slate-400 font-medium">• Party of {nextCust.groupSize || 1}</span>
-                            </div>
-
-                            {expandedNextCustomerService && parsed.items.length > 0 && (
-                              <div className="p-2.5 rounded-xl bg-black/50 border border-white/15 text-left space-y-1 text-xs sm:max-w-xs sm:ml-auto">
-                                <div className="text-[10px] uppercase font-bold text-slate-400">Services Requested:</div>
-                                {parsed.items.map((svc, sIdx) => (
-                                  <div key={sIdx} className="text-slate-200 font-medium">
-                                    • {svc}
-                                  </div>
-                                ))}
-                                {parsed.totalCost && (
-                                  <div className="pt-1 border-t border-white/10 text-emerald-300 font-bold flex justify-between">
-                                    <span>Est. Total:</span>
-                                    <span>{parsed.totalCost}</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div>
-                              <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-md inline-block border border-emerald-400/20">
-                                Est. wait: ~{nextCust.estWaitMin || 0}m
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* 1-Tap Counter Dispatch Buttons for Next Customer */}
-                    {stationsList.filter(s => s.active).length > 0 ? (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                          {stationsList.filter(s => s.active).map(st => {
-                            const isBusy = !!st.currentToken;
-                            return (
-                              <button
-                                key={st.id}
-                                type="button"
-                                disabled={isBusy}
-                                onClick={() => handleCallNextForStation(st.id)}
-                                className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1.5 shadow-sm ${isBusy
-                                    ? 'bg-white/5 border-white/10 opacity-40 text-slate-400 cursor-not-allowed'
-                                    : 'bg-gradient-to-br from-emerald-600/90 to-[#176B65] hover:from-emerald-500 hover:to-[#125550] border-emerald-400 text-white shadow-md hover:shadow-lg cursor-pointer active:scale-95'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-black text-xs text-white">{st.name}</span>
-                                  <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 animate-pulse font-extrabold'
-                                    }`}>
-                                    {isBusy ? `🔴 Busy (#${st.currentToken.tokenNumber})` : 'Free • Send Here 🟢'}
-                                  </span>
-                                </div>
-                                <div className="text-[11px] text-slate-200 truncate font-semibold">
-                                  {st.currentToken ? `👤 ${st.currentToken.customerName || 'Customer'}` : (st.role || 'Service Station')}
-                                </div>
-                                <div className="text-[10px] font-bold text-amber-200/90 pt-1 border-t border-white/10 flex items-center justify-between">
-                                  <span>{isBusy ? `In Service (${formatTimer(st.timerSeconds || 0)})` : '👉 1-Tap Send Next'}</span>
-                                  <ArrowRight className="w-3 h-3 text-emerald-300" />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : allChairsFull ? (
-                      <div className="w-full py-3.5 px-4 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between gap-3 text-amber-200">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
-                            <Users className="w-4 h-4 text-amber-300" />
-                          </div>
-                          <div className="text-left">
-                            <p className="text-xs font-black text-white">All Chairs are Full ({activeStations.length}/{activeStations.length} Busy)</p>
-                            <p className="text-[10px] text-slate-300">Sabhi chairs par service chal rahi hai. Chair free hone par Call Next show hoga.</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2.5 py-1 rounded-lg shrink-0 border border-amber-400/30">
-                          Chairs Full ⏳
-                        </span>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleCallNext}
-                        className="w-full py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                      >
-                        <Volume2 className="w-5 h-5 text-[#F2A15A]" />
-                        <span>Call Next Customer ({waitingQueue[0].tokenNumber})</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 space-y-3">
-                    <Store className="w-10 h-10 text-slate-400 mx-auto" />
-                    <div className="space-y-1">
-                      <h3 className="text-lg sm:text-xl font-black text-white">
-                        {stationsList.some(s => s.active && s.currentToken)
-                          ? `${stationsList.filter(s => s.active && s.currentToken).length} Customer(s) Serving in Counters`
-                          : "Queue is Empty"}
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        {stationsList.some(s => s.active && s.currentToken)
-                          ? "All waiting customers have been dispatched to counters. Chairs are actively serving."
-                          : "No customers currently waiting in line."}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                })()}
 
               </div>
 
