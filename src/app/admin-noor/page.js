@@ -487,7 +487,11 @@ export default function AdminUsersPage() {
                 <p className="text-xs text-slate-500 font-medium">
                   Are you sure you want to delete <span className="font-bold text-rose-700">{userToDelete.name || userToDelete.phone}</span> ({userToDelete.role}) from the PostgreSQL database?
                 </p>
-                <p className="text-[11px] text-slate-400">This action cannot be undone. All tokens associated with this user will be unlinked.</p>
+                <p className="text-[11px] text-slate-400">
+                  {userToDelete.role === 'SHOP_OWNER'
+                    ? "This action cannot be undone. The owner's shop, counter settings, and issued tokens will also be permanently deleted."
+                    : "This action cannot be undone. User history will be cleaned and anonymized."}
+                </p>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
