@@ -225,9 +225,6 @@ export default function AdminUsersPage() {
                 Super Admin
               </span>
             </div>
-            <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
-              Live PostgreSQL management: inspect registered accounts and remove test users.
-            </p>
           </div>
 
           <div className="flex items-center gap-2">
