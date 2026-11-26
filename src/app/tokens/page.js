@@ -254,6 +254,15 @@ export default function MyTokensPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
 
+  // Auto-dismiss called turn alert popup after exactly 2.5 seconds
+  useEffect(() => {
+    if (!calledTokenAlert) return;
+    const hideTimer = setTimeout(() => {
+      setCalledTokenAlert(null);
+    }, 2500);
+    return () => clearTimeout(hideTimer);
+  }, [calledTokenAlert]);
+
   // Connectivity Listener
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -332,6 +341,17 @@ export default function MyTokensPage() {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSuccessMsg, setReviewSuccessMsg] = useState(null);
   const [reviewError, setReviewError] = useState(null);
+
+  // Auto-dismiss all feedback toast alerts after exactly 2.5 seconds
+  useEffect(() => {
+    if (!cancelSuccessAlert && !delaySuccessAlert && !reviewSuccessMsg) return;
+    const hideTimer = setTimeout(() => {
+      setCancelSuccessAlert(null);
+      setDelaySuccessAlert(null);
+      setReviewSuccessMsg(null);
+    }, 2500);
+    return () => clearTimeout(hideTimer);
+  }, [cancelSuccessAlert, delaySuccessAlert, reviewSuccessMsg]);
 
   const activeEventSources = useRef(new Map());
 
@@ -832,7 +852,7 @@ export default function MyTokensPage() {
 
       // 5. User Feedback Banner
       setCancelSuccessAlert(`Token ${targetToken.displayToken || '#' + targetToken.tokenNumber} for ${targetToken.shopName || 'Shop'} was cancelled. Queue spot released.`);
-      setTimeout(() => setCancelSuccessAlert(null), 6000);
+      setTimeout(() => setCancelSuccessAlert(null), 2500);
       setTokenToCancel(null);
     } finally {
       setCancellingLoading(false);
@@ -906,7 +926,7 @@ export default function MyTokensPage() {
       }
 
       setDelaySuccessAlert(`Counter notified: You are running ~${effectiveMinutes} mins late. Your turn is on hold.`);
-      setTimeout(() => setDelaySuccessAlert(null), 6000);
+      setTimeout(() => setDelaySuccessAlert(null), 2500);
       setTokenToDelay(null);
     } finally {
       setDelayLoading(false);
@@ -959,7 +979,7 @@ export default function MyTokensPage() {
         setTokens(nextList);
       }
       setDelaySuccessAlert("You have successfully re-entered the queue at the counter!");
-      setTimeout(() => setDelaySuccessAlert(null), 6000);
+      setTimeout(() => setDelaySuccessAlert(null), 2500);
     } catch (err) {
       console.warn("Re-queue error:", err);
       // Local fallback
@@ -1022,7 +1042,7 @@ export default function MyTokensPage() {
       }
 
       setDelaySuccessAlert(`Checked in successfully at ${targetToken.shopName || 'Store'}! Counter desk notified.`);
-      setTimeout(() => setDelaySuccessAlert(null), 6000);
+      setTimeout(() => setDelaySuccessAlert(null), 2500);
       setTokenToCheckIn(null);
       setCheckInLoading(false);
       return true;
@@ -1224,7 +1244,7 @@ export default function MyTokensPage() {
       }
 
       setReviewSuccessMsg(`Thank you! Your ${ratingStars}-star rating for ${tokenToReview.shopName || 'the store'} was submitted.`);
-      setTimeout(() => setReviewSuccessMsg(null), 6000);
+      setTimeout(() => setReviewSuccessMsg(null), 2500);
       setTokenToReview(null);
       setReviewText('');
     } catch (err) {

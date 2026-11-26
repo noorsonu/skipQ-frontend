@@ -171,7 +171,22 @@ export default function MerchantDashboardPage() {
 
   // Sound chime notification toggle
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [announcementMsg, setAnnouncementMsg] = useState('');
+  const [announcementMsg, _setAnnouncementMsg] = useState('');
+  const announcementTimerRef = useRef(null);
+
+  // Universal auto-dismissing toast setter (strictly capped to 2.5 seconds anywhere)
+  const setAnnouncementMsg = (msg) => {
+    if (announcementTimerRef.current) {
+      clearTimeout(announcementTimerRef.current);
+      announcementTimerRef.current = null;
+    }
+    _setAnnouncementMsg(msg);
+    if (msg) {
+      announcementTimerRef.current = setTimeout(() => {
+        _setAnnouncementMsg('');
+      }, 2500);
+    }
+  };
 
   // View Tab: COUNTER | ANALYTICS
   const [activeTab, setActiveTab] = useState('COUNTER');
