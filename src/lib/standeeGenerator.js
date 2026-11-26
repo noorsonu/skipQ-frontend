@@ -14,7 +14,7 @@ export async function downloadStandeePoster({
   bookingUrl = '',
   qrDataUrl = null,
   theme = 'EMERALD', // 'EMERALD' | 'MIDNIGHT' | 'MINIMAL'
-  tagline = 'Line me khade mat raho, QR scan karo aur aaram se baithiye!',
+  tagline = 'Skip the waiting line. Scan QR & relax until your turn is called!',
   openTime = '09:30 AM',
   closeTime = '08:30 PM',
   weeklyOff = 'None',
@@ -50,7 +50,9 @@ export async function downloadStandeePoster({
   const loadImage = (src) => {
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (!src.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
       img.src = src;
@@ -217,14 +219,14 @@ export async function downloadStandeePoster({
   // Scan with Phone Camera, Paytm, PhonePe, GPay or WhatsApp
   drawCenteredText('Scan with Phone Camera, Paytm, PhonePe, GPay or WhatsApp', width / 2, qrCardY + qrCardH + 34, 'bold 16px "Segoe UI", Roboto, system-ui, sans-serif', mutedText);
 
-  // --- 5. Hindi & Notice Box (Cream Card) ---
+  // --- 5. English Notice Box (Cream Card) ---
   const noticeY = 915;
   const noticeW = 860;
   const noticeH = 135;
   const noticeX = (width - noticeW) / 2;
   drawRoundRect(noticeX, noticeY, noticeW, noticeH, 24, creamBg, borderLight, 1.5);
 
-  drawCenteredText('लाइन में खड़े मत रहो, टोकन लो!', width / 2, noticeY + 44, 'bold 23px "Segoe UI", Roboto, system-ui, sans-serif', primaryColor);
+  drawCenteredText("DON'T WAIT IN LINE, TAKE YOUR DIGITAL TOKEN!", width / 2, noticeY + 44, 'bold 22px "Segoe UI", Roboto, system-ui, sans-serif', primaryColor);
   
   const displayTagline = tagline.length > 70 ? tagline.substring(0, 70) + '...' : tagline;
   drawCenteredText(displayTagline, width / 2, noticeY + 88, '600 17px "Segoe UI", Roboto, system-ui, sans-serif', textColor);
@@ -295,9 +297,36 @@ export async function downloadStandeePoster({
   drawCenteredText('Powered by SkipQ • Hyperlocal Queue Network', width / 2, height - 42, 'bold 14px "Segoe UI", Roboto, system-ui, sans-serif', '#94A3B8');
 
   // 3. Trigger High-Res PNG Download
-  const dataUrl = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  link.download = `${(slug || 'shop').toLowerCase()}-standee-poster.png`;
-  link.href = dataUrl;
-  link.click();
+  if (canvas.toBlob) {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `${(slug || 'shop').toLowerCase()}-standee-poster.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => document.body.removeChild(link), 100);
+        return;
+      }
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${(slug || 'shop').toLowerCase()}-standee-poster.png`;
+      link.href = blobUrl;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 200);
+    }, 'image/png');
+  } else {
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${(slug || 'shop').toLowerCase()}-standee-poster.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => document.body.removeChild(link), 100);
+  }
 }

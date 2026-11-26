@@ -119,7 +119,7 @@ export default function MerchantDashboardPage() {
   const [standeeQrUrl, setStandeeQrUrl] = useState('');
   const [standeeFormat, setStandeeFormat] = useState('TABLETOP'); // 'TABLETOP' (A5) | 'POSTER' (A4) | 'STICKER' (Square)
   const [standeeTheme, setStandeeTheme] = useState('EMERALD'); // 'EMERALD' | 'MIDNIGHT' | 'MINIMAL'
-  const [standeeTagline, setStandeeTagline] = useState('Line me khade mat raho, QR scan karo aur aaram se baithiye!');
+  const [standeeTagline, setStandeeTagline] = useState('Skip the waiting line. Scan QR & relax until your turn is called!');
   const [showStandeeHours, setShowStandeeHours] = useState(true);
   const [showStandeeWifi, setShowStandeeWifi] = useState(false);
   const [standeeWifiName, setStandeeWifiName] = useState('');
@@ -1392,14 +1392,25 @@ export default function MerchantDashboardPage() {
     if (!activeShop || typeof window === 'undefined') return;
     setIsDownloadingStandee(true);
     try {
+      const origin = window.location.origin;
+      const bookingUrl = `${origin}/book/${(activeShop.slug || 'shop').toLowerCase()}`;
+      let qrUrlToUse = standeeQrUrl;
+      if (!qrUrlToUse) {
+        const qrColor = standeeTheme === 'MIDNIGHT' ? '#1F2937' : standeeTheme === 'MINIMAL' ? '#0F172A' : '#176B65';
+        qrUrlToUse = await QRCode.toDataURL(bookingUrl, {
+          width: 600,
+          margin: 1,
+          color: { dark: qrColor, light: '#FFFFFF' }
+        });
+      }
       await downloadStandeePoster({
         shopName: activeShop.name || 'Royal Looks Salon',
         categoryName: activeShop.categoryName || 'Salon & Barber',
         address: activeShop.address || 'Indira Nagar, Lucknow',
-        bookingUrl: standeeBookingUrl || `${window.location.origin}/book/${activeShop.slug || 'shop'}`,
-        qrDataUrl: standeeQrUrl,
+        bookingUrl,
+        qrDataUrl: qrUrlToUse,
         theme: standeeTheme || 'EMERALD',
-        tagline: standeeTagline || 'Line me khade mat raho, QR scan karo aur aaram se baithiye!',
+        tagline: standeeTagline || 'Skip the waiting line. Scan QR & relax until your turn is called!',
         openTime: activeShop.openTime || '09:30 AM',
         closeTime: activeShop.closeTime || '08:30 PM',
         weeklyOff: activeShop.weeklyOff || 'None',
@@ -1414,8 +1425,91 @@ export default function MerchantDashboardPage() {
       setAnnouncementMsg('📥 Full Standee Poster downloaded in high resolution!');
     } catch (err) {
       console.error('Failed to export standee poster image:', err);
+      alert('Failed to download image directly. Please try Print Standee Now -> Save as PDF.');
     } finally {
       setIsDownloadingStandee(false);
+    }
+  };
+
+  // 1-Page Isolated Standee Print Function
+  const handlePrintStandee = () => {
+    if (typeof window === 'undefined') return;
+    const cardEl = document.getElementById('printable-standee-card');
+    if (!cardEl) {
+      window.print();
+      return;
+    }
+
+    try {
+      let iframe = document.getElementById('standee-print-frame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'standee-print-frame';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+      }
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>SkipQ Standee - ${activeShop?.name || 'Poster'}</title>
+            <style>
+              @page {
+                size: A4 portrait;
+                margin: 10mm;
+              }
+              * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                background: #ffffff;
+              }
+              .standee-wrapper {
+                width: 100%;
+                max-width: 440px;
+                margin: 0 auto;
+                page-break-inside: avoid;
+                page-break-after: avoid;
+              }
+            </style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+          </head>
+          <body>
+            <div class="standee-wrapper">
+              ${cardEl.outerHTML}
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.focus();
+                  window.print();
+                }, 250);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      doc.close();
+    } catch (e) {
+      console.warn('Iframe print fallback to window.print:', e);
+      window.print();
     }
   };
 
@@ -8110,37 +8204,9 @@ export default function MerchantDashboardPage() {
                 {/* Left Column: Standee Controls & Options */}
                 <div className="md:col-span-5 space-y-4">
                   
-                  {/* Format Selector */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[#283B3D] block">1. Standee Size / Format:</label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { id: 'TABLETOP', label: 'Tabletop (A5)', desc: 'Acrylic Stand' },
-                        { id: 'POSTER', label: 'Poster (A4)', desc: 'Door / Wall' },
-                        { id: 'STICKER', label: 'Sticker', desc: 'Counter Desk' }
-                      ].map((fmt) => (
-                        <button
-                          key={fmt.id}
-                          type="button"
-                          onClick={() => setStandeeFormat(fmt.id)}
-                          className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
-                            standeeFormat === fmt.id
-                              ? 'bg-[#176B65] text-white border-[#176B65] shadow-xs'
-                              : 'bg-white hover:bg-slate-50 text-[#283B3D] border-[#DCE9E3]'
-                          }`}
-                        >
-                          <div className="text-xs font-black">{fmt.label}</div>
-                          <div className={`text-[9px] font-semibold ${standeeFormat === fmt.id ? 'text-white/80' : 'text-slate-400'}`}>
-                            {fmt.desc}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Theme Selector */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[#283B3D] block">2. Color Theme:</label>
+                    <label className="text-xs font-bold text-[#283B3D] block">1. Color Theme:</label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
                         { id: 'EMERALD', label: 'Emerald Luxe', dot: 'bg-[#176B65]' },
@@ -8164,14 +8230,14 @@ export default function MerchantDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Custom Hindi / English Tagline */}
+                  {/* Custom English Tagline */}
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#283B3D] block">3. Customer Notice Headline:</label>
+                    <label className="text-xs font-bold text-[#283B3D] block">2. Customer Notice Headline:</label>
                     <input
                       type="text"
                       value={standeeTagline}
                       onChange={(e) => setStandeeTagline(e.target.value)}
-                      placeholder="Line me khade mat raho..."
+                      placeholder="Skip the waiting line. Scan QR & relax..."
                       className="w-full bg-[#F3F1E9]/70 border border-[#DCE9E3] rounded-xl px-3 py-2 text-xs font-bold text-[#283B3D] focus:outline-none focus:border-[#176B65]"
                     />
                   </div>
@@ -8228,7 +8294,7 @@ export default function MerchantDashboardPage() {
                   <div className="pt-2 space-y-2">
                     <button
                       type="button"
-                      onClick={() => window.print()}
+                      onClick={handlePrintStandee}
                       className="w-full py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                     >
                       <Printer className="w-4 h-4 text-[#F2A15A]" />
@@ -8332,13 +8398,13 @@ export default function MerchantDashboardPage() {
                       </p>
                     </div>
 
-                    {/* Catchy Hindi Headline & Notice */}
+                    {/* Catchy English Headline & Notice */}
                     <div className="space-y-1 bg-[#F3F1E9]/80 p-3 rounded-2xl border border-[#DCE9E3]">
                       <h4 className="text-xs font-black text-[#176B65] uppercase tracking-wide">
-                        लाइन में खड़े मत रहो, टोकन लो!
+                        Don&apos;t Wait in Line, Take Your Digital Token!
                       </h4>
                       <p className="text-[11px] text-[#283B3D] font-semibold leading-snug">
-                        {standeeTagline || 'Line me khade mat raho, QR scan karo aur aaram se baithiye!'}
+                        {standeeTagline || 'Skip the waiting line. Scan QR & relax until your turn is called!'}
                       </p>
                     </div>
 
@@ -8399,6 +8465,18 @@ export default function MerchantDashboardPage() {
       {/* Global Print Media Style for Crisp Vector Standee Output */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          html, body {
+            height: 100vh !important;
+            max-height: 100vh !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
           body * {
             visibility: hidden !important;
           }
@@ -8410,14 +8488,18 @@ export default function MerchantDashboardPage() {
             left: 50% !important;
             top: 50% !important;
             transform: translate(-50%, -50%) !important;
-            width: 175mm !important;
-            max-width: 100% !important;
+            width: 160mm !important;
+            max-width: 90% !important;
+            max-height: 94vh !important;
             box-shadow: none !important;
             border: 3px solid #176B65 !important;
             margin: 0 auto !important;
-            padding: 8mm !important;
+            padding: 24px !important;
             background: white !important;
             z-index: 9999999 !important;
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
