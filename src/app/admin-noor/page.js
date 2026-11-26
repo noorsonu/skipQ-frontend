@@ -211,49 +211,46 @@ export default function AdminUsersPage() {
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#283B3D] pb-16">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DCE9E3] px-4 py-3 sm:px-8">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#176B65] text-white flex items-center justify-center shadow-xs font-black">
-              Q
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6 space-y-6">
+
+        {/* Admin Dashboard Title & Quick Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#DCE9E3]">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-black text-[#283B3D]">
+                Customer & Worker Database Governance
+              </h1>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-full shadow-xs">
+                Super Admin
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-[#283B3D]">SkipQ Admin Portal</h1>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65]/10 text-[#176B65] px-2 py-0.5 rounded-full">
-                  Super Admin
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">Customer & Worker Database Governance</p>
-            </div>
+            <p className="text-xs text-[#283B3D]/70 font-medium mt-1">
+              Live PostgreSQL management: inspect registered accounts and remove test users.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={loadUsers}
               disabled={loading}
-              className="px-3 py-2 rounded-xl border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 rounded-xl border border-[#DCE9E3] bg-white hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
               title="Refresh users"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#176B65] ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span>Refresh</span>
             </button>
 
             <button
               onClick={handleLockConsole}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Lock Admin Console"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Lock Console</span>
+              <span>Lock Console</span>
             </button>
           </div>
         </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-8 pt-6 space-y-6">
 
         {/* Notification Toasts */}
         {successMsg && (

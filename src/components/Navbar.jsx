@@ -59,6 +59,8 @@ export default function Navbar() {
     'Worker'
   );
 
+  const isAdminRoute = pathname?.startsWith('/admin-noor') || pathname?.startsWith('/admin');
+
   // Profile Dropdown & Inline Edit State
   const [profileOpen, setProfileOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -901,7 +903,7 @@ export default function Navbar() {
           {/* Official Brand Logo from User Spec */}
           {/* Brand Logo - Links to Dashboard if Merchant, else Home */}
           <Link 
-            href={userRole === 'MERCHANT' ? "/merchant/dashboard" : "/"} 
+            href={isAdminRoute ? "/admin-noor" : (userRole === 'MERCHANT' ? "/merchant/dashboard" : "/")} 
             onClick={(e) => {
               if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('ak_home_last_clicked');
@@ -919,7 +921,15 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          {userRole === 'MERCHANT' ? (
+          {isAdminRoute ? (
+            <div className="hidden md:flex items-center gap-2 bg-[#DCE9E3]/70 px-4 py-2 rounded-2xl border border-[#DCE9E3]">
+              <ShieldCheck className="w-4 h-4 text-[#176B65]" />
+              <span className="text-xs font-black text-[#283B3D]">Control Center</span>
+              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2 py-0.5 rounded-full">
+                Super Admin
+              </span>
+            </div>
+          ) : userRole === 'MERCHANT' ? (
             <div className="hidden md:flex items-center gap-2 bg-[#DCE9E3]/70 p-1.5 rounded-2xl border border-[#DCE9E3]">
               <Link
                 href="/merchant/dashboard"
@@ -985,10 +995,32 @@ export default function Navbar() {
           <div className="flex items-center gap-2 sm:gap-2.5">
 
             {/* ======================================================== */}
+            {/* STATE 0: ADMIN ACTIVE ROUTE (/admin-noor)                */}
+            {/* Show Super Admin Noor Profile Pill                       */}
+            {/* ======================================================== */}
+            {isAdminRoute && (
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border bg-white border-[#176B65]/30 text-[#283B3D] shadow-xs">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shadow-xs shrink-0 bg-[#176B65] text-white font-black text-xs">
+                    N
+                  </div>
+                  <div className="text-left pr-1">
+                    <span className="text-[9px] uppercase font-bold text-[#176B65] block leading-none">
+                      Super Admin
+                    </span>
+                    <span className="text-xs font-black text-[#283B3D] block leading-tight mt-0.5">
+                      Noor
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
             {/* STATE 1: GUEST (NEITHER LOGGED IN)                       */}
             {/* Show BOTH Shopkeeper & Customer buttons, identical style */}
             {/* ======================================================== */}
-            {userRole === 'GUEST' && (
+            {!isAdminRoute && userRole === 'GUEST' && (
               <div className="flex items-center gap-2 sm:gap-2.5">
                 {/* Shopkeeper / Partner Link (Direct Page Navigation, No Popup) */}
                 <Link
@@ -1038,7 +1070,7 @@ export default function Navbar() {
           {/* STATE 2: SHOPKEEPER LOGGED IN                            */}
           {/* Customer button is HIDDEN. Only Shopkeeper Pill & Logout */}
           {/* ======================================================== */}
-          {userRole === 'MERCHANT' && (
+          {!isAdminRoute && userRole === 'MERCHANT' && (
             <div className="relative flex items-center gap-2">
               <Link
                 href="/merchant/profile"
@@ -1063,7 +1095,7 @@ export default function Navbar() {
           {/* STATE 3: CUSTOMER LOGGED IN                              */}
           {/* Shopkeeper button is HIDDEN. Customer Profile with Logout */}
           {/* ======================================================== */}
-          {userRole === 'CUSTOMER' && (
+          {!isAdminRoute && userRole === 'CUSTOMER' && (
             <div className="relative flex items-center gap-2" ref={dropdownRef}>
               <button
                 type="button"
