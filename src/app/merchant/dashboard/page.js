@@ -1030,6 +1030,13 @@ export default function MerchantDashboardPage() {
     return () => clearInterval(clockTimer);
   }, []);
 
+  // Auto-dismiss all announcement / notification toasts after exactly 2.5 seconds
+  useEffect(() => {
+    if (!announcementMsg) return;
+    const hideTimer = setTimeout(() => setAnnouncementMsg(''), 2500);
+    return () => clearTimeout(hideTimer);
+  }, [announcementMsg]);
+
   // Token matching helper for consistent comparison across UUIDs and numbers
   const isTokenMatch = (a, b) => {
     if (!a || !b) return false;

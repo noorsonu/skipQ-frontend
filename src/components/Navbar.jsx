@@ -306,6 +306,15 @@ export default function Navbar() {
     }
   };
 
+  // Auto-dismiss turn arrival banner popup after exactly 2.5 seconds
+  useEffect(() => {
+    if (!turnRingAlert) return;
+    const hideTimer = setTimeout(() => {
+      setTurnRingAlert(null);
+    }, 2500);
+    return () => clearTimeout(hideTimer);
+  }, [turnRingAlert]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const didPurge = enforceCleanSlate();
