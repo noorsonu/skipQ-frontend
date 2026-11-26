@@ -925,7 +925,7 @@ export default function Navbar() {
             <div className="hidden md:flex items-center gap-2 bg-[#DCE9E3]/70 px-4 py-2 rounded-2xl border border-[#DCE9E3]">
               <ShieldCheck className="w-4 h-4 text-[#176B65]" />
               <span className="text-xs font-black text-[#283B3D]">Control Center</span>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 inline-block">
                 Super Admin
               </span>
             </div>
@@ -1255,8 +1255,13 @@ export default function Navbar() {
                     </Link>
 
                     <Link
-                      href="/#shops"
-                      onClick={() => setProfileOpen(false)}
+                      href="/shops?category=favorites"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('ak_home_return_section', 'shops');
+                        }
+                      }}
                       className="w-full py-2.5 px-3 rounded-xl bg-slate-50 hover:bg-[#DCE9E3]/40 text-xs font-bold flex items-center justify-between text-[#283B3D] transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2">

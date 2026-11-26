@@ -218,11 +218,11 @@ export default function AdminUsersPage() {
         {/* Admin Dashboard Title & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#DCE9E3]">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-black text-[#283B3D]">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-black text-[#283B3D]">
                 Customer & Worker Database Governance
               </h1>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-full shadow-xs">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-[#176B65] text-white px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap shrink-0 inline-block">
                 Super Admin
               </span>
             </div>
