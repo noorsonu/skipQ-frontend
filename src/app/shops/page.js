@@ -236,8 +236,18 @@ function ShopsDirectoryContent() {
   const currentCategoryShops = currentCatObj ? (shopsByCategory[currentCatObj.id] || []) : [];
   const favoriteShops = shops.filter(s => favoriteSlugs.includes(s.slug));
 
-  // Pagination for Categories (Exactly 5 categories per page as requested)
-  const CATS_PER_PAGE = 5;
+  // Pagination for Categories: 5 on Mobile, 12 on Laptop / Desktop
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(typeof window !== 'undefined' && window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const CATS_PER_PAGE = isDesktop ? 12 : 5;
   const filteredCategories = CATEGORIES.filter(cat => {
     if (!query) return true;
     return (
@@ -629,13 +639,10 @@ function ShopsDirectoryContent() {
                 })}
               </div>
 
-              {/* Clean SkipQ Pagination Controls */}
+              {/* Clean SkipQ Centered Pagination Controls */}
               {totalCatPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#DCE9E3]/70">
-                  <p className="text-xs text-slate-500 font-medium">
-                    Showing <span className="font-bold text-[#283B3D]">{(currentCatPage - 1) * CATS_PER_PAGE + 1}–{Math.min(currentCatPage * CATS_PER_PAGE, filteredCategories.length)}</span> of <span className="font-bold text-[#283B3D]">{filteredCategories.length}</span> categories
-                  </p>
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center justify-center gap-3 pt-6 border-t border-[#DCE9E3]/70">
+                  <div className="flex items-center justify-center gap-2">
                     <button
                       type="button"
                       disabled={currentCatPage === 1}
@@ -671,6 +678,10 @@ function ShopsDirectoryContent() {
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
+
+                  <p className="text-xs text-slate-500 font-medium text-center">
+                    Showing <span className="font-bold text-[#283B3D]">{(currentCatPage - 1) * CATS_PER_PAGE + 1}–{Math.min(currentCatPage * CATS_PER_PAGE, filteredCategories.length)}</span> of <span className="font-bold text-[#283B3D]">{filteredCategories.length}</span> categories
+                  </p>
                 </div>
               )}
             </div>
