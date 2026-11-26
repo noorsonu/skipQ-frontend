@@ -700,8 +700,8 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Category Cards Grid (Strictly 4 Cards on Homepage) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Category Cards Grid (Strictly 4 Cards on Homepage, Pixel-Perfect Responsive on Laptop & Mobile) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6 items-stretch">
           {categories
             .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.description.toLowerCase().includes(searchQuery.toLowerCase()))
             .slice(0, 4)
@@ -738,16 +738,14 @@ export default function HomePage() {
                       sessionStorage.setItem('ak_home_last_clicked', 'shops');
                     }
                   }}
-                  className="block group"
+                  className="h-full flex flex-col group cursor-pointer"
                 >
-                  <motion.div
-                    whileHover={{ y: -6 }}
-                    transition={{ duration: 0.2 }}
-                    className="urban-card rounded-3xl overflow-hidden flex flex-col justify-between cursor-pointer border border-[#DCE9E3] hover:border-[#176B65] transition-all shadow-sm hover:shadow-md"
+                  <div
+                    className="h-full w-full bg-white rounded-3xl overflow-hidden flex flex-col justify-between border border-[#DCE9E3] hover:border-[#176B65] transition-all duration-300 shadow-xs hover:shadow-lg hover:-translate-y-1.5"
                   >
-                    <div>
-                      {/* Pure Category Photo (Clean, Unobstructed Full View) */}
-                      <div className="relative h-52 sm:h-56 w-full overflow-hidden bg-slate-100">
+                    <div className="flex-1 flex flex-col">
+                      {/* Pure Category Photo */}
+                      <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 shrink-0">
                         <img
                           src={catPhoto}
                           alt={cat.name}
@@ -756,33 +754,34 @@ export default function HomePage() {
                       </div>
 
                       {/* Content Body */}
-                      <div className="p-5 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors">
-                            {cat.name}
-                          </h3>
-                          <span className="text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg">
-                            {matchingShops.length} {matchingShops.length === 1 ? 'Shop' : 'Shops'}
-                          </span>
-                        </div>
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-2.5">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2 min-h-[3.25rem]">
+                            <h3 className="text-lg sm:text-xl font-black text-[#283B3D] group-hover:text-[#176B65] transition-colors leading-snug line-clamp-2">
+                              {cat.name}
+                            </h3>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-[#176B65] bg-[#DCE9E3] px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">
+                              {matchingShops.length} {matchingShops.length === 1 ? 'Shop' : 'Shops'}
+                            </span>
+                          </div>
 
-                        <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2">
-                          {cat.description}
-                        </p>
+                          <p className="text-xs text-[#283B3D]/70 font-medium leading-relaxed line-clamp-2 h-9 overflow-hidden">
+                            {cat.description}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Card Action Button */}
-                    <div className="p-5 pt-0">
-                      <button
-                        type="button"
-                        className="w-full py-3.5 rounded-2xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs shadow-sm transition-all text-center flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    {/* Card Action Button (Pinned to bottom with exact equal height) */}
+                    <div className="p-5 pt-0 mt-auto">
+                      <div
+                        className="w-full py-3.5 px-3 rounded-2xl bg-[#176B65] group-hover:bg-[#125550] text-white font-bold text-xs shadow-xs transition-all text-center flex items-center justify-center gap-1.5 active:scale-98"
                       >
-                        <span>View {cat.name} Shops & Tokens</span>
-                        <ArrowRight className="w-4 h-4 text-[#F2A15A] group-hover:translate-x-1 transition-transform" />
-                      </button>
+                        <span className="truncate">View {cat.name}</span>
+                        <ArrowRight className="w-4 h-4 text-[#F2A15A] shrink-0 group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </Link>
               );
             })}
@@ -795,7 +794,7 @@ export default function HomePage() {
       {/* ========================================================= */}
       {/* SECTION 4: LIVE TOKEN TRACKING (DESKTOP ONLY, HIDDEN ON MOBILE) */}
       {/* ========================================================= */}
-      <section id="live-token" className="hidden md:block bg-[#283B3D] text-[#F3F1E9] py-16 sm:py-24 rounded-3xl mx-4 sm:mx-6 lg:mx-8 px-6 sm:px-12 relative overflow-hidden shadow-2xl">
+      <section id="live-token" className="hidden md:block bg-[#283B3D] text-[#F3F1E9] py-16 sm:py-24 rounded-3xl mx-4 sm:mx-6 lg:mx-8 px-6 sm:px-12 relative overflow-hidden shadow-2xl mt-12 sm:mt-16">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#176B65]/30 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="max-w-4xl mx-auto space-y-10 relative z-10 text-center">
