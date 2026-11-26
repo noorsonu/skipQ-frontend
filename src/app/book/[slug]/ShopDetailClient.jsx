@@ -850,7 +850,7 @@ export default function ShopDetailClient() {
       // Backend shop UUID
       const validShopId = shop?.id;
 
-      const selectedNames = selectedServicesList.map(s => s.name);
+      const selectedNames = selectedServicesList.map(s => s.price > 0 ? `${s.name} (₹${s.price})` : s.name);
       const totalServiceTime = selectedServicesList.reduce((acc, s) => acc + (s.duration || s.durationMin || 15), 0) || (shop?.avgWaitMin || 15);
 
       const payload = {
@@ -877,7 +877,9 @@ export default function ShopDetailClient() {
             address: shop.address,
             imageUrl: shop.imageUrl,
             groupSize: effectiveGroupSize,
-            customerPurpose,
+            customerPurpose: customerPurpose || selectedNames.join(', ') || 'General Service',
+            selectedServices: customerPurpose || selectedNames.join(', ') || 'General Service',
+            service: customerPurpose || selectedNames.join(', ') || 'General Service',
             companions: companionDetails,
             preferredStation: preferredStation || null,
           };
@@ -896,7 +898,9 @@ export default function ShopDetailClient() {
           tokenNumber: randomNum,
           groupSize: effectiveGroupSize,
           memberNames: memberEntries,
-          customerPurpose,
+          customerPurpose: customerPurpose || selectedNames.join(', ') || 'General Service',
+          selectedServices: customerPurpose || selectedNames.join(', ') || 'General Service',
+          service: customerPurpose || selectedNames.join(', ') || 'General Service',
           companions: companionDetails,
           preferredStation: preferredStation || null,
           peopleAhead: shop.waitingCount ?? 2,
