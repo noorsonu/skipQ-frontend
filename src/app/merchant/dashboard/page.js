@@ -1321,14 +1321,47 @@ export default function MerchantDashboardPage() {
     setTimeout(() => setStandeeCopied(false), 3000);
   };
 
-  // Download High-Resolution QR Code Image
-  const handleDownloadQrPng = () => {
-    if (!standeeQrUrl || !activeShop) return;
-    const link = document.createElement('a');
-    link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
-    link.href = standeeQrUrl;
-    link.click();
-    setAnnouncementMsg('📥 High-resolution QR code downloaded!');
+  // Download Full Standee Poster Card Image (BRD FR-605 / FR-302)
+  const [isDownloadingStandee, setIsDownloadingStandee] = useState(false);
+  const handleDownloadQrPng = async () => {
+    if (!activeShop || typeof window === 'undefined') return;
+    setIsDownloadingStandee(true);
+    try {
+      const element = document.getElementById('printable-standee-card');
+      if (!element) {
+        if (standeeQrUrl) {
+          const link = document.createElement('a');
+          link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
+          link.href = standeeQrUrl;
+          link.click();
+        }
+        return;
+      }
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(element, {
+        scale: 3, // 3x high resolution for crisp print/image
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-standee.png`;
+      link.href = dataUrl;
+      link.click();
+      setAnnouncementMsg('📥 Full Standee Poster downloaded in high resolution!');
+    } catch (err) {
+      console.error('Failed to export standee image:', err);
+      if (standeeQrUrl) {
+        const link = document.createElement('a');
+        link.download = `${(activeShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
+        link.href = standeeQrUrl;
+        link.click();
+      }
+    } finally {
+      setIsDownloadingStandee(false);
+    }
   };
 
   const formatTimer = (sec) => {
@@ -8022,10 +8055,11 @@ export default function MerchantDashboardPage() {
                       <button
                         type="button"
                         onClick={handleDownloadQrPng}
-                        className="py-2.5 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/30 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        disabled={isDownloadingStandee}
+                        className="py-2.5 rounded-xl bg-white border border-[#DCE9E3] hover:bg-[#DCE9E3]/30 text-xs font-bold text-[#283B3D] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
                       >
-                        <Download className="w-3.5 h-3.5 text-[#176B65]" />
-                        <span>Download QR</span>
+                        <Download className={`w-3.5 h-3.5 text-[#176B65] ${isDownloadingStandee ? 'animate-bounce' : ''}`} />
+                        <span>{isDownloadingStandee ? 'Generating...' : 'Download Poster'}</span>
                       </button>
 
                       <button

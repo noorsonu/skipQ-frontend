@@ -8,8 +8,10 @@ import {
   MapPin, Clock, Phone, Smartphone, Ticket, Sparkles, Navigation,
   Scissors, Pill, Stethoscope, UtensilsCrossed, Activity, Wrench,
   QrCode, Printer, Check, LogIn, ExternalLink, RefreshCw, AlertCircle,
-  Lock, Mail, Eye, EyeOff, UserPlus, User
+  Lock, Mail, Eye, EyeOff, UserPlus, User, Download, Copy
 } from 'lucide-react';
+import QRCode from 'qrcode';
+import OfficialBrandLogo from '@/components/OfficialBrandLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { shopApi, authApi } from '@/lib/api';
 import { signInWithGoogle } from '@/lib/googleAuth';
@@ -76,6 +78,78 @@ export default function MerchantRegisterPage() {
 
   // Step 4: Final Created Shop Data
   const [registeredShop, setRegisteredShop] = useState(null);
+  const [registrationQrUrl, setRegistrationQrUrl] = useState('');
+  const [isDownloadingRegStandee, setIsDownloadingRegStandee] = useState(false);
+  const [copiedRegLink, setCopiedRegLink] = useState(false);
+
+  // Generate real scannable QR Code as soon as shop registers (Step 4)
+  useEffect(() => {
+    if (step === 4 && registeredShop && typeof window !== 'undefined') {
+      const origin = window.location.origin || 'https://skipq.in';
+      const bookingUrl = `${origin}/book/${(registeredShop.slug || 'shop').toLowerCase()}`;
+      QRCode.toDataURL(bookingUrl, {
+        width: 600,
+        margin: 1,
+        color: {
+          dark: '#176B65',
+          light: '#FFFFFF'
+        }
+      })
+        .then(url => setRegistrationQrUrl(url))
+        .catch(err => console.error('Failed to generate registration QR', err));
+    }
+  }, [step, registeredShop]);
+
+  const handleDownloadRegistrationStandee = async () => {
+    if (!registeredShop || typeof window === 'undefined') return;
+    setIsDownloadingRegStandee(true);
+    try {
+      const element = document.getElementById('registration-standee-card');
+      if (!element) {
+        if (registrationQrUrl) {
+          const link = document.createElement('a');
+          link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
+          link.href = registrationQrUrl;
+          link.click();
+        }
+        return;
+      }
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#FFFFFF',
+        logging: false,
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-standee-poster.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export standee image:', err);
+      if (registrationQrUrl) {
+        const link = document.createElement('a');
+        link.download = `${(registeredShop.slug || 'shop').toLowerCase()}-counter-qr.png`;
+        link.href = registrationQrUrl;
+        link.click();
+      }
+    } finally {
+      setIsDownloadingRegStandee(false);
+    }
+  };
+
+  const handleCopyRegLink = () => {
+    if (typeof window === 'undefined' || !registeredShop) return;
+    const origin = window.location.origin || 'https://skipq.in';
+    const bookingUrl = `${origin}/book/${(registeredShop.slug || 'shop').toLowerCase()}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(bookingUrl);
+    }
+    setCopiedRegLink(true);
+    setTimeout(() => setCopiedRegLink(false), 3000);
+  };
 
   // On mount check if shop already registered in localStorage or Database
   useEffect(() => {
@@ -1323,7 +1397,7 @@ export default function MerchantRegisterPage() {
       )}
 
       {/* ========================================================= */}
-      {/* STEP 4: REGISTRATION SUCCESS & QR POSTER                 */}
+      {/* STEP 4: REGISTRATION SUCCESS & REAL QR STANDEE POSTER      */}
       {/* ========================================================= */}
       {step === 4 && registeredShop && (
         <motion.div 
@@ -1347,41 +1421,128 @@ export default function MerchantRegisterPage() {
             </p>
           </div>
 
-          {/* Printable Counter QR Card */}
-          <div className="max-w-xs mx-auto bg-[#F3F1E9] rounded-3xl p-6 border-2 border-dashed border-[#176B65] space-y-4 shadow-sm">
-            <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-[#176B65] tracking-widest block">Scan to take token</span>
-              <h3 className="font-black text-sm text-[#283B3D] truncate">{registeredShop.name}</h3>
-            </div>
+          {/* Real Counter QR Standee Card */}
+          <div className="max-w-sm mx-auto">
+            <div 
+              id="registration-standee-card"
+              className="w-full rounded-3xl p-6 sm:p-7 shadow-xl border-2 border-[#176B65] transition-all flex flex-col justify-between text-center relative overflow-hidden bg-white"
+            >
+              {/* Top Standee Header Strip */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2">
+                  <OfficialBrandLogo height={32} animate={false} />
+                </div>
+                
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full inline-block bg-[#176B65] text-white">
+                    Official Digital Queue Partner
+                  </span>
+                  <h2 className="text-xl font-black text-[#283B3D] tracking-tight line-clamp-1 pt-1">
+                    {registeredShop.name}
+                  </h2>
+                  <p className="text-[11px] text-[#283B3D]/70 font-bold line-clamp-1">
+                    {registeredShop.categoryName || 'Service Counter'} • {registeredShop.address || 'Verified Location'}
+                  </p>
+                </div>
+              </div>
 
-            {/* Simulated Clean QR Code Graphic */}
-            <div className="w-44 h-44 bg-white rounded-2xl p-3 mx-auto shadow-xs border border-[#DCE9E3] flex flex-col items-center justify-center">
-              <QrCode className="w-32 h-32 text-[#283B3D]" />
-              <span className="text-[9px] font-bold text-slate-400 mt-1">skipq.in/book/{registeredShop.slug}</span>
-            </div>
+              {/* QR Code Center Frame */}
+              <div className="my-4 py-2">
+                <div className="p-4 rounded-3xl mx-auto shadow-md border-2 border-[#176B65] inline-block bg-white">
+                  {registrationQrUrl ? (
+                    <img
+                      src={registrationQrUrl}
+                      alt="Scan to join queue"
+                      className="w-48 h-48 mx-auto object-contain block"
+                    />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center text-slate-400">
+                      <QrCode className="w-32 h-32 animate-pulse" />
+                    </div>
+                  )}
+                  <div className="text-[10px] font-black uppercase tracking-wider text-[#176B65] mt-1 pt-1 border-t border-[#DCE9E3]">
+                    ⚡ SCAN TO TAKE PASS
+                  </div>
+                </div>
 
-            <div className="text-[11px] font-bold text-[#176B65] flex items-center justify-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-[#F2A15A]" />
-              <span>Zero Physical Line • Instant Pass</span>
+                {/* Compatible Scanner Apps */}
+                <p className="text-[10px] font-bold text-slate-500 mt-2">
+                  Scan with Phone Camera, Paytm, PhonePe, GPay or WhatsApp
+                </p>
+              </div>
+
+              {/* Catchy Hindi Headline & Notice */}
+              <div className="space-y-1 bg-[#F3F1E9]/80 p-3 rounded-2xl border border-[#DCE9E3]">
+                <h4 className="text-xs font-black text-[#176B65] uppercase tracking-wide">
+                  लाइन में खड़े मत रहो, टोकन लो!
+                </h4>
+                <p className="text-[11px] text-[#283B3D] font-semibold leading-snug">
+                  Line me khade mat raho, QR scan karo aur aaram se baithiye!
+                </p>
+              </div>
+
+              {/* 3 Simple Visual Steps */}
+              <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold pt-3">
+                <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                  <div className="text-sm mb-0.5">📸</div>
+                  <div className="font-black text-[#283B3D]">1. Scan QR</div>
+                  <div className="text-[9px] text-slate-500">Camera / UPI</div>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                  <div className="text-sm mb-0.5">🎫</div>
+                  <div className="font-black text-[#283B3D]">2. Get Token</div>
+                  <div className="text-[9px] text-slate-500">On your phone</div>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-[#DCE9E3] shadow-2xs">
+                  <div className="text-sm mb-0.5">🔔</div>
+                  <div className="font-black text-[#283B3D]">3. Relax</div>
+                  <div className="text-[9px] text-slate-500">Walk up on turn</div>
+                </div>
+              </div>
+
+              {/* Footer Info Strip */}
+              <div className="mt-4 pt-3 border-t border-[#DCE9E3] flex items-center justify-between text-[10px] text-slate-600 font-bold">
+                <span>⏰ Open Daily</span>
+                <span className="text-[#176B65]">Powered by SkipQ</span>
+              </div>
             </div>
           </div>
 
           {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleDownloadRegistrationStandee}
+              disabled={isDownloadingRegStandee}
+              className="py-3 px-5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98 disabled:opacity-50"
+            >
+              <Download className={`w-4 h-4 text-[#F2A15A] ${isDownloadingRegStandee ? 'animate-bounce' : ''}`} />
+              <span>{isDownloadingRegStandee ? 'Generating Poster...' : 'Download Standee Poster'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => window.print()}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#283B3D] flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              className="py-3 px-5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#283B3D] flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4 text-[#176B65]" />
-              <span>Print Counter QR Poster</span>
+              <span>Print Poster</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyRegLink}
+              className="py-3 px-5 rounded-2xl bg-white border border-[#DCE9E3] hover:bg-slate-50 text-xs font-bold text-[#283B3D] flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            >
+              {copiedRegLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#176B65]" />}
+              <span>{copiedRegLink ? 'Link Copied!' : 'Copy Link'}</span>
             </button>
 
             <Link
               href="/merchant/dashboard"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+              className="py-3 px-6 rounded-2xl bg-[#283B3D] hover:bg-[#1f2e30] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
             >
-              <span>Open Merchant Counter Dashboard</span>
+              <span>Launch Live Dashboard</span>
               <ArrowRight className="w-4 h-4 text-[#F2A15A]" />
             </Link>
           </div>
