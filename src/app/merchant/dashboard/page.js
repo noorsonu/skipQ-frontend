@@ -194,6 +194,12 @@ export default function MerchantDashboardPage() {
 
   // Service Billing & Hisaab Modal State (Optional post-service accounting)
   const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [activeBillingCustomer, setActiveBillingCustomer] = useState(null);
+  const [customBillCount, setCustomBillCount] = useState(1);
+  const readyForBillingListRef = useRef([]);
+  readyForBillingListRef.current = readyForBillingList;
+  const billingModalOpenRef = useRef(false);
+  billingModalOpenRef.current = billingModalOpen;
   const [billServices, setBillServices] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billPaymentMode, setBillPaymentMode] = useState('CASH'); // 'CASH' | 'UPI' | 'PENDING' | 'PARTIAL'
@@ -1206,8 +1212,12 @@ export default function MerchantDashboardPage() {
           assignedStation: servingItem.assignedStation || null
         });
       } else if (!servingItem || isServingAtStation || waitingOnly.length === 0) {
-        // Clear serving token when queue is done or customer is already placed at a station
-        setServingToken(null);
+        // Do NOT clear serving token if merchant is viewing a finished customer ready for billing or if billing modal is open!
+        setServingToken(prev => {
+          if (prev && readyForBillingListRef.current?.some(rb => isTokenMatch(rb, prev))) return prev;
+          if (billingModalOpenRef.current) return prev;
+          return null;
+        });
       }
 
       // 3. Completed Tokens
@@ -3387,10 +3397,12 @@ export default function MerchantDashboardPage() {
   };
 
   // Action: Open Service Billing / Hisaab Modal
-  const handleOpenBillingModal = () => {
-    if (!servingToken) return;
+  const handleOpenBillingModal = (tokenToBill = null) => {
+    const target = tokenToBill || activeBillingCustomer || servingToken;
+    if (!target) return;
+    setActiveBillingCustomer(target);
     setBillingStationId(null);
-    const parsed = parseCustomerAndServices(servingToken.customerName, servingToken.service);
+    const parsed = parseCustomerAndServices(target.customerName, target.service);
     setBillServices(parsed.items.length > 0 ? parsed.items.join(' + ') : parsed.servicesString);
     if (parsed.totalCost) {
       const numMatch = parsed.totalCost.replace(/[^0-9]/g, '');
@@ -3403,6 +3415,7 @@ export default function MerchantDashboardPage() {
     setBillPaymentMode('CASH');
     setBillNotes('');
     setBillingScope('SINGLE');
+    setCustomBillCount(Math.min(target.groupSize || 1, 2));
     setBillingModalOpen(true);
   };
 
@@ -3410,7 +3423,7 @@ export default function MerchantDashboardPage() {
   const handleFinalizeService = ({ skipBilling = false } = {}) => {
     // If billingStationId is set, find that station and its currentToken
     const activeStation = billingStationId ? stationsList.find(s => s.id === billingStationId) : null;
-    const tokenToFinalize = activeStation?.currentToken || servingToken;
+    const tokenToFinalize = activeBillingCustomer || activeStation?.currentToken || servingToken;
     if (!tokenToFinalize) return;
 
     const durationMins = activeStation
@@ -3482,6 +3495,26 @@ export default function MerchantDashboardPage() {
 
       // Add remaining members back to waiting queue
       setWaitingQueue(prev => [remainingGroupToken, ...prev.filter(t => !isTokenMatch(t, tokenToFinalize))]);
+    }
+
+    // OPTION 3: billingScope === 'CUSTOM' (Custom number of persons checkout)
+    if (billingScope === 'CUSTOM' && isMultiPersonGroup && !tokenToFinalize.isCompanion) {
+      const countToBill = Math.min(tokenToFinalize.groupSize || 1, Math.max(1, customBillCount));
+      const remainingCount = (tokenToFinalize.groupSize || 1) - countToBill;
+      if (remainingCount > 0) {
+        const cleanBaseName = (tokenToFinalize.customerName || 'Customer').replace(/\s*\(Party of \d+\)/, '').replace(/\s*\(\d+ Remaining.*?\)/, '').trim();
+        remainingGroupToken = {
+          ...tokenToFinalize,
+          id: `rem-${Date.now()}-${tokenToFinalize.tokenNumber}`,
+          customerName: `${cleanBaseName} (${remainingCount} Remaining in Line)`,
+          groupSize: remainingCount,
+          status: 'WAITING',
+          assignedStation: null
+        };
+
+        // Add remaining members back to waiting queue
+        setWaitingQueue(prev => [remainingGroupToken, ...prev.filter(t => !isTokenMatch(t, tokenToFinalize))]);
+      }
     }
 
     // OPTION 2: billingScope === 'GROUP' (All companions/group members completed together in one bill!)
@@ -3677,6 +3710,7 @@ export default function MerchantDashboardPage() {
     }
 
     setBillingModalOpen(false);
+    setActiveBillingCustomer(null);
 
     if (finalAmount > 0) {
       setAnnouncementMsg(`✅ Recorded: ${tokenToFinalize.customerName} (${tokenToFinalize.tokenNumber}). Total: ₹${finalAmount.toLocaleString('en-IN')} [${finalPayment}]`);
@@ -4994,7 +5028,7 @@ export default function MerchantDashboardPage() {
                                 type="button"
                                 onClick={() => {
                                   setServingToken(rbToken);
-                                  handleOpenBillingModal();
+                                  handleOpenBillingModal(rbToken);
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-[#176B65] text-[11px] font-black shadow-xs cursor-pointer active:scale-95 transition-all"
                                 title="Open billing for this customer"
@@ -5163,7 +5197,7 @@ export default function MerchantDashboardPage() {
                       {/* Mark Complete & Billing Hisaab */}
                       <button
                         type="button"
-                        onClick={handleOpenBillingModal}
+                        onClick={() => handleOpenBillingModal(servingToken)}
                         className="py-4 rounded-2xl bg-white hover:bg-slate-100 text-[#283B3D] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                         title="Mark Done and record billing details (optional)"
                       >
@@ -8698,8 +8732,8 @@ export default function MerchantDashboardPage() {
       {/* MODAL 3: SERVICE BILLING / HISAAB (OPTIONAL ON SERVICE DONE)*/}
       {/* ========================================================= */}
       <AnimatePresence>
-        {billingModalOpen && (billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken) && (() => {
-          const activeBillingToken = billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken;
+        {billingModalOpen && (activeBillingCustomer || (billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken)) && (() => {
+          const activeBillingToken = activeBillingCustomer || (billingStationId ? stationsList.find(s => s.id === billingStationId)?.currentToken : servingToken);
 
           const isRelatedGroupMember = (a, b) => {
             if (!a || !b) return false;
@@ -8728,7 +8762,10 @@ export default function MerchantDashboardPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setBillingModalOpen(false)}
+                onClick={() => {
+                  setBillingModalOpen(false);
+                  setActiveBillingCustomer(null);
+                }}
                 className="fixed inset-0"
               />
 
@@ -8754,7 +8791,10 @@ export default function MerchantDashboardPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setBillingModalOpen(false)}
+                    onClick={() => {
+                      setBillingModalOpen(false);
+                      setActiveBillingCustomer(null);
+                    }}
                     className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
@@ -8824,7 +8864,7 @@ export default function MerchantDashboardPage() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => setBillingScope('SINGLE')}
@@ -8834,11 +8874,11 @@ export default function MerchantDashboardPage() {
                           }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs text-[#176B65]">👤 Alag-Alag Payment</span>
+                          <span className="font-black text-xs text-[#176B65]">👤 Single Member</span>
                           {billingScope === 'SINGLE' && <span className="text-[10px] font-black text-[#176B65]">✓ Selected</span>}
                         </div>
                         <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
-                          Sirf is 1 person ka hisaab karein. Baaki {totalGroupCount - 1} log line ya chair par active rahenge!
+                          Sirf is 1 person ka bill karein. Baaki {totalGroupCount - 1} log line/chair par rahenge.
                         </p>
                       </button>
 
@@ -8851,14 +8891,61 @@ export default function MerchantDashboardPage() {
                           }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs text-[#176B65]">👥 Ek Saath Payment</span>
+                          <span className="font-black text-xs text-[#176B65]">👥 Full Group ({totalGroupCount})</span>
                           {billingScope === 'GROUP' && <span className="text-[10px] font-black text-[#176B65]">✓ Selected</span>}
                         </div>
                         <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
-                          Pure group ke sabhi {totalGroupCount} logo ka combined payment ek sath finalize karein.
+                          Sabhi {totalGroupCount} logo ka combined ek sath payment finalize karein.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBillingScope('CUSTOM')}
+                        className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${billingScope === 'CUSTOM'
+                            ? 'bg-white border-[#176B65] ring-2 ring-[#176B65]/20 shadow-xs'
+                            : 'bg-white/60 border-amber-200 hover:bg-white text-slate-600'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs text-[#176B65]">🔢 Custom Log</span>
+                          {billingScope === 'CUSTOM' && <span className="text-[10px] font-black text-[#176B65]">✓ Selected</span>}
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium leading-tight mt-1">
+                          Chunein kitne logo ka bill abhi banana hai ({customBillCount} of {totalGroupCount}).
                         </p>
                       </button>
                     </div>
+
+                    {billingScope === 'CUSTOM' && (
+                      <div className="p-3 bg-white rounded-xl border border-amber-300 flex items-center justify-between gap-3 shadow-2xs">
+                        <div>
+                          <span className="text-xs font-black text-[#176B65] block">Kitne Logo Ka Bill Karna Hai?</span>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Abhi {customBillCount} log bill honge, baaki {Math.max(0, totalGroupCount - customBillCount)} log queue me bane rahenge.
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 bg-[#F3F1E9] p-1 rounded-xl border border-[#DCE9E3]">
+                          <button
+                            type="button"
+                            onClick={() => setCustomBillCount(prev => Math.max(1, prev - 1))}
+                            className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-[#176B65] font-black flex items-center justify-center text-sm shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center font-black text-sm text-[#283B3D]">
+                            {customBillCount}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCustomBillCount(prev => Math.min(totalGroupCount, prev + 1))}
+                            className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-[#176B65] font-black flex items-center justify-center text-sm shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -9086,10 +9173,13 @@ export default function MerchantDashboardPage() {
                     >
                       <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                       <span>
-                        {billAmount && Number(billAmount) > 0
-                          ? `Save Billing (₹${Number(billAmount).toLocaleString('en-IN')}) & Mark Complete`
-                          : "Save & Mark Complete"
-                        }
+                        {(() => {
+                          const amtText = billAmount && Number(billAmount) > 0 ? ` (₹${Number(billAmount).toLocaleString('en-IN')})` : '';
+                          if (!isGroupBooking) return `Save Billing${amtText} & Mark Complete`;
+                          if (billingScope === 'SINGLE') return `Save Billing${amtText} for 1 Member & Complete`;
+                          if (billingScope === 'CUSTOM') return `Save Billing${amtText} for ${customBillCount} Members & Complete`;
+                          return `Save Billing${amtText} for Full Group (${totalGroupCount}) & Complete`;
+                        })()}
                       </span>
                     </button>
 
@@ -9098,7 +9188,12 @@ export default function MerchantDashboardPage() {
                       onClick={() => handleFinalizeService({ skipBilling: true })}
                       className="w-full py-2.5 rounded-2xl bg-[#F3F1E9] hover:bg-[#DCE9E3] text-[#283B3D] font-bold text-xs transition-colors cursor-pointer text-center"
                     >
-                      Skip Billing (Bina Bill / ₹0 Me Complete Karo)
+                      {(() => {
+                        if (!isGroupBooking) return "Skip Billing (Bina Bill / ₹0 Me Complete Karo)";
+                        if (billingScope === 'SINGLE') return `Skip Billing for 1 Member (Baaki ${totalGroupCount - 1} Queue Me)`;
+                        if (billingScope === 'CUSTOM') return `Skip Billing for ${customBillCount} Members (Baaki ${Math.max(0, totalGroupCount - customBillCount)} Queue Me)`;
+                        return `Skip Billing for Full Group (${totalGroupCount} Persons)`;
+                      })()}
                     </button>
                   </div>
                 </form>
