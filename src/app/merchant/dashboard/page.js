@@ -4929,348 +4929,319 @@ export default function MerchantDashboardPage() {
                   </div>
                 </div>
 
-                {/* Live Multi-Staff Chairs Service & Elapsed Timers Overview Bar */}
+                {/* Live Multi-Staff Chairs Service & Elapsed Timers Overview Bar (Compact) */}
                 {stationsList.filter(s => s.active).length > 0 && (
-                  <div className="bg-black/30 rounded-2xl p-3 border border-white/10 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
-                      <span className="flex items-center gap-1 text-emerald-300">
+                  <div className="bg-black/25 rounded-2xl p-2.5 border border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-300 px-1">
+                      <span className="flex items-center gap-1.5 text-emerald-300">
                         <Clock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Live Chairs Service & Elapsed Timers:</span>
+                        <span>Chairs Status:</span>
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">Click chair to view</span>
+                      <span className="text-[10px] text-slate-400">
+                        {stationsList.filter(s => s.active && !s.currentToken).length} Free
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       {stationsList.filter(s => s.active).map(st => {
                         const isServing = !!st.currentToken;
                         return (
-                          <button
+                          <div
                             key={st.id}
-                            type="button"
-                            onClick={() => {
-                              if (st.currentToken) {
-                                setServingToken(st.currentToken);
-                              }
-                            }}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${isServing
-                                ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-100 hover:border-emerald-400'
-                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
-                              }`}
+                            className={`p-2 rounded-xl border flex items-center justify-between gap-1.5 ${
+                              isServing
+                                ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-200'
+                                : 'bg-white/5 border-white/10 text-slate-300'
+                            }`}
                           >
-                            <div className="min-w-0">
-                              <div className="text-xs font-black truncate text-white">{st.name}</div>
-                              <div className="text-[10px] text-slate-300 truncate">
-                                {st.currentToken ? (st.currentToken.customerName || 'Customer') : 'Free 🟢'}
-                              </div>
-                            </div>
+                            <span className="text-xs font-bold truncate text-white">{st.name}</span>
                             {isServing ? (
-                              <div className="text-right shrink-0">
-                                <span className="text-xs font-token font-bold text-emerald-300 block">
-                                  {formatTokenNum(st.currentToken.tokenNumber)}
-                                </span>
-                                <span className="text-[10px] font-mono font-bold text-amber-300 inline-flex items-center gap-1">
-                                  <Clock className="w-2.5 h-2.5 text-amber-400" />
-                                  <span>{formatTimer(st.timerSeconds || 0)}</span>
-                                </span>
-                              </div>
+                              <span className="text-[10px] font-mono text-amber-300 shrink-0">
+                                #{st.currentToken.tokenNumber} ({formatTimer(st.timerSeconds || 0)})
+                              </span>
                             ) : (
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
-                                Free
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded shrink-0">
+                                Free 🟢
                               </span>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
                 )}
 
-                {/* Ready for Cashier Billing Queue Bar */}
+                {/* Ready for Cashier Billing Queue Bar (Clean & Compact) */}
                 {readyForBillingList.length > 0 && (
-                  <div className="bg-emerald-950/80 border border-emerald-400/40 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
-                    <div className="flex items-center justify-between text-xs font-black text-emerald-200">
-                      <span className="flex items-center gap-1.5">
-                        <Receipt className="w-4 h-4 text-[#F2A15A]" />
-                        <span>Ready for Cashier Billing ({readyForBillingList.length} Finished at Chairs):</span>
-                      </span>
-                      <span className="text-[10px] text-emerald-300/80 font-medium">Tap customer to stage or bill</span>
+                  <div className="bg-amber-400/15 border border-amber-400/30 rounded-2xl p-3 flex items-center justify-between gap-2.5 shadow-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-900 font-bold flex items-center justify-center shrink-0">
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-black text-amber-200 flex items-center gap-1.5">
+                          <span>{readyForBillingList.length} Finished at Chairs</span>
+                          <span className="text-[10px] bg-amber-400 text-slate-950 font-black px-1.5 py-0.2 rounded-md uppercase tracking-wider">
+                            Ready to Bill
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-300 truncate">
+                          {readyForBillingList.map(t => `#${t.tokenNumber} ${t.customerName?.split(' ')[0] || 'Guest'}`).join(', ')}
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {readyForBillingList.map((rbToken) => {
-                        const isSelected = servingToken && isTokenMatch(servingToken, rbToken);
-                        const parsed = parseCustomerAndServices(rbToken.customerName, rbToken.service);
-                        return (
-                          <div
-                            key={rbToken.id || rbToken.tokenNumber}
-                            className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 ${
-                              isSelected
-                                ? 'bg-emerald-800/90 border-emerald-300 ring-2 ring-emerald-300/40 text-white shadow-xs'
-                                : 'bg-black/40 border-white/15 hover:border-emerald-400/50 text-slate-200'
-                            }`}
-                          >
-                            <div
-                              className="min-w-0 cursor-pointer flex-1"
-                              onClick={() => setServingToken(rbToken)}
-                            >
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                      {readyForBillingList.map(rb => (
+                        <button
+                          key={rb.id || rb.tokenNumber}
+                          type="button"
+                          onClick={() => {
+                            setServingToken(rb);
+                            handleOpenBillingModal(rb);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1"
+                        >
+                          <span>Bill #{rb.tokenNumber}</span>
+                          <span className="text-[10px]">₹</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {servingToken ? (() => {
+                  const isReadyForBilling = readyForBillingList.some(t => isTokenMatch(t, servingToken));
+                  const hasActiveStations = stationsList.filter(s => s.active).length > 0;
+                  const isAssignedToStation = !!servingToken.assignedStation;
+                  const parsedCust = parseCustomerAndServices(servingToken.customerName, servingToken.service);
+
+                  return (
+                    <div className="space-y-5">
+                      {/* Customer Header info */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs uppercase font-extrabold tracking-wider ${isReadyForBilling ? 'text-amber-300' : 'text-slate-400'}`}>
+                              {isReadyForBilling
+                                ? 'Ready for Cashier Bill'
+                                : isAssignedToStation
+                                  ? `Serving at ${servingToken.assignedStation.name || servingToken.assignedStation}`
+                                  : 'Next Customer Pass'
+                              }
+                            </span>
+                            {isReadyForBilling && (
+                              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
+                                Finished at {servingToken.stationCompletedFrom || 'Chair'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-5xl sm:text-6xl font-token font-bold text-white tracking-tight mt-1">
+                            {formatTokenNum(servingToken.tokenNumber)}
+                          </div>
+                        </div>
+
+                        <div className="sm:text-right space-y-1.5">
+                          <span className="text-lg font-black text-[#DCE9E3] block">{parsedCust.cleanName}</span>
+                          <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
+                            <span className="text-xs text-slate-400">
+                              {servingToken.customerPhone ? `+91 ${servingToken.customerPhone}` : 'Walk-in'}
+                            </span>
+                            {servingToken.customerPhone && servingToken.customerPhone !== 'Offline' && (
                               <div className="flex items-center gap-1.5">
-                                <span className="font-token font-bold text-emerald-300 text-sm">
-                                  {formatTokenNum(rbToken.tokenNumber)}
-                                </span>
-                                <span className="text-xs font-black truncate text-white">
-                                  {parsed.cleanName}
-                                </span>
+                                <a
+                                  href={`tel:${servingToken.customerPhone}`}
+                                  className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#DCE9E3] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                                  title="Direct Phone Call"
+                                >
+                                  <PhoneCall className="w-3 h-3 text-emerald-400" />
+                                  <span>Call</span>
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDirectWhatsAppSend(servingToken, 'SERVING_NOW')}
+                                  className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
+                                  title="Send WhatsApp Serving Now Alert"
+                                >
+                                  <MessageCircle className="w-3 h-3 fill-current" />
+                                  <span>WhatsApp</span>
+                                </button>
                               </div>
-                              <div className="text-[10px] text-slate-300 truncate">
-                                Finished at {rbToken.stationCompletedFrom || 'Chair'} • {parsed.totalCost || parsed.servicesString}
-                              </div>
+                            )}
+                          </div>
+
+                          {/* Services & Party Size Tag */}
+                          <div className="flex items-center gap-1.5 flex-wrap justify-start sm:justify-end">
+                            <span className="text-[11px] font-bold text-[#F2A15A] bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/5">
+                              {parsedCust.items.length > 0 ? `${parsedCust.items.length} Services` : (servingToken.service || 'Service')}
+                            </span>
+                            {servingToken.groupSize > 1 && (
+                              <span className="text-[11px] font-bold text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded-lg border border-sky-400/30">
+                                Party of {servingToken.groupSize}
+                              </span>
+                            )}
+                          </div>
+                          {parsedCust.items.length > 0 && (
+                            <div className="text-[10px] text-slate-300 font-medium sm:text-right">
+                              {parsedCust.items.join(' • ')}
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Station Assignment: ONLY show for customers who need to be assigned to a chair (NOT for ready-for-billing) */}
+                      {!isReadyForBilling && hasActiveStations && (
+                        <div className="pt-3 border-t border-white/10 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span className="flex items-center gap-1.5 text-emerald-300">
+                              <Users className="w-4 h-4 text-[#F2A15A]" />
+                              <span>Assign to Chair / Counter:</span>
+                            </span>
+                            {isAssignedToStation ? (
+                              <span className="text-[11px] font-black text-emerald-300 bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Tap chair below</span>
+                            )}
+                          </div>
+
+                          {/* 1-Tap Quick Chair Buttons */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {stationsList.filter(s => s.active).map(st => {
+                              const isAssigned = servingToken.assignedStation && (
+                                servingToken.assignedStation.id === st.id ||
+                                servingToken.assignedStation.name === st.name ||
+                                servingToken.assignedStation === st.name
+                              );
+                              const isBusyByOther = st.currentToken && !isTokenMatch(st.currentToken, servingToken);
+                              return (
+                                <button
+                                  key={st.id}
+                                  type="button"
+                                  disabled={isBusyByOther}
+                                  onClick={() => handleAssignStationToServingToken(st)}
+                                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    isAssigned
+                                      ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
+                                      : isBusyByOther
+                                        ? 'bg-slate-800/60 text-slate-500 border border-white/5 cursor-not-allowed'
+                                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 active:scale-95'
+                                  }`}
+                                >
+                                  <span>{st.name}</span>
+                                  {isAssigned ? (
+                                    <span className="text-[10px] font-black text-emerald-200">✓ Assigned</span>
+                                  ) : isBusyByOther ? (
+                                    <span className="text-[9px] text-slate-400 font-normal">Busy (#{st.currentToken.tokenNumber})</span>
+                                  ) : (
+                                    <span className="text-[10px] text-emerald-300 font-bold">🟢 Free</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {isAssignedToStation && (
+                            <div className="text-[11px] text-emerald-200/90 font-medium flex items-center justify-between gap-2 px-1 pt-1">
+                              <span className="truncate">
+                                Current: <strong className="text-white">{servingToken.assignedStation.name || servingToken.assignedStation}</strong>
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setServingToken(rbToken);
-                                  handleOpenBillingModal(rbToken);
+                                  const st = stationsList.find(s => s.id === servingToken.assignedStation?.id || s.name === servingToken.assignedStation?.name || s.name === servingToken.assignedStation);
+                                  if (st) handleAssignStationToServingToken(st);
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-[#176B65] text-[11px] font-black shadow-xs cursor-pointer active:scale-95 transition-all"
-                                title="Open billing for this customer"
+                                className="text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer text-[10px] shrink-0"
                               >
-                                Bill ₹
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {servingToken ? (
-                  <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">
-                            {readyForBillingList.some(t => isTokenMatch(t, servingToken)) ? 'Ready for Cashier Bill' : 'Current Customer Pass'}
-                          </span>
-                          {readyForBillingList.some(t => isTokenMatch(t, servingToken)) && (
-                            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-400/30">
-                              Finished at {servingToken.stationCompletedFrom || 'Chair'}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-5xl sm:text-6xl font-token font-bold text-white tracking-tight mt-1">
-                          {formatTokenNum(servingToken.tokenNumber)}
-                        </div>
-                      </div>
-
-                      <div className="sm:text-right space-y-1">
-                        <span className="text-lg font-black text-[#DCE9E3] block">{servingToken.customerName}</span>
-                        <div className="flex items-center gap-2 justify-start sm:justify-end flex-wrap">
-                          <span className="text-xs text-slate-400">+91 {servingToken.customerPhone}</span>
-                          {servingToken.customerPhone && servingToken.customerPhone !== 'Offline' && (
-                            <div className="flex items-center gap-1.5">
-                              <a
-                                href={`tel:${servingToken.customerPhone}`}
-                                className="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-[#DCE9E3] text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
-                                title="Direct Phone Call"
-                              >
-                                <PhoneCall className="w-3 h-3 text-emerald-400" />
-                                <span>Call</span>
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleDirectWhatsAppSend(servingToken, 'SERVING_NOW')}
-                                className="px-2 py-0.5 rounded-lg bg-[#25D366] hover:bg-[#20ba59] text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95 transition-all"
-                                title="Send WhatsApp Serving Now Alert"
-                              >
-                                <MessageCircle className="w-3 h-3 fill-current" />
-                                <span>WhatsApp</span>
+                                Re-announce
                               </button>
                             </div>
                           )}
                         </div>
-                        <span className="text-[11px] font-bold text-[#F2A15A] bg-black/30 px-2.5 py-0.5 rounded-md inline-block">
-                          {servingToken.service} • Party of {servingToken.groupSize}
-                        </span>
-                      </div>
-                    </div>
+                      )}
 
-                    {/* Counter / Chair Assignment Dropdown (Responsive Dropdown Selector) */}
-                    {stationsList.filter(s => s.active).length > 0 && (
-                      <div className="pt-3 border-t border-white/10 space-y-2">
-                        <label className="flex items-center justify-between text-xs font-bold text-slate-300 flex-wrap gap-1">
-                          <span className="flex items-center gap-1.5 text-emerald-300">
-                            <Users className="w-4 h-4 text-[#F2A15A]" />
-                            <span>Send to Counter / Chair:</span>
-                          </span>
-                          {servingToken.assignedStation ? (
-                            <span className="text-[11px] font-black text-amber-300 bg-amber-400/20 border border-amber-300/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span>At {servingToken.assignedStation.name || servingToken.assignedStation}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">Select counter below</span>
-                          )}
-                        </label>
-
-                        <div className="relative">
-                          <select
-                            value={
-                              servingToken.assignedStation?.id ||
-                              stationsList.find(s => s.name === (servingToken.assignedStation?.name || servingToken.assignedStation))?.id ||
-                              ""
-                            }
-                            onChange={(e) => {
-                              const selectedId = e.target.value;
-                              if (!selectedId) return;
-                              const st = stationsList.find(s => s.id === selectedId);
-                              if (st) {
-                                handleAssignStationToServingToken(st);
-                              }
-                            }}
-                            className="w-full appearance-none bg-[#174642] hover:bg-[#123936] focus:bg-[#0e2f2c] text-white text-xs sm:text-sm font-bold py-3 pl-3.5 pr-10 rounded-2xl border border-white/20 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 transition-all cursor-pointer shadow-sm"
+                      {/* Primary Actions (Contextual based on billing vs chair assignment) */}
+                      {isReadyForBilling ? (
+                        /* Customer Finished at Chair: Cashier Collect Payment & Billing */
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBillingModal(servingToken)}
+                            className="sm:col-span-2 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                           >
-                            <option value="" disabled className="bg-[#283B3D] text-slate-400">
-                              -- Choose Service Counter / Chair --
-                            </option>
-                            {stationsList.filter(s => s.active).map(station => {
-                              const isAssigned = servingToken.assignedStation && (
-                                servingToken.assignedStation.id === station.id ||
-                                servingToken.assignedStation.name === station.name ||
-                                servingToken.assignedStation === station.name
-                              );
-                              const isOccupiedByOther = station.currentToken && !isTokenMatch(station.currentToken, servingToken);
-                              const statusTag = isAssigned
-                                ? "✓ Currently Assigned"
-                                : isOccupiedByOther
-                                  ? `🔴 Busy: ${station.currentToken.customerName || 'Customer'} (${formatTokenNum(station.currentToken.tokenNumber)})`
-                                  : "🟢 Free / Ready";
-                              return (
-                                <option
-                                  key={station.id}
-                                  value={station.id}
-                                  disabled={isOccupiedByOther}
-                                  className={isOccupiedByOther ? "bg-slate-700 text-slate-400 py-2 cursor-not-allowed" : "bg-[#283B3D] text-white py-2"}
-                                >
-                                  {station.name} {station.role ? `(${station.role})` : ''} — [{statusTag}]
-                                </option>
-                              );
-                            })}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-emerald-300">
-                            <ChevronDown className="w-4 h-4" />
-                          </div>
+                            <Receipt className="w-5 h-5 text-amber-300" />
+                            <span>Collect Payment & Bill #{servingToken.tokenNumber} (₹)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFinalizeService({ skipBilling: true })}
+                            className="py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
+                          >
+                            Skip Bill (₹0)
+                          </button>
                         </div>
-
-                        {servingToken.assignedStation && (
-                          <div className="text-[11px] text-emerald-200/90 font-medium flex items-center justify-between gap-2 px-1">
-                            <span className="truncate">
-                              Current: <strong className="text-white">{servingToken.assignedStation.name || servingToken.assignedStation}</strong> {servingToken.assignedStation.staffName ? `(${servingToken.assignedStation.staffName})` : ''}
-                            </span>
+                      ) : (
+                        /* Customer In Queue / At Intake: Call Next or Assign to Chair */
+                        <div className="space-y-3 pt-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <button
                               type="button"
-                              onClick={() => {
-                                const st = stationsList.find(s => s.id === servingToken.assignedStation?.id || s.name === servingToken.assignedStation?.name || s.name === servingToken.assignedStation);
-                                if (st) handleAssignStationToServingToken(st);
-                              }}
-                              className="text-amber-300 hover:text-amber-200 underline font-bold cursor-pointer text-[10px] shrink-0"
+                              onClick={handleCallNext}
+                              className={`${hasActiveStations ? 'sm:col-span-3' : 'sm:col-span-2'} py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98`}
                             >
-                              Re-announce
+                              <Volume2 className="w-5 h-5 text-[#F2A15A]" />
+                              <span>
+                                {waitingQueue.length > 0
+                                  ? `Call Next Customer (${formatTokenNum(waitingQueue[0].tokenNumber)})`
+                                  : "Call Next (Queue Empty)"
+                                }
+                              </span>
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
 
-                    {/* Primary Action Buttons */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-
-                      {/* Call Next */}
-                      <button
-                        type="button"
-                        onClick={handleCallNext}
-                        className="sm:col-span-2 py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                      >
-                        <Volume2 className="w-5 h-5 text-[#F2A15A]" />
-                        <span>Call Next Customer ({waitingQueue[0]?.tokenNumber ? formatTokenNum(waitingQueue[0].tokenNumber) : 'Queue Empty'})</span>
-                      </button>
-
-                      {/* Mark Complete & Billing Hisaab */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenBillingModal(servingToken)}
-                        className="py-4 rounded-2xl bg-white hover:bg-slate-100 text-[#283B3D] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-                        title="Mark Done and record billing details (optional)"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Done & Bill</span>
-                      </button>
-                    </div>
-
-                    {/* Secondary Actions: Repeat Announcement & Skip / Absent */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-white/10 text-slate-400">
-                      <div className="flex items-center gap-2">
-                        <span>Customer delayed?</span>
-                        <button
-                          type="button"
-                          onClick={handleRepeatCall}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] font-bold text-xs cursor-pointer transition-colors"
-                          title="Repeat voice announcement and counter chime"
-                        >
-                          <Megaphone className="w-3.5 h-3.5 text-[#F2A15A]" />
-                          <span>Repeat Voice Call</span>
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleMarkAbsent}
-                        className="text-xs font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
-                      >
-                        Mark Absent / Skip Turn
-                      </button>
-                    </div>
-
-                    {/* Quick Dispatch Next Customer while current is viewed */}
-                    {waitingQueue.length > 0 && stationsList.filter(s => s.active).length > 0 && (
-                      <div className="pt-3 border-t border-white/10 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-300 flex-wrap gap-1">
-                          <span className="flex items-center gap-1.5 text-amber-300">
-                            <Sparkles className="w-4 h-4 text-[#F2A15A]" />
-                            <span>Dispatch Next: {formatTokenNum(waitingQueue[0].tokenNumber)} ({waitingQueue[0].customerName})</span>
-                          </span>
-                          <span className="text-[10px] text-slate-400">Tap counter below to send</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {stationsList.filter(s => s.active).map(st => {
-                            const isBusy = !!st.currentToken;
-                            return (
+                            {/* If shop does NOT have chairs, show Done & Bill directly */}
+                            {!hasActiveStations && (
                               <button
-                                key={st.id}
                                 type="button"
-                                disabled={isBusy}
-                                onClick={() => handleCallNextForStation(st.id)}
-                                className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between gap-1 ${isBusy
-                                    ? 'bg-white/5 border-white/10 opacity-40 text-slate-400 cursor-not-allowed'
-                                    : 'bg-emerald-700/80 hover:bg-emerald-600 border-emerald-400 text-white font-bold shadow-xs cursor-pointer active:scale-95'
-                                  }`}
+                                onClick={() => handleOpenBillingModal(servingToken)}
+                                className="py-4 rounded-2xl bg-white hover:bg-slate-100 text-[#283B3D] font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                               >
-                                <div className="min-w-0">
-                                  <span className="text-xs font-bold truncate block">{st.name}</span>
-                                  <span className="text-[10px] text-slate-300 truncate block">
-                                    {st.currentToken ? `Busy (${formatTokenNum(st.currentToken.tokenNumber)})` : (st.role || 'Available')}
-                                  </span>
-                                </div>
-                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${isBusy ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30' : 'bg-emerald-300 text-emerald-950 font-black'
-                                  }`}>
-                                  {isBusy ? '🔴 Busy' : 'Send 🟢'}
-                                </span>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Done & Bill</span>
                               </button>
-                            );
-                          })}
+                            )}
+                          </div>
+
+                          {/* Secondary: Repeat Voice Call or Direct Counter Bill override */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-2 border-t border-white/10 text-slate-400">
+                            <div className="flex items-center gap-2">
+                              <span>Customer delayed?</span>
+                              <button
+                                type="button"
+                                onClick={handleRepeatCall}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-[#DCE9E3] font-bold text-xs cursor-pointer transition-colors"
+                              >
+                                <Megaphone className="w-3.5 h-3.5 text-[#F2A15A]" />
+                                <span>Repeat Voice Call</span>
+                              </button>
+                            </div>
+
+                            {hasActiveStations && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBillingModal(servingToken)}
+                                className="text-xs font-bold text-emerald-300 hover:text-emerald-200 underline cursor-pointer"
+                                title="If serving directly at counter instead of chair"
+                              >
+                                Direct Counter Bill →
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ) : waitingQueue.length > 0 ? (
+                      )}
+                    </div>
+                  );
+                })() : waitingQueue.length > 0 ? (
                   <div className="space-y-4 pt-1">
                     {(() => {
                       const nextCust = waitingQueue[0];
