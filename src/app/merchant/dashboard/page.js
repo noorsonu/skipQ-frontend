@@ -194,6 +194,8 @@ export default function MerchantDashboardPage() {
 
   // Service Billing & Hisaab Modal State (Optional post-service accounting)
   const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [billingDeskModalOpen, setBillingDeskModalOpen] = useState(false);
+  const [billingPage, setBillingPage] = useState(1);
   const [activeBillingCustomer, setActiveBillingCustomer] = useState(null);
   const [customBillCount, setCustomBillCount] = useState(1);
   const readyForBillingListRef = useRef([]);
@@ -4077,6 +4079,11 @@ export default function MerchantDashboardPage() {
   });
   const repliedCount = reviewsList.filter(r => r.merchantReply).length;
 
+  // Multi-counter / Chair active and busy status (Strict Seat Occupancy & Call-Next Gate)
+  const activeStations = stationsList.filter(s => s.active);
+  const hasActiveStations = activeStations.length > 0;
+  const allChairsFull = hasActiveStations && activeStations.every(s => !!s.currentToken);
+
   return (
     <div className="min-h-screen pb-16 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 pt-3 sm:pt-4 w-full max-w-full overflow-x-hidden">
 
@@ -5065,9 +5072,9 @@ export default function MerchantDashboardPage() {
                   </div>
                 )}
 
-                {/* Ready for Cashier Billing Queue Bar (Fully Responsive & Sleek) */}
+                {/* Ready for Cashier Billing Queue Bar (Compact Dropdown & Paginated Desk Modal Trigger) */}
                 {readyForBillingList.length > 0 && (
-                  <div className="bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-emerald-500/10 border border-amber-400/40 rounded-2xl p-3 sm:p-4 shadow-sm space-y-2.5">
+                  <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-emerald-500/10 border border-amber-400/40 rounded-2xl p-3 sm:p-3.5 shadow-sm space-y-2.5">
                     {/* Header */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
@@ -5084,60 +5091,69 @@ export default function MerchantDashboardPage() {
                             </span>
                           </div>
                           <p className="text-[10px] text-slate-300">
-                            Service completed at chairs • Awaiting payment
+                            Service completed at chairs • Awaiting checkout
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-amber-300 bg-black/40 px-2 py-0.5 rounded-lg border border-white/5 shrink-0">
-                        Cashier Desk
-                      </span>
+
+                      {/* Button to open Paginated Billing Desk (5 per page) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBillingPage(1);
+                          setBillingDeskModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95 shrink-0"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Open Billing Desk ({readyForBillingList.length})</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
                     </div>
 
-                    {/* Customer Cards Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {readyForBillingList.map((rb) => {
-                        const parsed = parseCustomerAndServices(rb.customerName, rb.service);
-                        const tNum = formatTokenNum(rb.tokenNumber);
-                        return (
-                          <div
-                            key={rb.id || rb.tokenNumber}
-                            className="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-amber-400/30 hover:border-amber-400/60 transition-all flex items-center justify-between gap-2.5 shadow-xs"
-                          >
-                            <div
-                              className="min-w-0 cursor-pointer flex-1"
-                              onClick={() => {
-                                setServingToken(rb);
-                                handleOpenBillingModal(rb);
-                              }}
+                    {/* Dropdown Selector to directly choose customer to bill or open desk */}
+                    <div className="relative">
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'VIEW_PAGINATED') {
+                            setBillingPage(1);
+                            setBillingDeskModalOpen(true);
+                          } else if (val) {
+                            const cust = readyForBillingList.find(c => String(c.id || c.tokenNumber) === val);
+                            if (cust) {
+                              setServingToken(cust);
+                              handleOpenBillingModal(cust);
+                            }
+                          }
+                        }}
+                        className="w-full appearance-none bg-black/40 hover:bg-black/50 text-white text-xs font-bold py-2.5 pl-3 pr-9 rounded-xl border border-amber-400/30 focus:border-amber-400 focus:outline-none transition-all cursor-pointer shadow-xs"
+                      >
+                        <option value="" disabled className="bg-[#283B3D] text-slate-300">
+                          -- 🧾 Select Customer to Bill ({readyForBillingList.length} Pending) --
+                        </option>
+                        <option value="VIEW_PAGINATED" className="bg-[#176B65] text-white font-black py-2">
+                          📑 ➔ Open Full Paginated Billing Desk (5 per page)
+                        </option>
+                        {readyForBillingList.map((rb, idx) => {
+                          const parsed = parseCustomerAndServices(rb.customerName, rb.service);
+                          const tNum = formatTokenNum(rb.tokenNumber);
+                          const chair = rb.stationCompletedFrom || rb.assignedStation?.name || rb.assignedStation || 'Chair';
+                          return (
+                            <option
+                              key={rb.id || rb.tokenNumber || idx}
+                              value={String(rb.id || rb.tokenNumber)}
+                              className="bg-[#283B3D] text-white py-1.5"
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="font-token font-bold text-amber-300 text-xs sm:text-sm bg-amber-400/20 px-1.5 py-0.5 rounded-md border border-amber-400/30">
-                                  {tNum}
-                                </span>
-                                <span className="text-xs sm:text-sm font-black truncate text-white">
-                                  {parsed.cleanName}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-slate-300 truncate mt-0.5">
-                                {rb.stationCompletedFrom ? `Chair: ${rb.stationCompletedFrom}` : 'Finished'} • {parsed.totalCost || parsed.servicesString}
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setServingToken(rb);
-                                handleOpenBillingModal(rb);
-                              }}
-                              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
-                              title="Open Bill & Ledger"
-                            >
-                              <Receipt className="w-3.5 h-3.5" />
-                              <span>Bill {tNum} ₹</span>
-                            </button>
-                          </div>
-                        );
-                      })}
+                              {tNum} • {parsed.cleanName} (Chair: {chair}) — Click to Bill ₹
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-amber-300">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -5267,23 +5283,23 @@ export default function MerchantDashboardPage() {
                                 -- 💈 Select Chair / Counter to Send Customer --
                               </option>
                               {stationsList.filter(s => s.active).map(st => {
-                                const isAssigned = servingToken.assignedStation && (
+                                const isBusy = !!st.currentToken;
+                                const isAssigned = !isBusy && servingToken.assignedStation && (
                                   servingToken.assignedStation.id === st.id ||
                                   servingToken.assignedStation.name === st.name ||
                                   servingToken.assignedStation === st.name
                                 );
-                                const isBusyByOther = st.currentToken && !isTokenMatch(st.currentToken, servingToken);
-                                const statusTag = isAssigned
-                                  ? "✓ Currently Assigned"
-                                  : isBusyByOther
-                                    ? `🔴 Busy: ${st.currentToken.customerName || 'Customer'} (${formatTokenNum(st.currentToken.tokenNumber)})`
+                                const statusTag = isBusy
+                                  ? `🔴 Busy: ${st.currentToken.customerName || 'Customer'} (${formatTokenNum(st.currentToken.tokenNumber)})`
+                                  : isAssigned
+                                    ? "✓ Currently Assigned"
                                     : "🟢 Free / Ready";
                                 return (
                                   <option
                                     key={st.id}
                                     value={st.id}
-                                    disabled={isBusyByOther}
-                                    className={isBusyByOther ? "bg-slate-700 text-slate-400 py-2 cursor-not-allowed" : "bg-[#283B3D] text-white py-2"}
+                                    disabled={isBusy}
+                                    className={isBusy ? "bg-slate-700 text-slate-400 py-2 cursor-not-allowed" : "bg-[#283B3D] text-white py-2"}
                                   >
                                     {st.name} {st.role ? `(${st.role})` : ''} — [{statusTag}]
                                   </option>
@@ -5299,31 +5315,31 @@ export default function MerchantDashboardPage() {
                           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-0.5">
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium mr-1">Quick 1-Tap:</span>
                             {stationsList.filter(s => s.active).map(st => {
-                              const isAssigned = servingToken.assignedStation && (
+                              const isBusy = !!st.currentToken;
+                              const isAssigned = !isBusy && servingToken.assignedStation && (
                                 servingToken.assignedStation.id === st.id ||
                                 servingToken.assignedStation.name === st.name ||
                                 servingToken.assignedStation === st.name
                               );
-                              const isBusyByOther = st.currentToken && !isTokenMatch(st.currentToken, servingToken);
                               return (
                                 <button
                                   key={st.id}
                                   type="button"
-                                  disabled={isBusyByOther}
-                                  onClick={() => handleAssignStationToServingToken(st)}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-                                    isAssigned
-                                      ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
-                                      : isBusyByOther
-                                        ? 'bg-slate-800/60 text-slate-500 border border-white/5 cursor-not-allowed'
-                                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 active:scale-95'
+                                  disabled={isBusy}
+                                  onClick={() => !isBusy && handleAssignStationToServingToken(st)}
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                                    isBusy
+                                      ? 'bg-slate-800/60 text-slate-500 border border-white/5 cursor-not-allowed opacity-75'
+                                      : isAssigned
+                                        ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300 cursor-pointer'
+                                        : 'bg-white/10 hover:bg-white/20 text-white border border-white/20 active:scale-95 cursor-pointer'
                                   }`}
                                 >
                                   <span>{st.name}</span>
-                                  {isAssigned ? (
-                                    <span className="text-[10px] font-black text-emerald-200">✓ Assigned</span>
-                                  ) : isBusyByOther ? (
+                                  {isBusy ? (
                                     <span className="text-[9px] text-slate-400 font-normal">Busy ({formatTokenNum(st.currentToken.tokenNumber)})</span>
+                                  ) : isAssigned ? (
+                                    <span className="text-[10px] font-black text-emerald-200">✓ Assigned</span>
                                   ) : (
                                     <span className="text-[10px] text-emerald-300 font-bold">🟢 Free</span>
                                   )}
@@ -5376,19 +5392,36 @@ export default function MerchantDashboardPage() {
                         /* Customer In Queue / At Intake: Call Next or Assign to Chair */
                         <div className="space-y-3 pt-2">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <button
-                              type="button"
-                              onClick={handleCallNext}
-                              className={`${hasActiveStations ? 'sm:col-span-3' : 'sm:col-span-2'} py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98`}
-                            >
-                              <Volume2 className="w-5 h-5 text-[#F2A15A]" />
-                              <span>
-                                {waitingQueue.length > 0
-                                  ? `Call Next Customer (${formatTokenNum(waitingQueue[0].tokenNumber)})`
-                                  : "Call Next (Queue Empty)"
-                                }
-                              </span>
-                            </button>
+                            {allChairsFull ? (
+                              <div className="sm:col-span-3 py-3 px-4 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between gap-3 text-amber-200">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                                    <Users className="w-4 h-4 text-amber-300" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="text-xs font-black text-white">All Chairs are Full ({activeStations.length}/{activeStations.length} Busy)</p>
+                                    <p className="text-[10px] text-slate-300">Sabhi chairs busy hain. Chair free hone par Call Next button show hoga.</p>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2.5 py-1 rounded-lg shrink-0 border border-amber-400/30">
+                                  Chairs Full ⏳
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleCallNext}
+                                className={`${hasActiveStations ? 'sm:col-span-3' : 'sm:col-span-2'} py-4 rounded-2xl bg-[#176B65] hover:bg-[#125550] text-white font-black text-sm shadow-lg shadow-[#176B65]/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98`}
+                              >
+                                <Volume2 className="w-5 h-5 text-[#F2A15A]" />
+                                <span>
+                                  {waitingQueue.length > 0
+                                    ? `Call Next Customer (${formatTokenNum(waitingQueue[0].tokenNumber)})`
+                                    : "Call Next (Queue Empty)"
+                                  }
+                                </span>
+                              </button>
+                            )}
 
                             {/* If shop does NOT have chairs, show Done & Bill directly */}
                             {!hasActiveStations && (
@@ -5531,6 +5564,21 @@ export default function MerchantDashboardPage() {
                             );
                           })}
                         </div>
+                      </div>
+                    ) : allChairsFull ? (
+                      <div className="w-full py-3.5 px-4 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-between gap-3 text-amber-200">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                            <Users className="w-4 h-4 text-amber-300" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-xs font-black text-white">All Chairs are Full ({activeStations.length}/{activeStations.length} Busy)</p>
+                            <p className="text-[10px] text-slate-300">Sabhi chairs par service chal rahi hai. Chair free hone par Call Next show hoga.</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 px-2.5 py-1 rounded-lg shrink-0 border border-amber-400/30">
+                          Chairs Full ⏳
+                        </span>
                       </div>
                     ) : (
                       <button
@@ -8864,6 +8912,170 @@ export default function MerchantDashboardPage() {
           }
         }
       `}</style>
+
+      {/* ========================================================= */}
+      {/* MODAL 2.8: FULL CASHIER BILLING DESK (5 PER PAGE PAGINATED) */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {billingDeskModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setBillingDeskModalOpen(false)}
+              className="fixed inset-0"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative w-full max-w-2xl bg-gradient-to-b from-[#1C2C2E] to-[#121E20] text-white rounded-3xl p-4 sm:p-6 shadow-2xl border border-emerald-500/30 flex flex-col max-h-[90vh] z-10"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-amber-200">Cashier Billing Desk</h3>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+                        {readyForBillingList.length} Pending
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Service completed at chairs • 5 customers per page
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBillingDeskModalOpen(false)}
+                  className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body: 5 Customers List */}
+              <div className="flex-1 overflow-y-auto py-3.5 space-y-2.5 pr-1">
+                {readyForBillingList.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 space-y-2">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto" />
+                    <p className="font-bold text-sm text-white">All Bills Cleared!</p>
+                    <p className="text-xs">No pending billing for completed customers.</p>
+                  </div>
+                ) : (
+                  (() => {
+                    const pageSize = 5;
+                    const totalPages = Math.ceil(readyForBillingList.length / pageSize) || 1;
+                    const safePage = Math.min(Math.max(1, billingPage), totalPages);
+                    const pagedItems = readyForBillingList.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+                    return pagedItems.map((rb, idx) => {
+                      const parsed = parseCustomerAndServices(rb.customerName, rb.service);
+                      const tNum = formatTokenNum(rb.tokenNumber);
+                      const chairName = rb.stationCompletedFrom || rb.assignedStation?.name || rb.assignedStation || 'Chair';
+
+                      return (
+                        <div
+                          key={rb.id || rb.tokenNumber || idx}
+                          className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between gap-3 transition-all"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/40 flex flex-col items-center justify-center shrink-0">
+                              <span className="text-[9px] font-black uppercase text-amber-300 leading-none">Token</span>
+                              <span className="text-sm font-black text-amber-200">{tNum}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-sm text-white truncate">{parsed.cleanName}</p>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-emerald-300 shrink-0 border border-white/10">
+                                  Chair: {chairName}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-300 truncate mt-0.5">
+                                {parsed.servicesString || 'General Service'}
+                                {rb.groupSize > 1 ? ` • Party of ${rb.groupSize}` : ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBillingDeskModalOpen(false);
+                              setServingToken(rb);
+                              handleOpenBillingModal(rb);
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shrink-0 flex items-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>Bill {tNum} ₹</span>
+                          </button>
+                        </div>
+                      );
+                    });
+                  })()
+                )}
+              </div>
+
+              {/* Modal Footer: Pagination Controls (5 per page) */}
+              {readyForBillingList.length > 0 && (() => {
+                const pageSize = 5;
+                const totalPages = Math.ceil(readyForBillingList.length / pageSize) || 1;
+                const safePage = Math.min(Math.max(1, billingPage), totalPages);
+
+                return (
+                  <div className="pt-3.5 border-t border-white/10 flex items-center justify-between gap-2 shrink-0 flex-wrap">
+                    <span className="text-xs text-slate-400 font-medium">
+                      Showing {Math.min((safePage - 1) * pageSize + 1, readyForBillingList.length)}–{Math.min(safePage * pageSize, readyForBillingList.length)} of {readyForBillingList.length} Customers (Page {safePage} of {totalPages})
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={safePage <= 1}
+                        onClick={() => setBillingPage(p => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer"
+                      >
+                        ◀ Prev
+                      </button>
+
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setBillingPage(i + 1)}
+                          className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            safePage === i + 1
+                              ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                              : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        disabled={safePage >= totalPages}
+                        onClick={() => setBillingPage(p => Math.min(totalPages, p + 1))}
+                        className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Next ▶
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ========================================================= */}
       {/* MODAL 3: SERVICE BILLING / HISAAB (OPTIONAL ON SERVICE DONE)*/}
